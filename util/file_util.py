@@ -108,7 +108,7 @@ def loadfile(filename, fulldir='', filetype='pickle', dtype=None):
                 with open(fullname, 'rb') as f:
                     datafile = pickle.load(f)
             except:
-                # load a python 2 pkl in python 3
+                # load a python 2 pkl in python 3 (works in python 3.6)
                 with open(fullname, 'rb') as f: 
                     datafile = pickle.load(f, encoding='latin1')
         elif ext == '.json':

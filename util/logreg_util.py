@@ -730,7 +730,7 @@ def load_checkpoint_pt(mod, filename):
 #############################################
 def plot_weights(ax, mod_params, xran, stats='mean', error='sem'):
     """
-    plot_weights(mod_params, xran)
+    plot_weights(ax, mod_params, xran)
 
     Plots weights on 2 subplots (one by frame, and one by ROI). Also adds
     bias value.
@@ -767,8 +767,9 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem'):
                 fr_title = f'{fr_title} (mod {mod_params[3]})'
         else:
             fr_title = None
-        plot_util.plot_traces(by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, 
-                                col='dimgrey', alpha=0.4)
+        plot_util.plot_traces(
+            by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, col='dimgrey', 
+            alpha=0.4)
         by_fr.axhline(y=0, ls='dashed', c='k', lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_fr.get_yticks()))
         by_fr.set_yticks([-orig_tick_max, 0, orig_tick_max])
@@ -783,17 +784,13 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem'):
         roi_stats = math_util.get_stats(weights, stats, error, axes=0)
         xran_rois = range(roi_stats.shape[1])
         sorter = np.argsort(roi_stats[0])[::-1] # reverse sort
-        plot_util.plot_traces(by_roi, roi_stats[0][sorter], xran_rois,
-                roi_stats[1:][:, sorter], roi_title, col='dimgrey', 
-                alpha=0.4, errx=True)
+        plot_util.plot_traces(
+            by_roi, roi_stats[0][sorter], xran_rois, roi_stats[1:][:, sorter], 
+            roi_title, col='dimgrey', alpha=0.4, errx=True)
         by_roi.axvline(x=0, ls='dashed', c='k', lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_roi.get_xticks()))
-        if orig_tick_max == 0:
-            tick_max = np.round(np.max(by_roi.get_xlim()), 2)
-            plot_util.set_ticks(by_roi, 'x', -tick_max, tick_max, 3, pad_p=0.1)
-        else:
-            by_roi.set_xticks([-orig_tick_max, 0, orig_tick_max])
-
+        by_roi.set_xticks([-orig_tick_max, 0, orig_tick_max])
+        
         for m in range(n_plts-1):
             # write intercept (bottom, right subplot)
             bias_subax = ax[n+1, m+1]
@@ -922,10 +919,10 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
             n_plts = mod_params[1].shape[0] + 1
             hei_rat = [3] + [1] * (n_plts - 1)
             wid_rat = [4] + [1] * (n_plts - 1)
-            fig, ax = plt.subplots(n_plts, n_plts, 
-                                   figsize=(2*sum(wid_rat), 2*sum(hei_rat)), 
-                                   gridspec_kw = {'height_ratios': hei_rat, 
-                                                  'width_ratios': wid_rat})
+            fig, ax = plt.subplots(
+                n_plts, n_plts, figsize=(2*sum(wid_rat), 2*sum(hei_rat)), 
+                gridspec_kw = {
+                    'height_ratios': hei_rat, 'width_ratios': wid_rat})
             ax_data = ax[0, 0]
         else:
             fig, ax_data = plt.subplots()
@@ -945,7 +942,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
         cl_st = np.asarray(class_stats[i])
         leg = f'{class_name}{data_str} (n={ns[i]})'
         plot_util.plot_traces(ax_data, xran, cl_st[0], cl_st[1:], 
-                              alpha=0.8/len(classes), label=leg, col=cols[i])
+            alpha=0.8/len(classes), label=leg, col=cols[i])
         cols[i] = ax_data.lines[-1].get_color()
 
     # plot weights as well

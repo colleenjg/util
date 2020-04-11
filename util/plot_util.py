@@ -1014,24 +1014,30 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None,
         if not errx:
             # only condition where pos and neg error are different
             if len(err.shape) == 2: 
-                sub_ax.fill_between(x, err[0], err[1], facecolor=col, 
-                       alpha=alpha, zorder=zorder)
+                sub_ax.fill_between(
+                    x, err[0], err[1], facecolor=col, alpha=alpha, 
+                    zorder=zorder)
             else:
-                sub_ax.fill_between(x, y - err, y + err, facecolor=col, 
-                       alpha=alpha, zorder=zorder)
+                sub_ax.fill_between(
+                    x, y - err, y + err, facecolor=col, alpha=alpha, 
+                    zorder=zorder)
         else:
             # only condition where pos and neg error are different
             if len(err.shape) == 2: 
-                sub_ax.fill_betweenx(y, err[0], err[1], facecolor=col, 
-                       alpha=alpha, zorder=zorder)
+                sub_ax.fill_betweenx(
+                    y, err[0], err[1], facecolor=col, alpha=alpha, 
+                    zorder=zorder)
             else:
-                sub_ax.fill_betweenx(y, x - err, x + err, facecolor=col, 
-                       alpha=alpha, zorder=zorder)
+                sub_ax.fill_betweenx(
+                    y, x - err, x + err, facecolor=col, alpha=alpha, 
+                    zorder=zorder)
 
 
     if xticks is None:
-        set_ticks(sub_ax, 'x', np.around(np.min(x), 1), 
-                  np.around(np.max(x), 1), n_xticks)
+        diff = np.max(x) - np.min(x)
+        n_dig = - np.floor(np.log10(np.absolute(diff))).astype(int) + 1
+        set_ticks(sub_ax, 'x', np.around(np.min(x), n_dig), 
+                  np.around(np.max(x), n_dig), n_xticks)
     elif xticks in ['none', 'None']:
         sub_ax.tick_params(axis='x', which='both', bottom=False) 
     else:
