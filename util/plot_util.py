@@ -72,6 +72,7 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
               'axes.titlesize'       : 'x-large',  # x-large axis title
               'errorbar.capsize'     : 4,          # errorbar cap length
               'figure.titlesize'     : 'x-large',  # x-large figure title
+              'figure.autolayout'    : True,       # adjusts layout
               'font.size'            : 12,         # basic font size value
               'legend.fontsize'      : 'x-large',  # x-large legend text
               'lines.dashed_pattern' : [8.0, 4.0], # longer dashes
@@ -395,6 +396,26 @@ def get_subax(ax, i):
 
     return sub_ax
 
+#############################################
+def turn_off_extra(ax, n_plots):
+    """
+    turn_off_extra(ax, i)
+
+    Turns off axes of subplots beyond the number of plots. Assumes that the 
+    subplots are filled first by column and second by row.
+
+    Required args:
+        - ax (plt Axis): axis
+        - n_plots (int): number of plots used (consecutive)
+    """
+
+    if not (n_plots < ax.size):
+        return
+    
+    for i in range(n_plots, ax.size):
+        sub_ax = get_subax(ax, i)
+        sub_ax.set_axis_off()
+
 
 #############################################
 def share_lims(ax, dim='row'):
@@ -530,8 +551,8 @@ def remove_graph_bars(sub_ax, bars='all'):
 
 
 #############################################
-def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7.5, 
-             subplot_wid=7.5, gs=None, proj=None):
+def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7, 
+             subplot_wid=7, gs=None, proj=None):
     """
     init_fig(n_subplots, fig_par)
 
@@ -549,9 +570,9 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7.5,
         - sharey (bool)    : if True, y axis lims are shared across subplots
                              default: True
         - subplot_hei (num): height of each subplot (inches)
-                             default: 7.5
+                             default: 7
         - subplot_wid (num): width of each subplot (inches)
-                             default: 7.5
+                             default: 7
         - gs (dict)        : plt gridspec dictionary
                              default: None
         - proj (str)       : plt projection argument (e.g. '3d')
@@ -562,16 +583,22 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7.5,
         - ax (plt Axis): axis (even if for just one subplot)
     """
 
+    nrows = 1
     if n_subplots == 1:
         ncols = 1
     elif n_subplots < ncols:
         ncols = n_subplots
+    else:
+        nrows = int(np.ceil(n_subplots/float(ncols)))
+        # find minimum number of columns given number of rows
+        ncols = int(np.ceil(n_subplots/float(nrows)))
 
-    nrows = int(np.ceil(n_subplots/float(ncols)))
-    fig, ax = plt.subplots(ncols=ncols, nrows=nrows, 
-                           figsize=(ncols*subplot_wid, nrows*subplot_hei), 
-                           sharex=sharex, sharey=sharey, squeeze=False, 
-                           gridspec_kw=gs, subplot_kw={'projection': proj})
+    fig, ax = plt.subplots(
+        ncols=ncols, nrows=nrows, 
+        figsize=(ncols*subplot_wid, nrows*subplot_hei), sharex=sharex, 
+        sharey=sharey, squeeze=False, gridspec_kw=gs, 
+        subplot_kw={'projection': proj})
+
     return fig, ax
 
 

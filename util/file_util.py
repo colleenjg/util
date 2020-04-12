@@ -23,6 +23,21 @@ from util import gen_util
 
 
 #############################################
+def checkexists(pathname):
+    """
+    checkexists(pathname)
+
+    Checks whether a path exists and raises an error if not.
+
+    Required args:
+        - pathname (str): path
+    """
+
+    if not os.path.exists(pathname):
+        raise OSError(f'{pathname} does not exist.')
+
+
+#############################################
 def checkfile(filename):
     """
     checkfile(filename)
