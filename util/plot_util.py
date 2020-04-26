@@ -680,7 +680,7 @@ def get_repeated_bars(xmin, xmax, cycle=1.0, offset=0):
     Optional args:
         - cycle (num) : distance between bars
                         default: 1.0
-        - offset (num): offset from 0 
+        - offset (num): position of reference bar 
                         default: 0
     
     Returns:
@@ -688,10 +688,15 @@ def get_repeated_bars(xmin, xmax, cycle=1.0, offset=0):
                         
     """
 
-    min_bar = int(np.absolute(xmin - offset)//1.5 * np.sign(xmin - offset))
-    max_bar = int(np.absolute(xmax - offset)//1.5 * np.sign(xmax - offset))
-    bars = [1.5 * b + offset for b in range(min_bar, max_bar + 1)]
- 
+    # min_bar = int(np.absolute(xmin - offset)//cycle * np.sign(xmin - offset))
+    # max_bar = int(np.absolute(xmax + offset)//cycle * np.sign(xmax + offset))
+    min_bar = np.ceil((xmin - offset)/cycle).astype(int)
+    max_bar = np.floor((xmax - offset)/cycle).astype(int) + 1 #excluded
+    if max_bar >= min_bar:
+        bars = [cycle * b + offset for b in range(min_bar, max_bar)]
+    else:
+        bars = []
+
     return bars
 
 
@@ -1434,14 +1439,14 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03):
     Optional args:
         - label (str)    : colormap label
                            default: None
-        - cm_prop (float): colormap width wrt figure size, to be scaled by number 
-                           of columns
+        - cm_prop (float): colormap width wrt figure size, to be scaled by 
+                           number of columns
                            default: 0.03
     """
 
     cm_w = cm_prop/n_cols
     fig.subplots_adjust(right=1-cm_w*2)
-    cbar_ax = fig.add_axes([1-cm_w*1.2, 0.15, cm_w, 0.7])
+    cbar_ax = fig.add_axes([1, 0.15, cm_w, 0.7])
     fig.colorbar(im, cax=cbar_ax)
 
     if label is not None:

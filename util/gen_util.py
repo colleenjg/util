@@ -216,7 +216,6 @@ def remove_idx(items, rem, axis=0):
     if isinstance(items, list):
         make_list = True
         items     = np.asarray(items)
-
     else:
         make_list = False
 
@@ -1027,4 +1026,76 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
         outputs = [list(output) for output in zip(*outputs)]
 
     return outputs
+
+
+#############################################
+def get_df_unique_vals(df, axis='index', info='length'):
+    """
+    get_df_unique_vals(df)
+
+    Returns a list of unique values for each level of the requested axis, in 
+    hierarchical order.
+
+    Required args:
+        - df (pd DataFrame): hierarchical dataframe
+    
+    Optional args:
+        - axis (str): Axis for which to return unique values ('index' or 
+                      'columns')
+                      default: 'index'
+
+    Returns:
+        - unique_vals (list): unique values for each index or column level, in 
+                              hierarchical order
+    """
+
+    if axis in ['ind', 'idx', 'index']:
+        unique_vals = [df.index.unique(row) for row in df.index.names]
+    elif axis in ['col', 'cols', 'columns']:
+        unique_vals = [df.columns.unique(col) for col in df.columns.names]
+    else:
+        accepted_values_error('axis', axis, ['index', 'columns'])
+
+
+    return unique_vals
+
+
+#############################################
+def reshape_df_data(df, squeeze_rows=False, squeeze_cols=False):
+    """
+    reshape_df_data(df)
+
+    Returns data array extracted from dataframe and reshaped into as many
+    axes as index/column levels, if possible, in hierarchical order.
+
+    Required args:
+        - df (pd DataFrame): hierarchical dataframe
+    
+    Optional args:
+        - squeeze_rows (bool): if True, rows of length 1 are squeezed out
+                               default: False
+        - squeeze_cols (bool): if True, columns of length 1 are squeezed out
+]                              default: False
+
+    Returns:
+        - df_data (nd array): dataframe data reshaped into an array
+    """
+
+    row_dims = [len(df.index.unique(row)) for row in df.index.names]
+    col_dims = [len(df.columns.unique(col)) for col in df.columns.names]
+
+    if squeeze_rows:
+        row_dims = filter(lambda dim: dim != 1, row_dims)
+    if squeeze_cols:
+        col_dims = filter(lambda dim: dim != 1, col_dims)
+
+    new_dims = [*row_dims, *col_dims]
+
+    if np.prod(new_dims) != df.size:
+        raise ValueError('Cannot automatically reshape dataframe data, as '
+            'levels are not shared across all labels.')
+
+    df_data = df.to_numpy().reshape(new_dims)
+
+    return df_data
 

@@ -30,7 +30,7 @@ def check_match(data1, data2, ret_diff=False):
     """
 
     if data1.shape != data2.shape:
-        raise ValueError('Both data arrays much have same shape.')
+        raise ValueError('Both data arrays must have same shape.')
 
     match = ((data1 == data2) | (np.isnan(data1) & np.isnan(data2)))
     if ~(np.isnan(data1) == np.isnan(data2)).all():
@@ -64,7 +64,7 @@ def calculate_data_diffs(data1, data2):
     """
 
     if data1.shape != data2.shape:
-        raise ValueError('Both data arrays much have same shape.')
+        raise ValueError('Both data arrays must have same shape.')
     # calculate some information
     nan_mask = np.where(np.isfinite(np.multiply(data1, data2))) # remove NaNs
     diff_data = data1[nan_mask] - data2[nan_mask]
@@ -127,7 +127,7 @@ def print_max_diff(data1, data2, axis=0, axis_label='IDs'):
     diff_items_str = ', '.join(diff_items)
     print(f'Diff {axis_label}: {diff_items_str}')
     act_diff = (data2[diff_idx] - data1[diff_idx])
-    print(f'Max absolute diff: {np.max(np.absolute(act_diff))}')
+    print(f'Max absolute diff: {np.nanmax(np.absolute(act_diff))}')
 
 
 #############################################
@@ -158,7 +158,7 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
 
 
     if data1.shape != data2.shape:
-        raise ValueError('Both data arrays much have same shape.')
+        raise ValueError('Both data arrays must have same shape.')
 
     data = [data1, data2]
     cols = ['blue', 'red']
@@ -178,7 +178,17 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
         one_dim = True
 
     items_max_diffs = np.nansum(np.absolute(data[1] - data[0]), axis=1)
-    n_not_zero = len(np.where(items_max_diffs)[0])
+    n_not_zero = len(np.where((items_max_diffs != 0 * \
+        ~np.isnan(items_max_diffs)))[0])
+    
+    if n_not_zero == 0:
+        n_nan = np.isnan(items_max_diffs).sum()
+        if n_nan:
+            print(f'Differences in all {n_nan} {datatype} due to NaNs.')
+        else:
+            print(f'No {datatype} show differences.')
+        return
+
     n_plot = np.min([max, n_not_zero])
     item_max_diff_idx = np.argsort(items_max_diffs)[-n_plot:][::-1]
     
@@ -245,7 +255,15 @@ def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None,
         raise ValueError('If passing `labels`, must pass 2 labels.')
 
     non_zero_diffs, perc_diff, nan_mask = calculate_data_diffs(data1, data2)
-    
+
+    if len(non_zero_diffs) == 0:
+        n_nan = np.isnan(non_zero_diffs).sum()
+        if n_nan:
+            print(f'Differences in all {n_nan} {datatype} due to NaNs.')
+        else:
+            print(f'No {datatype} show differences.')
+        return
+
     # set plotting parameters
     figsize=(14, 4)
     _, ax = plt.subplots(ncols=2, figsize=figsize)

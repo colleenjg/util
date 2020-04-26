@@ -65,6 +65,44 @@ def mean_med(data, stats='mean', axis=None, nanpol=None):
 
 
 #############################################
+def error_stat_name(stats='mean', error='sem', qu=[25, 75]):
+    """
+    error_stat_name()
+
+    Returns the name(s) of the error statistic(s).
+
+    Optional args:
+        - stats (str) : 'mean' or 'median'
+                        default: 'mean'
+        - error (str) : 'std' (for std or quintiles) or 'sem' (for SEM or MAD)
+                        default: 'sem'
+        - qu (list)   : quintiles to take, if median and std along which 
+                        to take the statistic
+                        default: [25, 75]
+    
+    Returns:
+        - error_names (str or list): name(s) of error statistic(s)
+    """
+
+    if stats == 'mean':
+        if error == 'std':
+            error_name = error
+        elif error == 'sem':
+            error_name = 'SEM'
+    elif stats == 'median':
+        if error == 'std':
+            error_name = [f'q{qu[0]}', f'q{qu[1]}']        
+        elif error == 'sem':
+            error_name = 'MAD'
+    else:
+        gen_util.accepted_values_error('stats', stats, ['mean', 'median'])
+    if error not in ['std', 'sem']:
+        gen_util.accepted_values_error('error', error, ['std', 'sem'])
+
+    return error_name
+
+
+#############################################
 def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None, 
                qu=[25, 75]):
     """
@@ -212,8 +250,8 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
         
     # mean/med along units axis (last)
     me  = mean_med(data, stats=stats, axis=axis, nanpol=nanpol) 
-    err = error_stat(data, stats=stats, error=error, axis=axis, nanpol=nanpol, 
-                     qu=qu)
+    err = error_stat(
+        data, stats=stats, error=error, axis=axis, nanpol=nanpol, qu=qu)
     
     # ensures that these are arrays
     me = np.asarray(me)
@@ -373,8 +411,70 @@ def calc_op(data, op='diff', dim=0, rev=False):
 
 
 #############################################
+def scale_fact_names(sc_type='min_max', extrem='reg'):
+    """
+    scale_fact_names()
+
+    Returns names of factors returned by scale_facts() depending on the 
+    scaling type and extrema used.
+
+    Optional args:
+        - sc_type (str) : type of scaling to use
+                          'min_max'  : (data - min)/(max - min)
+                          'scale'    : (data - 0.0)/std
+                          'stand'    : (data - mean)/std
+                          'stand_rob': (data - median)/IQR (75-25)
+                          'center'   : (data - mean)/1.0
+                          'unit'     : (data - 0.0)/abs(mean)
+                          default: 'min_max'
+        - extrem (str)  : only needed if min_max  or stand_rob scaling is used. 
+                          'reg': the minimum and maximum (min_max) or 25-75 IQR 
+                                 of the data are used 
+                          'perc': the 5th and 95th percentiles are used as min
+                                  and max respectively (robust to outliers)
+    
+    Returns:
+        - sub (str): type of statistic subtracted from the data
+        - div (str): type of statistic by which the data is divided
+    """
+
+    if sc_type == 'stand':
+        sub = 'mean'
+        div = 'std'
+    elif sc_type == 'stand_rob':
+        sub = 'median'
+        if extrem == 'reg':
+            div = 'IQR'
+        elif extrem == 'perc':
+            div = 'IQR_5_95'
+        else:
+            gen_util.accepted_values_error('extrem', extrem, ['reg', 'perc'])
+    elif sc_type == 'center':
+        sub = 'mean'
+        div = 'unit'
+    elif sc_type == 'scale':
+        sub = 'null'
+        div = 'std'
+    elif sc_type == 'unit':
+        sub = 'null'
+        div = 'abs_mean'
+    elif sc_type == 'min_max':
+        if extrem == 'reg':
+            sub = 'minim'
+            div = 'range'
+        elif extrem == 'perc':
+            sub = 'p5'
+            div = 'IQR_5_95'
+    else:
+        gen_util.accepted_values_error('sc_type', sc_type, 
+                 ['stand', 'stand_rob', 'center', 'scale', 'min_max'])
+
+    return sub, div
+
+
+#############################################
 def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg', 
-               mult=1.0, shift=0.0, nanpol=None, allow_0=False):
+                mult=1.0, shift=0.0, nanpol=None, allow_0=False):
     """
     scale_facts(data)
 
@@ -431,7 +531,7 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
     if sc_type == 'stand':
         sub = mean_med(data[sc_idx], stats='mean', axis=axis, nanpol=nanpol)
         div = error_stat(data[sc_idx], stats='mean', error='std', axis=axis, 
-                         nanpol=nanpol)
+            nanpol=nanpol)
     elif sc_type == 'stand_rob':
         sub = mean_med(data[sc_idx], stats='median', axis=axis, nanpol=nanpol)
         if extrem == 'reg':
@@ -469,8 +569,8 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
                 minim = np.percentile(data[sc_idx], 5, axis=axis)
                 maxim = np.percentile(data[sc_idx], 95, axis=axis)
             elif nanpol == 'omit':
-                minim = np.percentile(data[sc_idx], 5, axis=axis)
-                maxim = np.percentile(data[sc_idx], 95, axis=axis)
+                minim = np.nanpercentile(data[sc_idx], 5, axis=axis)
+                maxim = np.nanpercentile(data[sc_idx], 95, axis=axis)
         else:
             gen_util.accepted_values_error('extrem', extrem, ['reg', 'perc'])
         sub = minim
@@ -574,13 +674,13 @@ def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
     ret_facts = False
     if facts is None:
         facts = scale_facts(data, axis, pos, sc_type, extrem=extrem, mult=mult, 
-                            shift=shift, nanpol=nanpol)
+            shift=shift, nanpol=nanpol)
         ret_facts = True
     elif len(facts) != 4:
         raise ValueError('If passing factors, must pass 4 items: '
                          'sub, div, mult and shift.')
-    
-    sub, div, mult, shift = np.asarray([fact for fact in facts])
+
+    sub, div, mult, shift = [np.asarray(fact).astype(float) for fact in facts]
 
     if axis is not None:
         sub = np.expand_dims(sub, axis)
