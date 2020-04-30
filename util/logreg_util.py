@@ -1123,7 +1123,7 @@ def get_scores(dirname='.', alg='sklearn'):
         scores_df = None
         if alg == 'pytorch' and best_ep is not None:
             print(f'{warn_str} Highest recorded model is for epoch {best_ep}, '
-                    'but no score is recorded.')
+                'but no score is recorded.')
 
     hyperpars = file_util.loadfile('hyperparameters.json', dirname)
 

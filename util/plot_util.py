@@ -675,7 +675,7 @@ def get_repeated_bars(xmin, xmax, cycle=1.0, offset=0):
 
     Required args:
         - xmin (num): minimum x value
-        - xmax (num): maximum x value
+        - xmax (num): maximum x value (included)
 
     Optional args:
         - cycle (num) : distance between bars
@@ -688,14 +688,9 @@ def get_repeated_bars(xmin, xmax, cycle=1.0, offset=0):
                         
     """
 
-    # min_bar = int(np.absolute(xmin - offset)//cycle * np.sign(xmin - offset))
-    # max_bar = int(np.absolute(xmax + offset)//cycle * np.sign(xmax + offset))
-    min_bar = np.ceil((xmin - offset)/cycle).astype(int)
-    max_bar = np.floor((xmax - offset)/cycle).astype(int) + 1 #excluded
-    if max_bar >= min_bar:
-        bars = [cycle * b + offset for b in range(min_bar, max_bar)]
-    else:
-        bars = []
+    min_bar = np.ceil((xmin - offset) / cycle).astype(int)
+    max_bar = np.floor((xmax - offset) / cycle).astype(int) + 1 # excluded
+    bars = [cycle * b + offset for b in range(min_bar, max_bar)]
 
     return bars
 
