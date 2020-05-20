@@ -317,7 +317,7 @@ def checkdir(dirname):
     # check that the directory exists
     if not os.path.isdir(dirname):
         raise OSError(f'{dirname} either does not exist or is not a '
-                       'directory')
+            'directory')
 
 
 #############################################
@@ -402,8 +402,8 @@ def getfiles(dirname='', filetype='all', criteria=None):
         allfiles = [x for x in allfiles if not os.path.isdir(x)]
 
     elif filetype != 'all':
-        gen_util.accepted_values_error('filetype', filetype, 
-                                       ['all', 'subdirs', 'files'])
+        gen_util.accepted_values_error(
+            'filetype', filetype, ['all', 'subdirs', 'files'])
     
     return allfiles
 

@@ -40,7 +40,7 @@ def accepted_values_error(varname, wrong_val, accept_vals):
 
     val_str = ', '.join([f'`{x}`' for x in accept_vals])
     error_message = (f'`{varname}` value `{wrong_val}` unsupported. Must be in '
-                     f'{val_str}.')
+        f'{val_str}.')
     raise ValueError(error_message)
 
 
@@ -60,7 +60,7 @@ def create_time_str():
 
     now = datetime.datetime.now()
     dirname = (f'{now.year:02d}{now.month:02d}{now.day:02d}_'
-               f'{now.hour:02d}{now.minute:02d}{now.second:02d}')
+        f'{now.hour:02d}{now.minute:02d}{now.second:02d}')
     return dirname
     
     
@@ -183,7 +183,7 @@ def slice_idx(axis, pos):
 
     elif axis < 0:
         raise ValueError('Do not pass -1 axis value as this will always '
-                         'be equivalent to axis 0.')
+            'be equivalent to axis 0.')
 
     else:
         sl_idx = tuple([slice(None)] * axis + [pos])
@@ -581,14 +581,14 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
         if single:
             if len(vals) != 1:
                 raise ValueError('Expected to find 1 value, but '
-                                 f'found {len(vals)}.')
+                    f'found {len(vals)}.')
             else:
                 vals = vals[0]
         return vals
     else: 
         if single and len(df) != 1:
             raise ValueError('Expected to find 1 dataframe line, but '
-                             f'found {len(df)}.')
+                f'found {len(df)}.')
         return df
 
 
@@ -764,8 +764,8 @@ def get_logger(logtype='both', name='all logs', filename='logs.txt',
     elif level.lower() == 'debug':
         level = logging.DEBUG
     else:
-        accepted_values_error('level', level, 
-                              ['info', 'error', 'warning', 'debug'])
+        accepted_values_error(
+            'level', level, ['info', 'error', 'warning', 'debug'])
     logger.setLevel(level)
 
     return logger
@@ -818,7 +818,7 @@ def hierarch_argsort(data, sorter='fwd', axis=0, dtypes=None):
         dtypes = [None] * len(sorter)
     elif len(dtypes) != len(sorter):
         raise ValueError('If `dtypes` are provided, must pass one per '
-                         'sorting position.')
+            'sorting position.')
 
     overall_sort = np.asarray(range(data.shape[rem_axis]))
 
@@ -859,7 +859,7 @@ def compile_dict_list(dict_list):
 
     for key in all_keys:
         vals = [sub_dict[key] for sub_dict in dict_list 
-                              if key in sub_dict.keys()]
+            if key in sub_dict.keys()]
         full_dict[key] = vals
 
     return full_dict
@@ -1099,3 +1099,43 @@ def reshape_df_data(df, squeeze_rows=False, squeeze_cols=False):
 
     return df_data
 
+
+#############################################
+def get_alternating_consec(vals, first=True):
+    """
+    get_alternating_consec(vals)
+
+    Returns values with only alternating consecutive values retained.
+
+    Required args:
+        - vals (list): list of values
+    
+    Optional args:
+        - first (bool): if True, alternating starts by including the first 
+                        value of each consecutive portion. If False, it is the 
+                        second value.
+                        default: True
+
+    Returns:
+        - vals (list): list of values with only alternating consecutive values
+                       retained
+    """
+
+    if first:
+        incl_order = [True, False]
+    else:
+        incl_order = [False, True]
+
+    incl_arr = np.tile(incl_order, len(vals)//2 + 1)
+    vals = np.asarray(vals)
+    diffs = np.insert(np.diff(vals), -1, 1000)
+    ret_vals = []
+    prev_idx = 0
+    for lim in np.where(diffs > 1)[0]:
+        ret_vals.extend(vals[prev_idx:lim + 1][
+            incl_arr[: lim + 1 - prev_idx]].tolist())
+        prev_idx = lim + 1
+
+    return ret_vals
+
+    

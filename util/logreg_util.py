@@ -58,7 +58,7 @@ class LogReg(torch.nn.Module):
         super(LogReg, self).__init__()
         self.num_units = num_units
         self.num_fr    = num_fr
-        self.lin = torch.nn.Linear(self.num_units*self.num_fr, 1)
+        self.lin = torch.nn.Linear(self.num_units * self.num_fr, 1)
         self.sig = torch.nn.Sigmoid()
         
     def forward(self, x):
@@ -109,13 +109,13 @@ class weighted_BCE():
         """
 
         if self.weights is not None:
-            weights = act_class*(self.weights[1]-self.weights[0]) + \
-                      (self.weights[0])
+            weights = act_class*(
+                self.weights[1]-self.weights[0]) + (self.weights[0])
         else:
             weights = None
 
-        BCE = torch.nn.functional.binary_cross_entropy(pred_class, act_class, 
-                                                       weight=weights)
+        BCE = torch.nn.functional.binary_cross_entropy(
+            pred_class, act_class, weight=weights)
         return BCE
 
 
@@ -141,8 +141,9 @@ def class_weights(train_classes):
     classes = list(np.unique(train_classes))
     weights = []
     for cl in classes:
-        weights.append((len(train_classes)/(float(len(classes)) *
-                        list(train_classes).count(cl))))
+        weights.append(
+            (len(train_classes)/(float(len(classes)) *
+            list(train_classes).count(cl))))
     
     return weights
 
@@ -209,7 +210,7 @@ def get_sc_types(info='label'):
 
     elif info == 'title':
         title = ['Loss', 'Accuracy (%)', 'Accuracy on class0 trials (%)', 
-                 'Accuracy on class1 trials (%)', 'Balanced accuracy (%)']
+            'Accuracy on class1 trials (%)', 'Balanced accuracy (%)']
         return title
 
 
@@ -376,7 +377,7 @@ def run_batches(mod, dl, device, train=True):
             ep_sc['acc_bal'] = np.mean(cl_accs) 
         else:
             raise ValueError('No class accuracies. Cannot calculate '
-                             'balanced accuracy.')
+                'balanced accuracy.')
     
     return ep_sc
 
@@ -484,7 +485,7 @@ def save_model(info, ep, mod, scores, dirname='.', rectype=None):
     savefile = os.path.join(dirname, savename)
     
     torch.save({'net': mod.state_dict(), 'opt': mod.opt.state_dict()},
-                f'{savefile}.pth')
+        f'{savefile}.pth')
     
     info = copy.deepcopy(info)
     info['epoch_n'] = ep
@@ -543,10 +544,10 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
 
     sets = get_set_labs(test, ext_test=ext_test, ext_test_name=test_dl2_name)
     scs = get_sc_types('label')
-    col_names = get_sc_labs(test, 'flat', ext_test=ext_test, 
-                            ext_test_name=test_dl2_name)
-    scores = pd.DataFrame(np.nan, index=list(range(n_epochs)), 
-                          columns=col_names)
+    col_names = get_sc_labs(
+        test, 'flat', ext_test=ext_test, ext_test_name=test_dl2_name)
+    scores = pd.DataFrame(
+        np.nan, index=list(range(n_epochs)), columns=col_names)
     scores.insert(0, 'epoch_n', list(range(n_epochs)))
     scores['saved'] = np.zeros([n_epochs], dtype=int)
     
@@ -580,10 +581,12 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
         
         if ep % ep_freq == 0:
             logger.info(f'Epoch {ep}')
-            print_loss('train', scores.loc[ep_loc, 'train_loss'].tolist()[0], 
-                       logger)
-            print_loss('val', scores.loc[ep_loc]['val_loss'].tolist()[0], 
-                       logger)
+            print_loss(
+                'train', scores.loc[ep_loc, 'train_loss'].tolist()[0], 
+                logger)
+            print_loss(
+                'val', scores.loc[ep_loc]['val_loss'].tolist()[0], 
+                logger)
     
     return scores
 
@@ -616,7 +619,7 @@ def get_epoch_n_pt(dirname, model='best'):
     
     if len(models) > 0:
         ep_ns = [int(re.findall(r'\d+', os.path.split(mod)[-1])[0]) 
-                     for mod in models]
+            for mod in models]
     else:
         print(f'{warn_str} No models were recorded.')
         ep = None
@@ -685,8 +688,8 @@ def load_params(dirname, model='best', alg='sklearn'):
         if ep is None:
             return None
         else:
-            models = glob.glob(os.path.join(dirname, 
-                                            f'ep{ep}*{ext_str}.pth'))[0]
+            models = glob.glob(os.path.join(
+                dirname, f'ep{ep}*{ext_str}.pth'))[0]
             checkpoint = torch.load(models)
             weights = checkpoint['net']['lin.weight'].numpy()
             biases = checkpoint['net']['lin.bias'].numpy()
@@ -728,7 +731,8 @@ def load_checkpoint_pt(mod, filename):
 
 
 #############################################
-def plot_weights(ax, mod_params, xran, stats='mean', error='sem'):
+def plot_weights(ax, mod_params, xran, stats='mean', error='sem', 
+                 rois_collapsed=False):
     """
     plot_weights(ax, mod_params, xran)
 
@@ -742,47 +746,74 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem'):
         - xran (1D array)  : array of x range values
 
     Optional args:
-        - stats (str): stats to take, i.e., 'mean' or 'median'
-                       default: 'mean'
-        - error (str): error to take, i.e., 'std' (for std or 
-                       quintiles) or 'sem' (for SEM or MAD)
-                       default: 'std'
+        - stats (str)           : stats to take, i.e., 'mean' or 'median'
+                                  default: 'mean'
+        - error (str)           : error to take, i.e., 'std' (for std or 
+                                  quintiles) or 'sem' (for SEM or MAD)
+                                  default: 'std'
+        - rois_collapsed (bool) : if True, ROIs were collapsed into their stats 
+                                  to run logistic regression
+                                  default: False
+
     """
 
     n_plts = mod_params[1].shape[0] + 1
 
     if ax.shape != (n_plts, n_plts):
         raise ValueError(f'Axis should be of shape ({n_plts}, {n_plts}), '
-                         f'but is of shape {ax.shape}.')
+            f'but is of shape {ax.shape}.')
 
     for n in range(n_plts-1):
         weights = np.asarray(mod_params[1][n]).reshape(len(xran), -1)
 
         # plot weights by fr (bottom, left subplot)
         by_fr = ax[n+1, 0]
-        fr_stats = math_util.get_stats(weights, stats, error, axes=1)
         if n == 0:
             fr_title = f'Model weights (ep {mod_params[0]})'
             if len(mod_params) == 4:
                 fr_title = f'{fr_title} (mod {mod_params[3]})'
         else:
             fr_title = None
-        plot_util.plot_traces(
-            by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, col='dimgrey', 
-            alpha=0.4)
+
+        if not rois_collapsed:
+            fr_stats = math_util.get_stats(weights, stats, error, axes=1)
+            plot_util.plot_traces(
+                by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, col='dimgrey', 
+                alpha=0.4)
+        else:
+            # plot each set of weights separately
+            fr_stats = weights.T
+            cols = ['dimgrey', 'grey']
+            for f, fr_stat in enumerate(fr_stats):
+                plot_util.plot_traces(
+                    by_fr, xran, fr_stat, title=fr_title, col=cols[f])
+
         by_fr.axhline(y=0, ls='dashed', c='k', lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_fr.get_yticks()))
         by_fr.set_yticks([-orig_tick_max, 0, orig_tick_max])
 
+        for m in range(n_plts-1):
+            # write intercept (bottom, right subplot)
+            bias_subax = ax[n+1, m+1]
+            bias_subax.axis('off')
+            if m == n:
+                bias_text = f'Bias\n{mod_params[2][n]:.2f}'
+                bias_subax.text(
+                    0.5, 0.5, bias_text, fontsize='x-large', 
+                    fontweight='bold', ha='center', va='bottom')
+
+        if rois_collapsed:
+            return
+            
         # plot weights by ROI, sorted (top, right subplot)
-        by_roi = ax[0, n+1]
-        if n == n_plts//2 - 1:
+        by_roi = ax[0, n + 1]
+        if n == n_plts // 2 - 1:
             roi_title = 'ROI weights'
         else:
             roi_title = None
         
         roi_stats = math_util.get_stats(weights, stats, error, axes=0)
-        xran_rois = range(roi_stats.shape[1])
+        xran_rois = list(range(roi_stats.shape[1]))
         sorter = np.argsort(roi_stats[0])[::-1] # reverse sort
         plot_util.plot_traces(
             by_roi, roi_stats[0][sorter], xran_rois, roi_stats[1:][:, sorter], 
@@ -791,15 +822,6 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem'):
         orig_tick_max = np.max(np.absolute(by_roi.get_xticks()))
         by_roi.set_xticks([-orig_tick_max, 0, orig_tick_max])
         
-        for m in range(n_plts-1):
-            # write intercept (bottom, right subplot)
-            bias_subax = ax[n+1, m+1]
-            bias_subax.axis('off')
-            if m == n:
-                bias_text = f'Bias\n{mod_params[2][n]:.2f}'
-                bias_subax.text(0.5, 0.5, bias_text, fontsize='x-large', 
-                        fontweight='bold', ha='center', va='bottom')
-
 
 #############################################
 def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean', 
@@ -841,13 +863,23 @@ def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean',
     # then across e.g., cells (last axis)
     all_stats = []
 
+    rois_collapsed = False
+    if tr_data.shape[-1] in [1, 2]:
+        rois_collapsed = True
+
     if classes is None:
         classes = np.unique(tr_classes)
     for cl in classes:
         idx = (tr_classes == cl) # bool array
         ns.append(sum(idx.tolist()))
-        class_stats = math_util.get_stats(tr_data[idx], stats, error, 
-                                          axes=[0, 2])
+        if not rois_collapsed:
+            class_stats = math_util.get_stats(
+                tr_data[idx], stats, error, axes=[0, 2])
+        else:
+            # take mean/median for each stat (mean, std), then set those values 
+            # as stats
+            class_stats = math_util.get_stats(
+                tr_data[idx], stats, error, axes=[0])[0].T
         all_stats.append(class_stats)
     
     all_stats = np.asarray(all_stats)
@@ -857,7 +889,8 @@ def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean',
 #############################################
 def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None, 
                  plot_wei=True, alg='sklearn', stats='mean', error='sem', 
-                 modeldir='.', cols=None, data_type=None, xlabel=None):
+                 modeldir='.', cols=None, data_type=None, xlabel=None, 
+                 rois_collapsed=False):
     """
     plot_tr_data(xran, class_stats, ns)
 
@@ -900,6 +933,9 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
                                   default: None
         - xlabel (str)          : x axis label
                                   default: None
+        - rois_collapsed (bool) : if True, ROIs were collapsed into their stats 
+                                  to run logistic regression
+                                  default: False
     
     Returns:
         - fig (plt fig)                : pyplot figure
@@ -940,14 +976,18 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
 
     for i, class_name in enumerate(classes):
         cl_st = np.asarray(class_stats[i])
+        if len(cl_st) == 2:
+            err = cl_st[1:]
+        else:
+            err = None
         leg = f'{class_name}{data_str} (n={ns[i]})'
-        plot_util.plot_traces(ax_data, xran, cl_st[0], cl_st[1:], 
+        plot_util.plot_traces(ax_data, xran, cl_st[0], err, 
             alpha=0.8/len(classes), label=leg, col=cols[i])
         cols[i] = ax_data.lines[-1].get_color()
 
     # plot weights as well
     if plot_wei and mod_params is not None:
-        plot_weights(ax, mod_params, xran, stats, error)
+        plot_weights(ax, mod_params, xran, stats, error, rois_collapsed)
         # remove redundant labels
         ax_data.set_xlabel('') 
         ax_data.set_xticklabels([])
@@ -1027,6 +1067,7 @@ def plot_scores(scores, classes, alg='sklearn', loss_name='loss', dirname='.',
             act_ylim = ax.get_ylim()
             pad = (act_ylim[1] - act_ylim[0]) * 0.05
             ax.set_ylim(act_ylim[0] - pad, act_ylim[1] + pad)
+        
         ax.legend()
         fig.savefig(os.path.join(dirname, f'{sc_lab}'))
 
@@ -1060,26 +1101,25 @@ def check_scores_pt(scores_df, best_ep, hyperpars):
         ep_rec = scores_df.count(axis=0)
         if min(ep_rec) < hyperpars['logregpar']['n_epochs']:
             print(f'{warn_str} Only {min(ep_rec)} epochs were fully '
-                   'recorded.')
+                'recorded.')
         if max(ep_rec) > hyperpars['logregpar']['n_epochs']:
-            print(f'{warn_str} {max(ep_rec)} epochs were '
-                   'recorded.')
-        if len(scores_df.loc[(scores_df['saved'] == 
-                              1)]['epoch_n'].tolist()) == 0:
+            print(f'{warn_str} {max(ep_rec)} epochs were recorded.')
+        if len(scores_df.loc[(scores_df['saved'] == 1)][
+            'epoch_n'].tolist()) == 0:
             print(f'{warn_str} No models were recorded in dataframe.')
         else:
             ep_df = scores_df.loc[(scores_df['saved'] == 1)]['epoch_n'].tolist()
             best_val = np.min(scores_df['val_loss'].tolist())
-            ep_best = scores_df.loc[(scores_df['val_loss'] == 
-                                     best_val)]['epoch_n'].tolist()[0]
+            ep_best = scores_df.loc[
+                (scores_df['val_loss'] == best_val)]['epoch_n'].tolist()[0]
             if ep_best != best_ep:
                 print(f'{warn_str} Best recorded model is actually epoch '
-                      f'{ep_best}, but actual best model is {ep_df} based '
-                      'on dataframe. Using dataframe one.')
+                    f'{ep_best}, but actual best model is {ep_df} based '
+                    'on dataframe. Using dataframe one.')
             ep_info = scores_df.loc[(scores_df['epoch_n'] == ep_best)]
             if len(ep_info) != 1:
                 print(f'{warn_str} {len(ep_info)} lines found in dataframe '
-                      f'for epoch {ep_best}.')
+                    f'for epoch {ep_best}.')
 
     return ep_info
     
@@ -1190,6 +1230,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         self._set_idx = []
         self._split_test = split_test
 
+
     def _samp_bal(self, y, train, test):
         """
         self._samp_bal(y, train, test)
@@ -1216,8 +1257,9 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
             classes, y_indices = np.unique(y[subset], return_inverse=True)
             n_classes = classes.shape[0]
             class_counts = np.bincount(y_indices).tolist()
-            class_indices = np.split(np.argsort(y_indices, kind='mergesort'),
-                                     np.cumsum(class_counts)[:-1])
+            class_indices = np.split(
+                np.argsort(y_indices, kind='mergesort'), 
+                np.cumsum(class_counts)[:-1])
             samp_idx = []
             ns = gen_util.list_if_not(ns)
             if self._sample:
@@ -1225,7 +1267,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                     samp_idx = [1]
                 elif len(ns) != n_classes:
                     raise ValueError('If several sample values are provided, '
-                                     'should be as many as classes.')
+                        'should be as many as classes.')
                 else:
                     samp_idx = range(n_classes)
             if self._bal:
@@ -1235,8 +1277,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                 samp_idx = range(n_classes)
             if min(ns) < n_classes:
                 raise ValueError(f'The smallest set sizes = {min(ns)} should '
-                                 'be greater or equal to the number of '
-                                 f'classes = {n_classes}')
+                    f'be greater or equal to the number of classes = {n_classes}')
             sub_idx = []
             for i in range(n_classes):
                 if i in samp_idx:
@@ -1269,8 +1310,8 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         n_classes = len(classes)
         if min(class_counts)//2 < n_classes:
             raise ValueError('Cannot split test set into 2 as smallest set '
-                    f'size = {min(class_counts)//2} should be greater or equal '
-                    f'to the number of classes = {n_classes}')
+                f'size = {min(class_counts)//2} should be greater or equal '
+                f'to the number of classes = {n_classes}')
         test, test_out = [], []
         for counts, idx in zip(class_counts, y_indices):
             test.extend(idx[:counts//2])
@@ -1313,17 +1354,23 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
 
 #############################################
 class ModData(TransformerMixin):
-    def __init__(self, scale=True, extrem=False, shuffle=False, **kwargs):
+    def __init__(self, scale=True, extrem=False, shuffle=False, 
+                 seed=None, **kwargs):
         """
         Initializes a data modification tool to flatten, optionally scales
         using RobustScaler/MinMaxScaler and optionally shuffle input data.
 
+        NOTE: If seed is provided, random state is initialized for the object.
+        If this case, copy of the object will use the same RandomState.  
+
         Sets attributes:
-            - _orig_shape (tuple): original shape, as (frames, channels), 
-                                   though set to None
-            - _scaler (scaler)   : scaler to use (None if none)
-            - _extrem (str)      : if True, extrema are used
-            - _shuffle (bool)    : shuffle boolean
+            - _extrem (str)         : if True, extrema are used
+            - _orig_shape (tuple)   : original shape, as (frames, channels), 
+                                      though set to None
+            - _rst (np Random State): numpy random state (None if seed is None)
+            - _scaler (scaler)      : scaler to use (None if none)
+            - _seed (int)           : if not None, random seed
+            - _shuffle (bool)       : shuffle boolean
 
         Optional args:
             - scale (bool)  : if True, data is scaled by channel using 
@@ -1333,6 +1380,8 @@ class ModData(TransformerMixin):
                               default: False
             - shuffle (bool): if True, X is shuffled
                               default: False
+            - seed (int)    : if not None, random seed
+                              default: None
         """
         if scale:
             self._extrem = extrem
@@ -1349,7 +1398,26 @@ class ModData(TransformerMixin):
 
         self._shuffle = shuffle
         self._orig_shape = None
+
+        self._seed = seed
+        if self._seed is not None: 
+            # initialize random state at init only if seed provided
+            _ = self.rst
     
+    @property
+    def rst(self):
+        """
+        self.rst
+
+        Returns:
+            - _rst (np RandomState): numpy random state
+        """
+        
+        if not hasattr(self, '_rst'):
+            self._rst = np.random.RandomState(self._seed)
+        return self._rst
+    
+
     def fit(self, X, y=None, **kwargs):
         """
         Fits original shape and scaler. Runs only on train set.
@@ -1381,6 +1449,7 @@ class ModData(TransformerMixin):
             self._scaler.fit(X, **kwargs)
         return self
 
+
     def fit_transform(self, X, y=None, **kwargs):
         """
         Fits original shape and scaler, and returns optionally scaled, shuffled 
@@ -1411,6 +1480,7 @@ class ModData(TransformerMixin):
         if self._shuffle:
             X = self._get_shuffled(X)
         return X
+
 
     def transform(self, X, flatten=True, training=False, **kwargs):
         """
@@ -1447,6 +1517,7 @@ class ModData(TransformerMixin):
             X = self._get_shuffled(X)
         return X
 
+
     def _flatten(self, X, across='ch'):
         """
         Returns data flattened across channels and frames or trials and frames.
@@ -1480,6 +1551,7 @@ class ModData(TransformerMixin):
             raise ValueError('X should have max 3 dimensions.')
         return X
 
+
     def _reshape(self, X):
         """
         Returns X in its original shape.
@@ -1494,6 +1566,7 @@ class ModData(TransformerMixin):
         if len(X.shape) >= 2:
             X = X.reshape([-1, * self._orig_shape])
         return X
+
 
     def _get_scaled(self, X, **kwargs):
         """
@@ -1511,10 +1584,12 @@ class ModData(TransformerMixin):
         X = self._reshape(X)
         return X
 
+
     def _get_shuffled(self, X):
         """
         Returns X shuffled across trials. Creates a new shuffling index if none
-        exists and uses a previously created one otherwise.
+        exists and uses a previously created one otherwise. Uses self._rst as 
+        random state.
 
         Sets attributes:
             - _shuff_reidx (1D array): corresponding shuffling index for targets 
@@ -1529,19 +1604,20 @@ class ModData(TransformerMixin):
 
         if not hasattr(self, '_shuff_reidx'):
             idx = np.asarray(range(len(X))) # get trial indices
-            np.random.shuffle(idx)
+            self.rst.shuffle(idx)
             # to get sort index corresponding to targets, not input
             self._shuff_reidx = np.argsort(idx)
         else:
             # reconstitute train sort idx from target sort idx
             idx = np.argsort(self._shuff_reidx)
         X = X[idx]
+
         return X
 
 
 #############################################
 def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar, 
-                     scale=True, sample=False, split_test=False, 
+                     scale=True, sample=False, split_test=False, seed=None,
                      parallel=False, max_size=9e7):
     """
     run_logreg_cv_sk(roi_seqs, seq_classes, logregpar, extrapar)
@@ -1570,8 +1646,15 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
         - split_test (bool)     : if True, test sets are split in half to 
                                   create a 'test_out'
                                   default: False
+        - seed (int)            : if provided, seed for sci-kit learn logistic 
+                                  regression
+                                  default: None
         - parallel (bool)       : if True, splits are run in parallel
                                   default: False
+        - max_size (int)        : maximum data size used to calculate maximum 
+                                  number of parallel jobs or raise a warning 
+                                  if necessary
+                                  default: 9e7 
 
     Returns:
         - mod_cvs (dict)   : cross-validation dictionary with keys:
@@ -1606,20 +1689,21 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
     extrapar['loss_name'] = 'Weighted BCE loss with L2 reg'
     extrapar['scoring'] = ['neg_log_loss', 'accuracy', 'balanced_accuracy']
 
-    mod = LogisticRegression(C=5, fit_intercept=True, class_weight='balanced', 
-                             penalty='l2', solver='lbfgs', 
-                             max_iter=logregpar.n_epochs)
-    scaler = ModData(scale=scale, extrem=True, shuffle=extrapar['shuffle'])
+    mod = LogisticRegression(C=1, fit_intercept=True, class_weight='balanced', 
+        penalty='l2', solver='lbfgs', max_iter=logregpar.n_epochs, 
+        random_state=seed) # seed only used if n_jobs is not None
+    scaler = ModData(scale=scale, extrem=True, shuffle=extrapar['shuffle'], 
+        seed=seed)
     cv = StratifiedShuffleSplitMod(n_splits=extrapar['n_runs'], 
-                   train_p=logregpar.train_p, sample=sample, 
-                   bal=logregpar.bal, split_test=split_test)
+        train_p=logregpar.train_p, sample=sample, bal=logregpar.bal, 
+        split_test=split_test, random_state=seed)
 
+    # pass argument to pipeline? With seeds for each job?
     mod_pip = make_pipeline(scaler, mod)
 
     mod_cvs = cross_validate(mod_pip, input_data, targ_data, cv=cv, 
-                             return_estimator=True, return_train_score=True, 
-                             n_jobs=n_jobs, verbose=3, 
-                             scoring=extrapar['scoring'])
+        return_estimator=True, return_train_score=True, n_jobs=n_jobs, 
+        verbose=3, scoring=extrapar['scoring'])
 
     print('Training done.\n')
 
@@ -1683,13 +1767,13 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
     if split_test:
         if main_data is None:
             raise ValueError('If testing additional test set, must provide '
-                             '`main_data`.')
+                '`main_data`.')
         all_tests.append('test_out')
     
     if extra_data is not None:
         if extra_name is None or extra_cv is None:
             raise ValueError('If providing extra data to test set, must '
-                             'provide `extra_name` and extra_cv.')
+                'provide `extra_name` and extra_cv.')
         all_tests.append(extra_name)
         splitter = extra_cv.split(extra_data[0], extra_data[1])
         
@@ -1740,8 +1824,8 @@ def get_transf_data_sk(mod, data, flatten=False, training=False):
                                     seqs x frames(/channels) (x channels)
     """
 
-    transf_data = mod['moddata'].transform(data, flatten=flatten, 
-                                           training=training)
+    transf_data = mod['moddata'].transform(
+        data, flatten=flatten, training=training)
     return transf_data
 
 
@@ -1777,8 +1861,8 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
             sc_name = 'loss'
             sign = -1
         else:
-            sc_name = sc_name.replace('accuracy', 'acc').replace('balanced', 
-                                      'bal')
+            sc_name = sc_name.replace(
+                'accuracy', 'acc').replace('balanced', 'bal')
             if 'acc' in sc_name:
                 sign = 100
             if sc_name == 'bal_acc':
@@ -1787,7 +1871,7 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
         sc_sign.append(sign)
 
     set_sc = [f'{st_name}_{sc_name}' for st_name in set_names 
-                                     for sc_name in sc_modif]
+        for sc_name in sc_modif]
     scores = pd.DataFrame(columns=['run_n', 'epoch_n'] + set_sc)
 
     scores['run_n'] = range(len(mod_cvs['estimator']))

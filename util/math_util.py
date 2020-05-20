@@ -145,10 +145,10 @@ def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None,
     elif stats == 'median' and error == 'std':
         if nanpol is None:
             error = [np.percentile(data, qu[0], axis=axis), 
-                     np.percentile(data, qu[1], axis=axis)]
+                np.percentile(data, qu[1], axis=axis)]
         elif nanpol == 'omit':
             error = [np.nanpercentile(data, qu[0], axis=axis), 
-                     np.nanpercentile(data, qu[1], axis=axis)]
+                np.nanpercentile(data, qu[1], axis=axis)]
         
     elif stats == 'median' and error == 'sem':
         # MAD: median(abs(x - median(x)))
@@ -230,7 +230,7 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
 
     if len(axes) > len(data.shape):
         raise ValueError('Must provide no more axes value than the number of '
-                         'data axes.')
+            'data axes.')
     
     if len(axes) > 1:
         # take the mean/median successively across axes
@@ -377,7 +377,8 @@ def calc_op(data, op='diff', dim=0, rev=False):
                            dim.
 
     Optional args:
-        - op (str)  : 'diff': index 1 - 0, or 'ratio': index 1/0.
+        - op (str)  : 'diff': index 1 - 0, or 'ratio': index 1/0, or 
+                      'rel_diff': (index 1 - 0)/(index 1 + 0)
                       If int, the corresponding data index is returned.
                       default: 'diff'
         - dim (int) : dimension along which to do operation
@@ -406,6 +407,12 @@ def calc_op(data, op='diff', dim=0, rev=False):
             data = (data[fir_idx] - data[sec_idx])
         elif op == 'ratio':
             data = (data[fir_idx]/data[sec_idx])
+        elif op == 'rel_diff':
+            data = (data[fir_idx] - data[sec_idx])/ \
+                (data[fir_idx] + data[sec_idx])
+        else:
+            gen_util.accepted_values_error(
+                'op', op, ['diff', 'ratio', 'rel_diff'])
     
     return data
 
@@ -540,16 +547,17 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
             qus = [5, 95]
         else:
             gen_util.accepted_values_error('extrem', extrem, ['reg', 'perc'])
-        qs  = error_stat(data[sc_idx], stats='median', error='std', axis=axis, 
-                         qu=qus, nanpol=nanpol)
+        qs  = error_stat(
+            data[sc_idx], stats='median', error='std', axis=axis, qu=qus, 
+            nanpol=nanpol)
         div = qs[1] - qs[0]
     elif sc_type == 'center':
         sub = mean_med(data[sc_idx], stats='mean', axis=axis, nanpol=nanpol)
         div = 1.0
     elif sc_type == 'scale':
         sub = 0.0
-        div = error_stat(data[sc_idx], stats='mean', error='std', axis=axis, 
-                         nanpol=nanpol)
+        div = error_stat(
+            data[sc_idx], stats='mean', error='std', axis=axis, nanpol=nanpol)
     elif sc_type == 'unit':
         sub = 0.0
         div = np.absolute(mean_med(data[sc_idx], stats='mean', axis=axis, 
@@ -576,8 +584,9 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
         sub = minim
         div = maxim - minim
     else:
-        gen_util.accepted_values_error('sc_type', sc_type, 
-                 ['stand', 'stand_rob', 'center', 'scale', 'min_max'])
+        gen_util.accepted_values_error(
+            'sc_type', sc_type, 
+            ['stand', 'stand_rob', 'center', 'scale', 'min_max'])
     
     if not allow_0 and (np.asarray(div) == 0).any():
         raise ValueError('Scaling cannot proceed due to division by 0.')
@@ -613,7 +622,7 @@ def extrem_to_med(data, ext_p=[5, 95]):
     if p_hi < p_lo:
         raise ValueError('p_lo must be smaller than p_hi.')
     meds, lo, hi = [np.nanpercentile(data, p, axis=0).reshape([1, -1]) 
-                                                   for p in [50, p_lo, p_hi]]
+        for p in [50, p_lo, p_hi]]
     modif = np.where(np.add(data < lo, data > hi))
     data[modif] = meds[:, modif[1]]
 
@@ -678,7 +687,7 @@ def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
         ret_facts = True
     elif len(facts) != 4:
         raise ValueError('If passing factors, must pass 4 items: '
-                         'sub, div, mult and shift.')
+            'sub, div, mult and shift.')
 
     sub, div, mult, shift = [np.asarray(fact).astype(float) for fact in facts]
 
@@ -713,7 +722,8 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op='diff',
     Optional args:
         - order (int)    : order of the norm (or 'stats' to take change stats)
                            default: 1
-        - op (str)       : 'diff': index 1 - 0, or 'ratio': index 1/0.
+        - op (str)       : 'diff': index 1 - 0, or 'ratio': index 1/0, or 
+                           'rel_diff': (index 1 - 0)/(index 1 + 0)
                            default: 'diff'
         - stats (str)    : stats to take, i.e., 'mean' or 'median'
                            default: 'mean'
@@ -761,8 +771,8 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op='diff',
         data_ch_stats = get_stats(data_change, stats, error, axes=item_dim)
         return data_ch_stats
     else:
-        data_ch_norm = np.linalg.norm(data_change, ord=int(order), 
-                                      axis=item_dim)
+        data_ch_norm = np.linalg.norm(
+            data_change, ord=int(order), axis=item_dim)
         if scale:
             data_ch_norm, _ = scale_data(data_ch_norm, axis, pos, sc_type)
         return data_ch_norm
@@ -833,7 +843,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
 
     if len(all_data.shape) > 2:
         raise NotImplementedError('Permutation analysis only implemented for '
-                                  '2D data.')
+            '2D data.')
 
     # checks final size of permutation array and throws an error if
     # it is bigger than accepted limit.
@@ -842,12 +852,12 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
         lim = int(lim_e6*1e6)
         fold = int(np.ceil(float(perm_size)/lim))
         permute_cri = ('\nPermutation array exceeds allowed size '
-                       f'({lim_e6} * 10^6) by {fold} fold.')
+            f'({lim_e6} * 10^6) by {fold} fold.')
         assert (perm_size < lim), permute_cri
 
     # (item x datapoints (all groups))
-    perms_idxs = np.argsort(np.random.rand(all_data.shape[1], n_perms), 
-                            axis=0)[np.newaxis, :, :]
+    perms_idxs = np.argsort(
+        np.random.rand(all_data.shape[1], n_perms), axis=0)[np.newaxis, :, :]
     dim_data   = np.arange(all_data.shape[0])[:, np.newaxis, np.newaxis]
 
     # generate permutation array
@@ -881,7 +891,7 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                               default: None
         - op (str)          : operation to use to compare groups, 
                               i.e. 'diff': grp2-grp1, or 'ratio': grp2/grp1
-                              or 'none'
+                              or 'rel_diff': (grp2-grp1)/(grp2+grp1) or 'none'
                               default: 'diff'
 
     Returns:
@@ -892,7 +902,7 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
 
     if len(all_data.shape) > 2:
         raise NotImplementedError('Significant difference/ratio analysis only '
-                                  'implemented for 2D data.')
+            'implemented for 2D data.')
     
     all_rand_res = []
     perm = True
@@ -909,10 +919,9 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                 n_perms = perms_rem
             permed_data = run_permute(all_data, n_perms=n_perms)
 
-            rand = np.stack([mean_med(permed_data[:, 0:div], stats, axis=1, 
-                                      nanpol=nanpol), 
-                             mean_med(permed_data[:, div:], stats, axis=1, 
-                                      nanpol=nanpol)])
+            rand = np.stack([
+                mean_med(permed_data[:, 0:div], stats, axis=1, nanpol=nanpol), 
+                mean_med(permed_data[:, div:], stats, axis=1, nanpol=nanpol)])
             
             if op == 'none':
                 rand_res = rand
@@ -966,8 +975,8 @@ def print_elem_list(elems, tail='up', act_vals=None):
         if act_vals is not None:
             if len(act_vals) != len(elems):
                 raise ValueError('`elems` and `act_vals` should be the '
-                           f'same length, but are of length {len(elems)} and '
-                           f'{len(act_vals)} respectively.')
+                    f'same length, but are of length {len(elems)} and '
+                    f'{len(act_vals)} respectively.')
             print('\tVals: {}'.format(', '.join([f'{x:.2f}' for x in act_vals])))   
 
 
@@ -1071,7 +1080,7 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
     out_vals = int(rand_vals.shape[-1] * p_val)
     if out_vals < min_n:
         raise ValueError(f'Insufficient number of values ({out_vals}) outside '
-                         f'the CI (< {min_n}).')
+            f'the CI (< {min_n}).')
 
     if tails == 'lo':
         threshs = np.percentile(rand_vals, p_val*100, axis=-1)
@@ -1127,8 +1136,8 @@ def get_diff_p_val(act_data, n_perms=10000, stats='mean', op='diff'):
                          default: 10000
         - stats (str)  : stats to use for permutation test
                          default: 'mean'
-        - op (str)     : operation to use to compare the groups
-                         default: 'mean'
+        - op (str)     : operation to use to compare the groups (see calc_op())
+                         default: 'diff'
 
     Returns:
         - p_val (float): p-value calculated from a randomly generated 
@@ -1143,8 +1152,9 @@ def get_diff_p_val(act_data, n_perms=10000, stats='mean', op='diff'):
     real_diff = mean_med(grp2, stats=stats) - mean_med(grp1, stats=stats)
 
     concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1)
-    rand_diffs = np.squeeze(permute_diff_ratio(concat, div=len(grp1), 
-                            n_perms=n_perms, stats=stats, op=op))
+    rand_diffs = np.squeeze(
+        permute_diff_ratio(concat, div=len(grp1), n_perms=n_perms, 
+        stats=stats, op=op))
     
     loc = np.where(np.sort(rand_diffs) > real_diff)[0]
     if len(loc) == 0:
@@ -1192,11 +1202,11 @@ def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats='mean'):
             if s_vals is not None and v_vals is not None and \
                len(s_vals) != 0 and len(v_vals) != 0:
                 if n_perms is not None:
-                    p_vals[i] = get_diff_p_val([s_vals, v_vals], n_perms, 
-                                               stats=stats, op='diff')
+                    p_vals[i] = get_diff_p_val(
+                        [s_vals, v_vals], n_perms, stats=stats, op='diff')
                 elif normal:
-                    p_vals[i] = scist.ttest_ind(s_vals, v_vals, 
-                                                axis=None)[1]
+                    p_vals[i] = scist.ttest_ind(
+                        s_vals, v_vals, axis=None)[1]
                 else:
                     p_vals[i] = scist.mannwhitneyu(s_vals, v_vals,)[1]
             i += 1
@@ -1330,8 +1340,8 @@ def autocorr_stats(data, lag, spu=None, byitem=True, stats='mean', error='std',
     else:
         axes = [0, 1]
 
-    autocorr_stats = get_stats(autocorr_snips, stats, error, axes=axes, 
-                               nanpol=nanpol)
+    autocorr_stats = get_stats(
+        autocorr_snips, stats, error, axes=axes, nanpol=nanpol)
 
     return xran, autocorr_stats
 
@@ -1394,8 +1404,8 @@ def run_cv_svm(inp, target, cv=5, shuffle=False, stats='mean', error='std',
     if class_weight == 'balanced':
         scoring = 'balanced_accuracy'
 
-    sc = cross_val_score(clf, inp, target, cv=cv, scoring=scoring, 
-                         n_jobs=n_jobs)
+    sc = cross_val_score(
+        clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs)
     
     if stats is None:
         return sc

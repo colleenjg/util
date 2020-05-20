@@ -121,7 +121,7 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
             font_fam = plt.rcParams['font.family'][0]
             def_font = plt.rcParams[f'font.{font_fam}'][0]
             print(f'Warning: Desired font ({font}) not found, so default '
-                  f'({def_font}) will be used instead.\n')
+                f'({def_font}) will be used instead.\n')
         f = f+1
 
     # update pyplot parameters
@@ -170,8 +170,8 @@ def linclab_colormap(nbins=100):
         for ch_val in ch_vals:
             rgb_col[c].append(ch_val)
 
-    cmap = mpl.colors.LinearSegmentedColormap.from_list('linclab_byr', rgb_col, 
-                                                        N=nbins)
+    cmap = mpl.colors.LinearSegmentedColormap.from_list(
+        'linclab_byr', rgb_col, N=nbins)
 
     return cmap
 
@@ -199,7 +199,7 @@ def get_color(col='red', ret='single'):
     
     # list of defined colors
     curr_cols = ['blue', 'red', 'grey', 'green', 'purple', 'orange', 'pink', 
-                 'yellow', 'brown']
+        'yellow', 'brown']
     
     if col == 'blue':
         # cols  = ['#7cc7f9', '#50a2d5', '#2e78a9', '#16547d']
@@ -240,8 +240,8 @@ def get_color(col='red', ret='single'):
     elif ret == 'both':
         return single, col_ends
     else:
-        gen_util.accepted_values_error('ret', ret, ['single', 'col_ends', 
-                                       'both'])
+        gen_util.accepted_values_error(
+            'ret', ret, ['single', 'col_ends', 'both'])
 
 
 #############################################
@@ -317,8 +317,8 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
         plt.switch_backend(plt_bkend)
     
     if linclab:
-        linclab_plt_defaults(font=['Arial', 'Liberation Sans'], 
-                             fontdir=fontdir)
+        linclab_plt_defaults(
+            font=['Arial', 'Liberation Sans'], fontdir=fontdir)
 
     if cmap:
         if linclab:
@@ -364,12 +364,17 @@ def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05):
         gen_util.accepted_values_error('axis', axis, ['x', 'y', 'both'])
 
     if 'x' in axis:
-        sub_ax.set_xlim(min_end, max_end)
-        sub_ax.set_xticks(np.linspace(min_tick, max_tick, n))
+        if min_end != max_end:
+            sub_ax.set_xlim(min_end, max_end)
+            sub_ax.set_xticks(np.linspace(min_tick, max_tick, n))
+        else:
+            sub_ax.set_xticks([min_end])
     elif 'y' in axis:
-        sub_ax.set_ylim(min_end, max_end)
-        sub_ax.set_yticks(np.linspace(min_tick, max_tick, n))
-
+        if min_end != max_end:
+            sub_ax.set_ylim(min_end, max_end)
+            sub_ax.set_yticks(np.linspace(min_tick, max_tick, n))
+        else:
+            sub_ax.set_yticks([min_end])
 
 #############################################
 def get_subax(ax, i):
@@ -720,7 +725,7 @@ def add_labels(sub_ax, labels, xpos, t_hei=0.9, col='k'):
 
     if len(labels) != len(xpos):
         raise ValueError('Arguments `labels` and `xpos` must be of '
-                         'the same length.')
+            'the same length.')
 
     ymin, ymax = sub_ax.get_ylim()
     ypos = (ymax-ymin)*t_hei+ymin
@@ -782,7 +787,7 @@ def hex_to_rgb(col):
     leng = 2 
 
     if '#' not in col:
-            raise ValueError('All colors must be provided in hex format.')
+        raise ValueError('All colors must be provided in hex format.')
     
     # get the int value for each color component
     col_rgb = [int(col[pos[i]:pos[i] + leng], 16) for i in range(n_comp)]
@@ -846,8 +851,8 @@ def get_col_series(col_ends, n=3):
                 min_val = cols_rgb[0][c]
                 max_val = cols_rgb[1][c]
                 # get a weighted average for this value
-                val = int(np.around((max_val - min_val) * (i + 1)/div + \
-                          min_val))
+                val = int(
+                    np.around((max_val - min_val) * (i + 1)/div + min_val))
                 vals.append(val)
             hexval = rgb_to_hex(vals) # add as next to last
             cols.insert(-1, hexval)
@@ -907,7 +912,7 @@ def incr_ymax(ax, incr=1.1, sharey=False):
         change_ax = [get_subax(ax, i) for i in range(n_ax)]
     for sub_ax in change_ax:
         ymin, ymax = sub_ax.get_ylim()
-        ymax = (ymax-ymin)*incr + ymin
+        ymax = (ymax - ymin) * incr + ymin
         sub_ax.set_ylim(ymin, ymax) 
 
 
@@ -1025,15 +1030,20 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None,
         - errx (bool)        : if True, error is on the x data, not y data
                                default: False
     """
-        
+    
     if x is None:
         x = range(len(y))
 
     x = np.asarray(x).squeeze()
     y = np.asarray(y).squeeze()
 
-    sub_ax.plot(x, y, lw=lw, color=col, label=label, alpha=alpha_line, 
-                zorder=zorder)
+    if len(x.shape) == 0:
+        x = x.reshape(1)
+    if len(y.shape) == 0:
+        y = y.reshape(1)
+
+    sub_ax.plot(
+        x, y, lw=lw, color=col, label=label, alpha=alpha_line, zorder=zorder)
     col = sub_ax.lines[-1].get_color()
     
     if err is not None:
@@ -1059,17 +1069,20 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None,
                     y, x - err, x + err, facecolor=col, alpha=alpha, 
                     zorder=zorder)
 
-
     if xticks is None:
+        n_xticks = np.min([n_xticks, len(x)])
         diff = np.max(x) - np.min(x)
-        n_dig = - np.floor(np.log10(np.absolute(diff))).astype(int) + 1
+        if diff == 0:
+            n_dig = 0
+        else:
+            n_dig = - np.floor(np.log10(np.absolute(diff))).astype(int) + 1
         set_ticks(sub_ax, 'x', np.around(np.min(x), n_dig), 
-                  np.around(np.max(x), n_dig), n_xticks)
+            np.around(np.max(x), n_dig), n_xticks)
     elif xticks in ['none', 'None']:
         sub_ax.tick_params(axis='x', which='both', bottom=False) 
     else:
         sub_ax.set_xticks(xticks)
-    
+
     if yticks is not None:
         sub_ax.set_yticks(yticks)
 
@@ -1112,7 +1125,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, col='k', alpha=0.5):
 
     if len(y1) != len(y2) or len(x) != len(y1):
         raise ValueError('y1 and y2, and x if provided, must have the same '
-                         'length.')
+            'length.')
 
     comp_arr = np.concatenate([y1[:, np.newaxis], y2[:, np.newaxis]], axis=1)
     maxes = np.max(comp_arr, axis=1)
@@ -1188,7 +1201,7 @@ def plot_errorbars(sub_ax, y, err, x=None, title='', lw=None, col=None,
     if len(err.shape) == 2: 
         err = [y - err[0], err[1] - y]
     sub_ax.errorbar(x, y, err, fmt='-o', label=label, alpha=alpha, color=col, 
-                    markersize=markersize, lw=lw)
+        markersize=markersize, lw=lw)
 
     if label is not None:
         sub_ax.legend()
@@ -1236,7 +1249,7 @@ def get_barplot_xpos(n_grps, n_bars_per, barw, in_grp=1.5, btw_grps=4.0):
     center_idx = (n_bars_per - 1)/2.
     btw_bars = (1 + in_grp) * barw # between bar centers
     bar_pos = [[pos + (i - center_idx) * btw_bars for i in range(n_bars_per)] 
-                                                  for pos in center_pos]
+        for pos in center_pos]
 
     xlims = [0, n_grps * barw * (per_grp + btw_grps)]
 
@@ -1244,7 +1257,8 @@ def get_barplot_xpos(n_grps, n_bars_per, barw, in_grp=1.5, btw_grps=4.0):
 
 
 #############################################
-def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, col='k'):
+def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, col='k', 
+                    fig_coord=False):
     """
     Plots significance markers (star) on subplot.
 
@@ -1257,12 +1271,15 @@ def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, col='k'):
         - yval (num)               : y value above which to place line
     
     Optional args:
-        - yerr (num) : errors to add to ypos when placing star
-                       default: None
-        - rel_y (num): relative position above ypos at which to place star.
-                       default: 0.01
-        - col (str)  : color for stars
-                       default: 'k'
+        - yerr (num)      : errors to add to ypos when placing star
+                            default: None
+        - rel_y (num)     : relative position above ypos at which to place star.
+                            default: 0.01
+        - col (str)       : color for stars
+                             default: 'k'
+        - fig_coord (bool): if True, coordinates are first converted from data 
+                            to figure coordinates
+                            default: False
     """
 
     rel_y = float(rel_y)
@@ -1274,15 +1291,21 @@ def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, col='k'):
     ylims = sub_ax.get_ylim()
 
     # y text position (will appear higher than line)
-    star_space = 0.02 # to lower star
-    ytext = yval + (rel_y - star_space) * (ylims[1] - ylims[0])
+    ytext = yval + (rel_y * (ylims[1] - ylims[0]))
 
-    sub_ax.text(xpos, ytext, "*", color=col, fontsize='xx-large', 
-                fontweight='bold', ha='center', va='bottom')
+    obj = sub_ax
+    if fig_coord:
+        obj = sub_ax.figure
+        xpos, ytext = obj.transFigure.inverted().transform(
+            sub_ax.transData.transform([xpos, ytext]))
+
+    obj.text(xpos, ytext, "*", color=col, fontsize='xx-large', 
+        fontweight='bold', ha='center', va='top')
 
 
 #############################################
-def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.01):
+def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, col='k', 
+                        lw=2, star_rel_y=0.05):
     """
     Plots significance markers (line and star) above bars showing a significant
     difference. 
@@ -1298,8 +1321,14 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.01):
         - yerr (array-like): list of errors to add to ypos when placing line
                              default: None
         - rel_y (num)      : relative position above ypos at which to place
-                             line and star.
-                             default: 0.01
+                             line.
+                             default: 0.02
+        - col (str)        : line and star colour
+                             default: 'k'
+        - lw (int)         : line width
+                             default: 2
+        - star_rel_y (num) : relative position above bar at which to place star
+                             default: 0.02
     """
 
     rel_y = float(rel_y)
@@ -1333,10 +1362,10 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.01):
     # y line position
     yline = ymax + rel_y * (ylims[1] - ylims[0])
     
-    # y text position will be higher than line
-    add_signif_mark(sub_ax, xmid, ymax, rel_y=rel_y)
+    # place y text slightly higher
+    add_signif_mark(sub_ax, xmid, ymax, rel_y=star_rel_y, col=col)
 
-    sub_ax.plot(xpos, [yline, yline], linewidth=2, color='k')
+    sub_ax.plot(xpos, [yline, yline], linewidth=lw, color=col)
 
 
 #############################################
@@ -1390,8 +1419,9 @@ def plot_bars(sub_ax, x, y, err=None, title='', width=0.75, lw=None, col=None,
 
     # add errorbars
     if err is not None:
-        sub_ax.errorbar(x, y, np.squeeze(err), fmt='None', elinewidth=lw, 
-                        capsize=capsize, capthick=lw, ecolor=fc)
+        sub_ax.errorbar(
+            x, y, np.squeeze(err), fmt='None', elinewidth=lw, 
+            capsize=capsize, capthick=lw, ecolor=fc)
 
     # set edge color to match patch face color
     [patch.set_ec(fc) for patch in patches]
@@ -1591,8 +1621,8 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, col='black', width=0.4,
     y_th = y_rat * (y_lim[1] - y_lim[0])
     bottom = y - y_th/2.
 
-    sub_ax.bar(x, height=y_th, bottom=bottom, color=col, width=width, 
-               alpha=alpha)
+    sub_ax.bar(
+        x, height=y_th, bottom=bottom, color=col, width=width, alpha=alpha)
 
 
 #############################################
@@ -1638,7 +1668,7 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
         x = range(len(extr.shape[1]))
     if len(x) != extr.shape[1]:
         raise ValueError('`x` and `extr` must have the same last '
-                         'dimension length.')
+            'dimension length.')
 
     # plot CI
     sub_ax.bar(x, height=extr[1]-extr[0], bottom=extr[0], color=color, 
@@ -1652,10 +1682,10 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
         med = np.asarray(med)
         if len(x) != len(med):
             raise ValueError('`x` and `med` must have the same last '
-                             'dimension length.')
+                'dimension length.')
         
-        plot_lines(sub_ax, med, x, med_rat, col=med_col, width=width, 
-                  zorder=zorder)
+        plot_lines(
+            sub_ax, med, x, med_rat, col=med_col, width=width, zorder=zorder)
 
 
 #############################################
@@ -1697,8 +1727,9 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
     x_vals[np.where(x_vals < min_val)] = min_val
     x_vals[np.where(x_vals > max_val)] = max_val
 
-    cloud = sub_ax.plot(x_vals, y_vals, marker='.', lw=0, color=col,
-                        alpha=alpha, label=label, zorder=zorder)[0]
+    cloud = sub_ax.plot(
+        x_vals, y_vals, marker='.', lw=0, color=col, alpha=alpha, 
+        label=label, zorder=zorder)[0]
 
     if label is not None:
         sub_ax.legend()
@@ -1706,3 +1737,115 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
     return cloud
 
     
+#############################################
+def get_axis_rel_pos(ax, grp_len, dim='x'):
+    """
+    get_axis_rel_pos(ax, grp_len)
+
+    Gets axis positions for middle of each subplot grouping.
+
+    Required args:
+        - ax (plt Axis): axis
+        - grp_len (n)  : grouping
+
+    Optional args:
+        - dim (str): dimension for which to get position ('x' or 'y')
+
+    Returns:
+        - poses (list): positions for each group
+    """
+
+
+    if not isinstance(ax, np.ndarray) and len(ax.shape):
+        raise ValueError('ax must be a 2D numpy array.')
+
+    n_rows, n_cols = ax.shape
+    poses = []
+    if dim == 'x':
+        if n_cols % grp_len != 0:
+            raise ValueError(f'Group length of {grp_len} does not fit with '
+                '{n_cols} columns.')
+        n_grps = int(n_cols/grp_len)
+        for n in range(n_grps):
+            poses.append(np.mean(
+                [ax[0, n * grp_len].get_position().xmin, 
+                ax[0, (n + 1) * grp_len - 1].get_position().xmax]))
+    elif dim == 'y':
+        if n_rows % grp_len != 0:
+            raise ValueError(f'Group length of {grp_len} does not fit with '
+                f'{n_rows} rows.')
+        n_grps = int(n_rows/grp_len)
+        for n in range(n_grps):
+            poses.append(np.mean(
+                [ax[n * grp_len, 0].get_position().ymin, 
+                ax[(n + 1) * grp_len - 1, 0].get_position().ymax]))
+    else:
+        gen_util.accepted_values_error('dim', dim, ['x', 'y'])
+
+    return poses
+
+
+#############################################
+def set_interm_ticks(ax, n_ticks, dim='x', weight=None, share=True):
+    """
+    set_interm_ticks(ax)
+
+    Sets axis tick values based on number of ticks, with the following 
+    pattern: 4 major ticks, with unlabelled minor ticks in between, and 0 and 
+    top tick as major ticks.
+
+    Required args:
+        - ax (plt Axis): axis
+        - n_ticks (n)  : max number of labelled ticks
+
+    Optional args:
+        - dim (str)   : dimension for which to get position ('x' or 'y')
+        - weight (str): font weight, e.g. 'bold'
+                        default: None
+        - share (bool): if True, all axes set the same, based on first axis.
+                        default: True
+    """
+
+    if not isinstance(ax, np.ndarray):
+        raise ValueError('Must pass an axis array.')
+
+    sub_ax = ax.reshape(-1)[0]
+
+
+    for s, sub_ax in enumerate(ax.reshape(-1)):
+        if s == 0 or not share:
+            if dim == 'x':
+                ticks = sub_ax.get_xticks()
+            elif dim == 'y':
+                ticks = sub_ax.get_yticks()
+            else:
+                gen_util.accepted_values_error('dim', dim, ['x', 'y'])
+
+            diff = np.mean(np.diff(ticks)) # get original tick steps
+            ratio = np.ceil(len(ticks)/n_ticks)
+            step = diff * ratio / 2 # minor step
+
+            min_tick_idx = np.round(np.min(ticks)/step).astype(int)
+            max_tick_idx = np.round(np.max(ticks)/step).astype(int)
+            tick_vals = np.linspace(min_tick_idx * step, max_tick_idx * step, 
+                np.absolute(min_tick_idx) + np.absolute(max_tick_idx) + 1)
+
+            # 1 signif digit for differences
+            if step == 0:
+                o = 0
+            else:
+                o = np.max([-np.floor(np.log10(step * 2)), 0]).astype(int)
+
+            idx = np.where(tick_vals == 0)[0]
+            labels = ['{:.{prec}f}'.format(val, prec=o)
+                if (v % 2 == idx % 2) else '' 
+                for v, val in enumerate(tick_vals)]
+
+        if dim == 'x':
+            sub_ax.set_xticks(tick_vals)
+            sub_ax.set_xticklabels(labels, fontdict={'weight': weight})
+        elif dim == 'y':
+            sub_ax.set_yticks(tick_vals)
+            sub_ax.set_yticklabels(labels, fontdict={'weight': weight})
+
+  

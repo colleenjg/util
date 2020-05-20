@@ -46,7 +46,6 @@ class CustomDs(torch.utils.data.TensorDataset):
                                   as data.
                                   default: None
         """
-
         self.data = torch.Tensor(data)
         self.targets = torch.Tensor(targets)
         self.n_samples = self.data.shape[0]
@@ -121,8 +120,8 @@ def bal_classes(data, targets):
     
     sample_idx = []
     for cl in cl_n:
-        idx = np.random.choice(np.where(targets==cl)[0], count_min, 
-                               replace=False)
+        idx = np.random.choice(
+            np.where(targets==cl)[0], count_min, replace=False)
         sample_idx.extend(idx.tolist())
     
     sample_idx = sorted(sample_idx)
@@ -188,17 +187,17 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
             cl_mixed_idx = np.asarray(mixed_idx)[np.where(targets == val)[0]]
             np.random.shuffle(cl_mixed_idx)
             set_ns    = [int(np.ceil(set_n * prop)) 
-                         for set_n in [0, val_n, test_n]]
+                for set_n in [0, val_n, test_n]]
             set_ns[0] = len(cl_mixed_idx) - sum(set_ns)
             for s, set_n in enumerate(set_ns):
                 if [train_idx, val_idx, test_idx][s] != 0 and thresh_cl != 0:
                     if set_n < thresh_cl:
                         raise ValueError('Sets cannot meet the threshold '
-                                         'requirement.')
+                            'requirement.')
             train_idx.extend(cl_mixed_idx[0 : set_ns[0]])
             val_idx.extend(cl_mixed_idx[set_ns[0] : set_ns[0] + set_ns[1]])
             test_idx.extend(cl_mixed_idx[set_ns[0] + set_ns[1] : 
-                                         set_ns[0] + set_ns[1] + set_ns[2]])
+                set_ns[0] + set_ns[1] + set_ns[2]])
         
     else:
         cont_shuff = True
@@ -242,7 +241,7 @@ def checkprop(train_p, val_p=0, test_p=0):
     """
 
     set_p = [[x, y] for x, y in zip([train_p, val_p, test_p], 
-             ['train_p', 'val_p', 'test_p'])]
+        ['train_p', 'val_p', 'test_p'])]
     
     sum_p = sum(list(zip(*set_p))[0])
     min_p = min(list(zip(*set_p))[0])
@@ -325,15 +324,15 @@ def split_idx(n, train_p=0.75, val_p=None, test_p=None, thresh_set=10,
     train_n = n - val_n - test_n
 
     # raise error if val or test n is below threshold (unless prop is 0)
-    for set_n, set_p, name in zip([val_n, test_n], [val_p, test_p], 
-                                  ['val n', 'test n']):
+    for set_n, set_p, name in zip(
+        [val_n, test_n], [val_p, test_p], ['val n', 'test n']):
         if set_n < thresh_set:
             if set_p != 0:
                 raise ValueError(f'{name} is {set_n} (below threshold '
-                                 f'of {thresh_set})')
+                    f'of {thresh_set})')
 
-    train_idx, val_idx, test_idx = data_indices(n, train_n, val_n, test_n, 
-                                                targets, thresh_cl, strat_cl)
+    train_idx, val_idx, test_idx = data_indices(
+        n, train_n, val_n, test_n, targets, thresh_cl, strat_cl)
 
     return train_idx, val_idx, test_idx
 
@@ -405,9 +404,8 @@ def init_dl(data, targets=None, batchsize=200, shuffle=False):
     if data is None:
         dl = None
     else:
-        dl = torch.utils.data.DataLoader(CustomDs(data, targets), 
-                                         batch_size=batchsize, 
-                                         shuffle=shuffle)
+        dl = torch.utils.data.DataLoader(
+            CustomDs(data, targets), batch_size=batchsize, shuffle=shuffle)
     return dl
 
 
@@ -476,8 +474,8 @@ def scale_datasets(set_data, sc_dim='all', sc_type='min_max', extrem='reg',
             data_flat = set_data[0].reshape([-1, set_data[0].shape[-1]]).numpy()
         else:
             gen_util.accepted_values_error('sc_dim', sc_dim, ['all', 'last'])
-        sc_facts = math_util.scale_facts(data_flat, 0, sc_type=sc_type, 
-                                         extrem=extrem, mult=mult, shift=shift)
+        sc_facts = math_util.scale_facts(
+            data_flat, 0, sc_type=sc_type, extrem=extrem, mult=mult, shift=shift)
 
     for i in range(len(set_data)):
         sc_data = math_util.scale_data(set_data[i].numpy(), 0, facts=sc_facts)
@@ -600,17 +598,18 @@ def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None,
         set_targets = [None] * 3
 
     # data: samples x []
-    set_idxs = split_idx(n=len(data), train_p=train_p, val_p=val_p, 
-                         test_p=test_p, thresh_set=thresh_set, targets=targets, 
-                         thresh_cl=thresh_cl, strat_cl=strat_cl)
+    set_idxs = split_idx(
+        n=len(data), train_p=train_p, val_p=val_p, test_p=test_p, 
+        thresh_set=thresh_set, targets=targets, thresh_cl=thresh_cl, 
+        strat_cl=strat_cl)
 
     set_data = split_data(data, set_idxs)
     if targets is not None:
         set_targets = split_data(targets, set_idxs)
 
     if sc_dim not in ['None', 'none']:
-        set_data, sc_facts = scale_datasets(set_data, sc_dim, sc_type, extrem, 
-                                            mult, shift)
+        set_data, sc_facts = scale_datasets(
+            set_data, sc_dim, sc_type, extrem, mult, shift)
         returns.append(sc_facts)
     
     dls = []
@@ -721,10 +720,9 @@ def window_1d(data, win_leng, step_size=1, writeable=False):
     # resulting number of windows
     n_wins = get_n_wins(data.shape[0], win_leng, step_size)
 
-    strided_data = np.lib.stride_tricks.as_strided(data, 
-                                        shape=[n_wins, int(win_leng)], 
-                                        strides=[strides * step_size, strides], 
-                                        writeable=writeable)
+    strided_data = np.lib.stride_tricks.as_strided(
+        data, shape=[n_wins, int(win_leng)], 
+        strides=[strides * step_size, strides], writeable=writeable)
 
     return strided_data
 
@@ -767,9 +765,10 @@ def window_2d(data, win_leng, step_size=1, writeable=False):
     n_wins  = get_n_wins(data.shape[0], win_leng, step_size)
     n_items = data.shape[1]
 
-    strided_data = np.lib.stride_tricks.as_strided(data, 
-                                   shape=[n_wins, n_items, int(win_leng)],
-                                   strides=[strides[0] * step_size, strides[1],
-                                   strides[0]], writeable=writeable)
+    strided_data = np.lib.stride_tricks.as_strided(
+        data, shape=[n_wins, n_items, int(win_leng)],
+        strides=[strides[0] * step_size, strides[1], strides[0]], 
+        writeable=writeable)
+    
     return strided_data
 
