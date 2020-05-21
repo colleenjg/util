@@ -339,6 +339,43 @@ def integ(data, dx, axis=None, nanpol=None):
 
 
 #############################################
+def get_divisors(val, min_val=None, max_val=None):
+    """
+    get_divisors(val)
+
+    Returns divisors of a number, optionally within a certain range.
+
+    Required args:
+        - val (int): value for which to get divisors
+
+    Optional args:
+        - min_val (int): minimum divisor value
+                         default: None
+        - max_val (int): maximum divisor value
+                         default: None
+    
+    Returns:
+        - integ_data (nd array): integral of data along specified axis
+    """
+
+    if int(val) != float(val):
+        raise ValueError('`val` must be an int.')
+
+    if min_val is None:
+        min_val = 1
+
+    if max_val is None:
+        max_val = val
+
+    divs = []
+    for i in range(min_val, max_val + 1):
+        if val % i == 0:
+            divs.append(i)
+
+    return divs
+
+
+#############################################
 def rolling_mean(vals, win=3):
     """
     rolling_mean(vals)

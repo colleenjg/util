@@ -376,6 +376,38 @@ def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05):
         else:
             sub_ax.set_yticks([min_end])
 
+
+#############################################
+def set_ticks_from_vals(sub_ax, vals, axis='x', n=6, pad_p=0.05):
+    """
+    set_ticks_from_vals(sub_ax, vals)
+
+    Sets ticks on specified axis and axis limits around ticks using specified 
+    padding, based on the plotted axis values. 
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+        - vals (array-like)        : axis values in the data
+
+    Optional args:
+        - axis (str)    : axis for which to set ticks, i.e., x, y or both
+                          default: 'x'
+        - n (int)       : number of ticks
+                          default: 6
+        - pad_p (num)   : percentage to pad axis length
+                          default: 0.05
+    """
+
+    n_ticks = np.min([n, len(vals)])
+    diff = np.max(vals) - np.min(vals)
+    if diff == 0:
+        n_dig = 0
+    else:
+        n_dig = - np.floor(np.log10(np.absolute(diff))).astype(int) + 1
+    set_ticks(sub_ax, axis, np.around(np.min(vals), n_dig), 
+        np.around(np.max(vals), n_dig), n_ticks)
+
+
 #############################################
 def get_subax(ax, i):
     """
@@ -1070,14 +1102,7 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None,
                     zorder=zorder)
 
     if xticks is None:
-        n_xticks = np.min([n_xticks, len(x)])
-        diff = np.max(x) - np.min(x)
-        if diff == 0:
-            n_dig = 0
-        else:
-            n_dig = - np.floor(np.log10(np.absolute(diff))).astype(int) + 1
-        set_ticks(sub_ax, 'x', np.around(np.min(x), n_dig), 
-            np.around(np.max(x), n_dig), n_xticks)
+        set_ticks_from_vals(sub_ax, x, axis='x', n=n_xticks)
     elif xticks in ['none', 'None']:
         sub_ax.tick_params(axis='x', which='both', bottom=False) 
     else:
