@@ -390,12 +390,13 @@ def set_ticks_from_vals(sub_ax, vals, axis='x', n=6, pad_p=0.05):
         - vals (array-like)        : axis values in the data
 
     Optional args:
-        - axis (str)    : axis for which to set ticks, i.e., x, y or both
-                          default: 'x'
-        - n (int)       : number of ticks
-                          default: 6
-        - pad_p (num)   : percentage to pad axis length
-                          default: 0.05
+        - axis (str  )    : axis for which to set ticks, i.e., x, y or both
+                            default: 'x'
+        - n (int)         : number of ticks
+                            default: 6
+        - pad_p (num)     : percentage to pad axis length
+                            default: 0.05
+        - ret_ticks (bool): if True, tick values are
     """
 
     n_ticks = np.min([n, len(vals)])
@@ -1763,19 +1764,20 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
 
     
 #############################################
-def get_axis_rel_pos(ax, grp_len, dim='x'):
+def get_fig_rel_pos(ax, grp_len, dim='x'):
     """
-    get_axis_rel_pos(ax, grp_len)
+    get_fig_rel_pos(ax, grp_len)
 
-    Gets axis positions for middle of each subplot grouping.
+    Gets figure positions for middle of each subplot grouping in figure 
+    coordinates.
 
     Required args:
         - ax (plt Axis): axis
         - grp_len (n)  : grouping
 
     Optional args:
-        - dim (str): dimension for which to get position ('x' or 'y')
-
+        - dim (str)      : dimension for which to get position ('x' or 'y')
+                           default: 'x'
     Returns:
         - poses (list): positions for each group
     """
@@ -1784,6 +1786,7 @@ def get_axis_rel_pos(ax, grp_len, dim='x'):
     if not isinstance(ax, np.ndarray) and len(ax.shape):
         raise ValueError('ax must be a 2D numpy array.')
 
+    fig = ax.reshape(-1)[0].figure
     n_rows, n_cols = ax.shape
     poses = []
     if dim == 'x':
@@ -1792,18 +1795,30 @@ def get_axis_rel_pos(ax, grp_len, dim='x'):
                 '{n_cols} columns.')
         n_grps = int(n_cols/grp_len)
         for n in range(n_grps):
-            poses.append(np.mean(
-                [ax[0, n * grp_len].get_position().xmin, 
-                ax[0, (n + 1) * grp_len - 1].get_position().xmax]))
+            left_subax = ax[0, n * grp_len]
+            left_pos = fig.transFigure.inverted().transform(
+                left_subax.transAxes.transform([0, 0]))[0]
+
+            right_subax = ax[0, (n + 1) * grp_len - 1]
+            right_pos = fig.transFigure.inverted().transform(
+                right_subax.transAxes.transform([1, 0]))[0]
+
+            poses.append(np.mean([left_pos, right_pos]))
     elif dim == 'y':
         if n_rows % grp_len != 0:
             raise ValueError(f'Group length of {grp_len} does not fit with '
                 f'{n_rows} rows.')
         n_grps = int(n_rows/grp_len)
         for n in range(n_grps):
-            poses.append(np.mean(
-                [ax[n * grp_len, 0].get_position().ymin, 
-                ax[(n + 1) * grp_len - 1, 0].get_position().ymax]))
+            top_subax = ax[n * grp_len, 0]
+            top_pos = fig.transFigure.inverted().transform(
+                top_subax.transAxes.transform([0, 1]))[1]
+
+            bottom_subax = ax[(n + 1) * grp_len - 1, 0]
+            bottom_pos = fig.transFigure.inverted().transform(
+                bottom_subax.transAxes.transform([0, 0]))[1]
+
+            poses.append(np.mean([top_pos, bottom_pos]))
     else:
         gen_util.accepted_values_error('dim', dim, ['x', 'y'])
 
@@ -1853,7 +1868,7 @@ def set_interm_ticks(ax, n_ticks, dim='x', weight=None, share=True):
             min_tick_idx = np.round(np.min(ticks)/step).astype(int)
             max_tick_idx = np.round(np.max(ticks)/step).astype(int)
             tick_vals = np.linspace(min_tick_idx * step, max_tick_idx * step, 
-                np.absolute(min_tick_idx) + np.absolute(max_tick_idx) + 1)
+                max_tick_idx - min_tick_idx + 1)
 
             # 1 signif digit for differences
             if step == 0:
@@ -1862,15 +1877,59 @@ def set_interm_ticks(ax, n_ticks, dim='x', weight=None, share=True):
                 o = np.max([-np.floor(np.log10(step * 2)), 0]).astype(int)
 
             idx = np.where(tick_vals == 0)[0]
+            if 0 not in tick_vals:
+                idx = 0
             labels = ['{:.{prec}f}'.format(val, prec=o)
                 if (v % 2 == idx % 2) else '' 
                 for v, val in enumerate(tick_vals)]
 
         if dim == 'x':
             sub_ax.set_xticks(tick_vals)
+            # always set ticks (even again) before setting labels
             sub_ax.set_xticklabels(labels, fontdict={'weight': weight})
         elif dim == 'y':
             sub_ax.set_yticks(tick_vals)
+            # always set ticks (even again) before setting labels
             sub_ax.set_yticklabels(labels, fontdict={'weight': weight})
 
-  
+
+#############################################
+def get_shared_axes(ax, axis='x'):
+    """
+    get_shared_axes(ax)
+
+    Returns lists of subplots that share an axis, compensating for what appears 
+    to be a bug in matplotlib where subplots from different figure accumulate 
+    at each call.
+
+    Required args:
+        - ax (plt Axis): axis
+
+    Optional args:
+        - axis (str): axis for which to get grouping
+
+    Returns:
+        - fixed_grps (list): subplots, organized by group that share the axis
+    """
+
+
+    all_subplots = ax.reshape(-1).tolist()
+
+    if axis == 'x':
+        grps = list(all_subplots[0].get_shared_x_axes())
+    elif axis == 'y':
+        grps = list(all_subplots[0].get_shared_y_axes())
+    else:
+        gen_util.accepted_values_error('axis', axis, ['x', 'y'])
+
+    fixed_grps = []
+    for grp in grps:
+        fixed_grp = []
+        for subplot in grp:
+            if subplot in all_subplots:
+                fixed_grp.append(subplot)
+        if len(fixed_grp) != 0:
+            fixed_grps.append(fixed_grp)
+
+    return fixed_grps
+
