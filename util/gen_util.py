@@ -351,7 +351,7 @@ def intlist_to_str(intlist):
         else:
             intstr = '-'.join([str(i) for i in sorted(intlist)])
     else:
-        raise ValueError('`intlist` must be a string.')
+        raise ValueError('`intlist` must be a list.')
 
     return intstr
 

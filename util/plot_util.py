@@ -1011,12 +1011,12 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, col='k'):
         if len(start) != len(end):
             raise ValueError('end and start must be of the same length.')
         for st, e in zip(start, end):
-            sub_ax.axvspan(st, e, alpha=alpha, color=col)
+            sub_ax.axvspan(st, e, alpha=alpha, color=col, lw=0)
         if width is not None:
             print('Cannot specify both end and width. Using end.')
     else:
         for st in start:
-            sub_ax.axvspan(st, st + width, alpha=alpha, color=col)
+            sub_ax.axvspan(st, st + width, alpha=alpha, color=col, lw=0)
 
 
 #############################################

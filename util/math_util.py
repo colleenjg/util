@@ -178,6 +178,54 @@ def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None,
 
 
 #############################################
+def outlier_bounds(data, fences='outer', axis=None, nanpol=None):
+    """
+    outlier_bounds(data)
+
+    Returns outlier fence bounds for the data.
+
+    Required args:
+        - data (nd array): data on which to calculate statistic
+
+    Optional args:
+        - fences (str): 'inner': inner fences [Q1 - 1.5 * IQR, Q3 + 1.5 * IQR]
+                        'outer': outer fences [Q1 - 3.0 * IQR, Q3 + 3.0 * IQR]
+                        default: 'outer'
+        - axis (int)  : axis along which to take the statistic
+                        default: None
+        - nanpol (str): policy for NaNs, 'omit' or None
+                        default: None
+    
+    Returns:
+        - fences (list): [lower fence, upper fence] limits
+    """
+
+    if nanpol is None:
+        q1 = np.percentile(data, q=25, axis=axis)
+        q3 = np.percentile(data, q=75, axis=axis)
+    elif nanpol == 'omit':
+        q1 = np.nanpercentile(data, q=25, axis=axis)
+        q3 = np.nanpercentile(data, q=75, axis=axis)
+    else:
+        gen_util.accepted_values_error('nanpol', nanpol, ['[None]', 'omit'])
+
+    iqr = q3 - q1
+
+    if fences == 'inner':
+        low_fence = q1 - 1.5 * iqr
+        upp_fence = q3 + 1.5 * iqr
+    elif fences == 'outer':
+        low_fence = q1 - 3.0 * iqr
+        upp_fence = q3 + 3.0 * iqr
+    else:
+        gen_util.accepted_values_error('fences', fences, ['inner', 'outer'])
+
+    fences = [low_fence, upp_fence]
+
+    return fences
+
+
+#############################################
 def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
               qu=[25, 75]):
     """
@@ -402,7 +450,7 @@ def rolling_mean(vals, win=3):
 
 
 #############################################
-def calc_op(data, op='diff', dim=0, rev=False):
+def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
     """
     calc_op(data)
 
@@ -414,14 +462,18 @@ def calc_op(data, op='diff', dim=0, rev=False):
                            dim.
 
     Optional args:
-        - op (str)  : 'diff': index 1 - 0, or 'ratio': index 1/0, or 
-                      'rel_diff': (index 1 - 0)/(index 1 + 0)
-                      If int, the corresponding data index is returned.
-                      default: 'diff'
-        - dim (int) : dimension along which to do operation
-                      default: 0
-        - rev (bool): if True, indices 1 and 0 are reversed
-                      default: False
+        - op (str)    : 'diff': index 1 - 0
+                        'ratio': index 1/0, or 
+                        'rel_diff': (index 1 - 0)/(index 1 + 0)
+                        default: 'diff'
+        - dim (int)   : dimension along which to do operation
+                        default: 0
+        - rev (bool)  : if True, indices 1 and 0 are reversed
+                        default: False
+        - nanpol (str): policy for NaNs, 'omit' or None
+                        default: None
+        - axis (int)  : axis along which to take stats, e.g. std for 'discr'
+                        default: -1
     
     Returns:
         - data (nd array): data on which operation has been applied
@@ -449,7 +501,7 @@ def calc_op(data, op='diff', dim=0, rev=False):
                 (data[fir_idx] + data[sec_idx])
         else:
             gen_util.accepted_values_error(
-                'op', op, ['diff', 'ratio', 'rel_diff'])
+                'op', op, ['diff', 'ratio', 'rel_diff', 'discr'])
     
     return data
 
@@ -927,8 +979,11 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                               statistics
                               default: None
         - op (str)          : operation to use to compare groups, 
-                              i.e. 'diff': grp2-grp1, or 'ratio': grp2/grp1
-                              or 'rel_diff': (grp2-grp1)/(grp2+grp1) or 'none'
+                              'diff': grp2-grp1
+                              'ratio': grp2/grp1
+                              'rel_diff': (grp2-grp1)/(grp2+grp1)
+                              'discr': 2 * (grp2-grp1)/(std(grp2) + std(grp1))
+                              'none'
                               default: 'diff'
 
     Returns:
@@ -946,6 +1001,8 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
     n_perms_tot = n_perms
     perms_done = 0
 
+    use_op = op if op != 'discr' else 'diff'
+
     if div == 'half':
         div = int(all_data.shape[1]//2)
 
@@ -960,12 +1017,19 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                 mean_med(permed_data[:, 0:div], stats, axis=1, nanpol=nanpol), 
                 mean_med(permed_data[:, div:], stats, axis=1, nanpol=nanpol)])
             
-            if op == 'none':
+            if use_op == 'none':
                 rand_res = rand
             # calculate grp2-grp1 or grp2/grp1 -> elem x perms
             else:
-                rand_res = calc_op(rand, op, dim=0)
+                rand_res = calc_op(rand, use_op, dim=0, nanpol=nanpol, axis=-1)
             
+            if op == 'discr':
+                div_val = np.sum([error_stat(data, 'mean', 'std', axis=1, 
+                    nanpol=nanpol) 
+                    for data in [permed_data[:, 0:div], permed_data[:, div:]]], 
+                    axis=0)
+                rand_res = 2 * rand_res/div_val
+
             del permed_data
             all_rand_res.append(rand_res)
             perms_done += n_perms
@@ -1273,16 +1337,17 @@ def get_percentiles(CI=0.95, tails=2):
     if CI < 0 or CI > 1:
         raise ValueError('CI must be between 0 and 1.')
 
+    CI *= 100
+
     if tails == 'up':
         ps = [0.0, CI]
     elif tails == 'lo':
-        ps = [1.0 - CI, 1.0]
+        ps = [100 - CI, 100]
     elif tails in ['2', 2]:
-        ps = [0.5 * (1.0 + v) for v in [-CI, CI]]
+        ps = [0.5 * (100 + v) for v in [-CI, CI]]
     else:
         gen_util.accepted_values_error('tails', tails, ['up', 'lo', 2])
 
-    ps = [100.0 * p for p in ps]
     p_names = []
     for p in ps:
         p_names.append(f'p{gen_util.num_to_str(p)}')
