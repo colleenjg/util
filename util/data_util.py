@@ -47,6 +47,8 @@ class CustomDs(torch.utils.data.TensorDataset):
                                   default: None
         """
         self.data = torch.Tensor(data)
+        if targets is not None and len(targets.shape) == 1:
+            targets = targets.reshape(-1, 1)
         self.targets = torch.Tensor(targets)
         self.n_samples = self.data.shape[0]
 

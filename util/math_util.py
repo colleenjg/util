@@ -17,8 +17,6 @@ import re
 import numpy as np
 import scipy.ndimage as scn
 import scipy.stats as scist
-from sklearn import svm
-from sklearn.model_selection import cross_val_score
 
 from util import gen_util
 
@@ -459,12 +457,15 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
 
     Required args:
         - data (nd array): data on which to run operation, with length 2 along 
-                           dim.
+                           dim (or list of arrays if dim = 0).
 
     Optional args:
         - op (str)    : 'diff': index 1 - 0
                         'ratio': index 1/0, or 
                         'rel_diff': (index 1 - 0)/(index 1 + 0)
+                        'discr': (mean(index 1) - mean(index 0)) / 
+                                 (sqrt(
+                                     1/2 * (std(index 1)**2 + std(index 0)**2))
                         default: 'diff'
         - dim (int)   : dimension along which to do operation
                         default: 0
@@ -479,7 +480,11 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
         - data (nd array): data on which operation has been applied
     """
     
-    if data.shape[dim] != 2:
+    if dim == 0: # allows for list
+        len_dim = len(data)
+    else:
+        len_dim = data.shape[dim]
+    if len_dim != 2:
         raise ValueError(f'Data should have length 2 along dim: {dim}')
 
     if isinstance(op, int):
@@ -490,8 +495,11 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
             fir, sec = [0, 1]
         else:
             fir, sec = [1, 0]
-        fir_idx = gen_util.slice_idx(dim, fir)
-        sec_idx = gen_util.slice_idx(dim, sec)
+        if dim == 0: # allows for list
+            fir_idx, sec_idx = fir, sec
+        else:
+            fir_idx = gen_util.slice_idx(dim, fir)
+            sec_idx = gen_util.slice_idx(dim, sec)
         if op == 'diff':
             data = (data[fir_idx] - data[sec_idx])
         elif op == 'ratio':
@@ -499,6 +507,13 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
         elif op == 'rel_diff':
             data = (data[fir_idx] - data[sec_idx])/ \
                 (data[fir_idx] + data[sec_idx])
+        elif op == 'discr':
+            mean_diff = (np.mean(data[fir_idx], axis=axis) 
+                        - np.mean(data[sec_idx], axis=axis))
+            stds = (np.std(data[fir_idx], axis=axis),
+                   np.std(data[sec_idx], axis=axis))
+            div = np.sqrt(0.5 * np.sum(np.power(stds, 2), axis=0))
+            data = mean_diff/div
         else:
             gen_util.accepted_values_error(
                 'op', op, ['diff', 'ratio', 'rel_diff', 'discr'])
@@ -1001,8 +1016,6 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
     n_perms_tot = n_perms
     perms_done = 0
 
-    use_op = op if op != 'discr' else 'diff'
-
     if div == 'half':
         div = int(all_data.shape[1]//2)
 
@@ -1013,24 +1026,24 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                 n_perms = perms_rem
             permed_data = run_permute(all_data, n_perms=n_perms)
 
-            rand = np.stack([
-                mean_med(permed_data[:, 0:div], stats, axis=1, nanpol=nanpol), 
-                mean_med(permed_data[:, div:], stats, axis=1, nanpol=nanpol)])
-            
-            if use_op == 'none':
-                rand_res = rand
-            # calculate grp2-grp1 or grp2/grp1 -> elem x perms
+            if op != 'discr':
+                axis = None
+                rand = np.stack([
+                    mean_med(permed_data[:, 0:div], stats, axis=1, nanpol=nanpol), 
+                    mean_med(permed_data[:, div:], stats, axis=1, nanpol=nanpol)])
             else:
-                rand_res = calc_op(rand, use_op, dim=0, nanpol=nanpol, axis=-1)
-            
-            if op == 'discr':
-                div_val = np.sum([error_stat(data, 'mean', 'std', axis=1, 
-                    nanpol=nanpol) 
-                    for data in [permed_data[:, 0:div], permed_data[:, div:]]], 
-                    axis=0)
-                rand_res = 2 * rand_res/div_val
+                # don't take mean yet
+                axis = 1
+                rand = [permed_data[:, 0:div], permed_data[:, div:]]
+
+            if op == 'none':
+                rand_res = rand
+            else:
+                # calculate grp2-grp1 or grp2/grp1... -> elem x perms
+                rand_res = calc_op(rand, op, dim=0, nanpol=nanpol, axis=axis)
 
             del permed_data
+            del rand
             all_rand_res.append(rand_res)
             perms_done += n_perms
 
@@ -1447,75 +1460,4 @@ def autocorr_stats(data, lag, spu=None, byitem=True, stats='mean', error='std',
 
     return xran, autocorr_stats
 
-
-#############################################
-def run_cv_svm(inp, target, cv=5, shuffle=False, stats='mean', error='std', 
-               class_weight='balanced', n_jobs=None):
-    """
-    run_cv_svm(inp, target)
-    
-    Returns scores from running a cross-validation SVM on the input and target
-    data.
-
-    Required args:
-        - inp (array-like)   : input array whose first dimension matches the 
-                               target first dimension 
-        - target (array-like): 1D target array
-
-    Optional args:
-        - cv (int)          : number of cross-validation folds (at least 3)
-                              (stratified KFold)
-                              default: 5
-        - shuffle (bool)    : if True, target is shuffled
-                              default: False
-        - stats (str)       : statistic to return across fold scores 
-                              ('mean' or 'median')  If None, all scores are 
-                              returned
-                              default: 'mean'
-        - error (str)       : error statistic to return across fold scores. If 
-                              None or if `stats` is None, no error statistic is 
-                              returned.('std' for std or q1-3 and 'sem' for 
-                              SEM or MAD, depending on the value or `stats`)
-                              default: 'std'
-        - class_weight (str): sklearn class_weight attribute
-                              default: 'balanced'
-        - n_jobs (int)      : number of CPUs to use (see sklearn)
-                              default: None
-
-    Returns:
-        if stats is None and error is None:
-        - sc (1D array): scores for each fold (accuracy or balanced accuracy if 
-                         class_weight is 'balanced')
-        elif only error is None:
-        - me (float)   : mean/median statistic across fold scores
-        else:
-        - me (float)   : mean/median statistic across fold scores
-        - err (float)  : std/SEM/q1-3/MAD across fold scores
-    """
-
-    clf = svm.SVC(kernel='poly', C=1, gamma='auto', class_weight=class_weight)                    
-    
-    # first dim must be trials
-    if shuffle:
-        np.random.shuffle(target)
-    
-    if cv < 3:
-        raise ValueError('`cv` must be at least 3.')
-
-    scoring = None
-    if class_weight == 'balanced':
-        scoring = 'balanced_accuracy'
-
-    sc = cross_val_score(
-        clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs)
-    
-    if stats is None:
-        return sc
-    else:
-        me = mean_med(sc, stats=stats)
-        if error is None:
-            return me
-        else:
-            err = error_stat(sc, stats=stats, error=error)
-            return me, err
 

@@ -355,7 +355,7 @@ def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05):
     pad = (max_tick - min_tick) * pad_p
     min_end = min_tick - pad
     max_end = max_tick + pad
-    
+
     if axis == 'both':
         axis = ['x', 'y']
     elif axis in ['x', 'y']:
@@ -1022,7 +1022,7 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, col='k'):
 #############################################
 def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None, 
                 alpha=0.5, n_xticks=6, xticks=None, yticks=None, label=None, 
-                alpha_line=1.0, zorder=None, errx=False):
+                alpha_line=1.0, zorder=None, errx=False, ls=None):
     """
     plot_traces(sub_ax, x, y)
 
@@ -1062,6 +1062,8 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None,
                                default: None
         - errx (bool)        : if True, error is on the x data, not y data
                                default: False
+        - ls (float)         : trace line style
+                               default: None
     """
     
     if x is None:
@@ -1076,7 +1078,8 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, col=None,
         y = y.reshape(1)
 
     sub_ax.plot(
-        x, y, lw=lw, color=col, label=label, alpha=alpha_line, zorder=zorder)
+        x, y, lw=lw, color=col, label=label, alpha=alpha_line, ls=ls, 
+        zorder=zorder)
     col = sub_ax.lines[-1].get_color()
     
     if err is not None:
@@ -1164,7 +1167,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, col='k', alpha=0.5):
 
 
 #############################################
-def plot_errorbars(sub_ax, y, err, x=None, title='', lw=None, col=None, 
+def plot_errorbars(sub_ax, y, err=None, x=None, title='', lw=None, col=None, 
                    alpha=0.8, xticks=None, yticks=None, label=None, 
                    capsize=None, markersize=None):
     """
@@ -1175,11 +1178,11 @@ def plot_errorbars(sub_ax, y, err, x=None, title='', lw=None, col=None,
     Required args:
         - sub_ax (plt Axis subplot): subplot
         - y (array-like)           : array of y values
-        - err (1 or 2D array)      : either std, SEM or MAD, or quintiles. If 
-                                     quintiles, 2D array structured as stat x 
-                                     vals
 
     Optional args:
+        - err (1 or 2D array): either std, SEM or MAD, or quintiles. If 
+                               quintiles, 2D array structured as stat x vals
+                               default: None
         - x (array-like)     : array of x values. 
                                default: None
         - title (str)        : subplot title
@@ -1220,12 +1223,13 @@ def plot_errorbars(sub_ax, y, err, x=None, title='', lw=None, col=None,
 
     x = np.asarray(x).squeeze()
 
-    err = np.asarray(err).squeeze()
-
-    # If err is 1D, provide errorbar length, if err is 2D, provide errorbar 
-    # endpoints
-    if len(err.shape) == 2: 
-        err = [y - err[0], err[1] - y]
+    if err is not None:
+        err = np.asarray(err).squeeze()
+        # If err is 1D, provide errorbar length, if err is 2D, provide errorbar 
+        # endpoints
+        if len(err.shape) == 2: 
+            err = [y - err[0], err[1] - y]
+        
     sub_ax.errorbar(x, y, err, fmt='-o', label=label, alpha=alpha, color=col, 
         markersize=markersize, lw=lw)
 
@@ -1518,7 +1522,7 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title='', cmap=None,
         - data (2D array)          : data array (X x Y)
 
     Optional args:
-        - x ran (list)   : first and last values along the x axis. If None,
+        - xran (list)    : first and last values along the x axis. If None,
                            will be inferred from the data.
                            default: None
         - yran (list)    : first and last values along the y axis. If None,
@@ -1646,7 +1650,6 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, col='black', width=0.4,
     y_lim = sub_ax.get_ylim()
     y_th = y_rat * (y_lim[1] - y_lim[0])
     bottom = y - y_th/2.
-
     sub_ax.bar(
         x, height=y_th, bottom=bottom, color=col, width=width, alpha=alpha)
 
@@ -1831,7 +1834,7 @@ def set_interm_ticks(ax, n_ticks, dim='x', weight=None, share=True):
     set_interm_ticks(ax)
 
     Sets axis tick values based on number of ticks, with the following 
-    pattern: 4 major ticks, with unlabelled minor ticks in between, and 0 and 
+    pattern: major ticks, with unlabelled minor ticks in between, and 0 and 
     top tick as major ticks.
 
     Required args:

@@ -16,19 +16,60 @@ import glob
 import os
 import pickle as pkl
 import re
+import warnings
 
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import get_scorer
-from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
+from sklearn.model_selection import cross_val_score, cross_validate, \
+    StratifiedShuffleSplit, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
+from sklearn.svm import SVC
 import torch
 
 from util import file_util, gen_util, math_util, plot_util
+
+
+#############################################
+def catch_set_problem_decorator(function):
+    """
+    Decorator for optionally catching set size errors (in classifier calls), 
+    printing them and returning None instead of raising the error.
+
+    Optional args:
+        - catch_set_prob (bool): if True, errors due to set problems are caught 
+                                 and printed. None is returned instead of the 
+                                 normal function returns.
+                                 default: False
+    
+    Returns:
+        if an error is raised and not caught:
+            - (ValueError) is raised
+        elif an error is raised and caught:
+            - (None)
+        else"
+            - (function Returns)
+    """
+
+    def wrapper(*args, catch_set_prob=False, **kwargs):
+        catch_phr = ['threshold', 'true labels', 'size', 'populated class']
+        try:
+            return function(*args, **kwargs)
+        except ValueError as err:
+            catch_phr = ['threshold', 'true labels', 'size', 'populated class']
+            caught = sum(phr in str(err) for phr in catch_phr)
+            if catch_set_prob and caught:
+                print(str(err))
+                return None
+            else:
+                raise err
+
+    return wrapper
 
 
 #############################################
@@ -496,7 +537,7 @@ def save_model(info, ep, mod, scores, dirname='.', rectype=None):
 
 #############################################
 def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50, 
-              test_dl2_name=None, logger=None):
+                 test_dl2_name=None, logger=None):
     """
     fit_model_pt(info, epochs, mod, dls, device)
 
@@ -559,7 +600,7 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
         for se, dl in zip(sets, dls):
             train = False
             # First train epoch: record untrained model
-            if ep !=0 and se == 'train': 
+            if ep != 0 and se == 'train': 
                 train = True
             set_sc = run_dl(mod, dl, device, train=train)
             for sc in scs:
@@ -870,7 +911,7 @@ def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean',
     if classes is None:
         classes = np.unique(tr_classes)
     for cl in classes:
-        idx = (tr_classes == cl) # bool array
+        idx = (tr_classes == cl).squeeze() # bool array
         ns.append(sum(idx.tolist()))
         if not rois_collapsed:
             class_stats = math_util.get_stats(
@@ -1189,7 +1230,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         Sets attributes:
             - _split_test (bool)     : whether to split the test set
             - _bal (bool)            : whether to balance classes
-            - _sample (bool)        : whether to sample class(es)
+            - _sample (bool)         : whether to sample class(es)
             if self._sample:
                 - _tr_sample (int or list): number of training examples to 
                                             sample, per class if list (for 
@@ -1353,7 +1394,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
 
 
 #############################################
-class ModData(TransformerMixin):
+class ModData:
     def __init__(self, scale=True, extrem=False, shuffle=False, 
                  seed=None, **kwargs):
         """
@@ -1473,7 +1514,7 @@ class ModData(TransformerMixin):
         
         X = np.array(X)
     
-        self.fit(X, y, **kwargs)
+        self.fit(X, y, **kwargs) # fit scaler
         if self._scaler is not None:
             X = self._get_scaled(X, **kwargs)
         X = self._flatten(X, across='ch')
@@ -1513,7 +1554,7 @@ class ModData(TransformerMixin):
             X = self._get_scaled(X)
         if flatten:
             X = self._flatten(X, across='ch')
-        if training and self._shuffle:
+        if self._shuffle and training:
             X = self._get_shuffled(X)
         return X
 
@@ -1591,6 +1632,10 @@ class ModData(TransformerMixin):
         exists and uses a previously created one otherwise. Uses self._rst as 
         random state.
 
+        Note: For parallel runs with the same seed, the shuffled idx will 
+        always be the same. Additional shuffling must be dealt with externally, 
+        e.g. by Split Object.
+
         Sets attributes:
             - _shuff_reidx (1D array): corresponding shuffling index for targets 
 
@@ -1603,18 +1648,20 @@ class ModData(TransformerMixin):
         """
 
         if not hasattr(self, '_shuff_reidx'):
-            idx = np.asarray(range(len(X))) # get trial indices
+            idx = np.arange(len(X)) # get trial indices
             self.rst.shuffle(idx)
             # to get sort index corresponding to targets, not input
             self._shuff_reidx = np.argsort(idx)
         else:
             # reconstitute train sort idx from target sort idx
             idx = np.argsort(self._shuff_reidx)
+
         X = X[idx]
 
         return X
 
 
+@catch_set_problem_decorator
 #############################################
 def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar, 
                      scale=True, sample=False, split_test=False, seed=None,
@@ -1629,11 +1676,14 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
     Required args:
         - input_data (3D array) : trace array, structured as 
                                       trials x frames x ROIs
-        - seq_classes (2D array): target classes, structured as class values x 1
-        - logregpar (LogRegPar) : named tuple containing logistic regression 
+        - targ_data (2D array): target classes, structured as class values x 1
+        - logregpar (dict)      : dictionary with logistic regression 
                                   parameters
+            ['bal'] (bool)     : if True, classes are balanced
+            ['n_epochs'] (int) : max number of epochs
+            ['train_p'] (float): training set percentage
         - extrapar (dict)       : dictionary with extra parameters
-            ['epochs'] (int)  : max number of epochs
+            ['dirname'] (str) : save directory 
             ['n_runs'] (int)  : number of runs (split) to run
             ['shuffle'] (bool): if True, data is shuffled
     
@@ -1654,7 +1704,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
         - max_size (int)        : maximum data size used to calculate maximum 
                                   number of parallel jobs or raise a warning 
                                   if necessary
-                                  default: 9e7 
+                                  default: 9e7
 
     Returns:
         - mod_cvs (dict)   : cross-validation dictionary with keys:
@@ -1664,7 +1714,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
             ['score_time'] (1D array): array of test score times for reach split
             for all combinations of sets ('train', 'test') and 
                 scores ('neg_log_loss', 'accuracy', 'balanced_accuracy'):
-            ['set_score'] (list)     : array of scores for each split
+            ['{set}_{score}'] (list) : array of scores for each split
         - cv (Split object): StratifiedShuffleSplitMod object
         - extrapar (dict)  : dictionary with extra parameters
             ['scoring'] (list)     : sklearn names of scores used
@@ -1690,20 +1740,35 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
     extrapar['scoring'] = ['neg_log_loss', 'accuracy', 'balanced_accuracy']
 
     mod = LogisticRegression(C=1, fit_intercept=True, class_weight='balanced', 
-        penalty='l2', solver='lbfgs', max_iter=logregpar.n_epochs, 
+        penalty='l2', solver='lbfgs', max_iter=logregpar['n_epochs'], 
         random_state=seed) # seed only used if n_jobs is not None
     scaler = ModData(scale=scale, extrem=True, shuffle=extrapar['shuffle'], 
         seed=seed)
     cv = StratifiedShuffleSplitMod(n_splits=extrapar['n_runs'], 
-        train_p=logregpar.train_p, sample=sample, bal=logregpar.bal, 
+        train_p=logregpar['train_p'], sample=sample, bal=logregpar['bal'], 
         split_test=split_test, random_state=seed)
 
-    # pass argument to pipeline? With seeds for each job?
     mod_pip = make_pipeline(scaler, mod)
+
+    orig_warnings = warnings.filters    
+    if extrapar['shuffle']:
+        print('\nWARNING: Reported training scores will be incorrect, as the '
+            'training dataset is not shuffled during final scoring step.\n')
+        # also ignore convergence warnings (may not work if n_jobs > 1)
+        warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
     mod_cvs = cross_validate(mod_pip, input_data, targ_data, cv=cv, 
         return_estimator=True, return_train_score=True, n_jobs=n_jobs, 
         verbose=3, scoring=extrapar['scoring'])
+
+    warnings.filters = orig_warnings
+
+    # correct the training set scoring, which is incorrectly evaluated
+    # (no shuffling is done automatically during predict step).
+    if extrapar['shuffle']:
+        rescore_training_logreg_sk(
+            mod_cvs, cv, input_data, targ_data, extrapar['scoring'], 
+            print_scores=True)
 
     print('Training done.\n')
 
@@ -1715,6 +1780,65 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
     return mod_cvs, cv, extrapar
 
 
+############################################
+def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring, 
+                               print_scores=False):
+    """
+    rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring)
+
+
+    Runs all runs of logistic regression using sklearn and returns 
+    models, crossvalidation split object and extra parameters. Allows saves
+    the model under 'models.sav'
+
+    Required args:
+        - mod_cvs (dict)        : cross-validation dictionary with keys:
+            ['estimator'] (list)    : list of fitted estimator pipelines for 
+                                      each split
+            for all combinations of sets ('train', 'test') and 
+                scores ('neg_log_loss', 'accuracy', 'balanced_accuracy'):
+            ['{set}_{score}'] (list): array of scores for each split
+        - cv (Split object)     : StratifiedShuffleSplitMod object
+        - input_data (3D array) : trace array, structured as 
+                                      trials x frames x ROIs
+        - targ_data (2D array)  : target classes, structured as class values x 1
+        - scoring (list)        : sklearn names of scores to use
+
+    Optional args:
+        - print_scores (bool): if True, corrected training scores are printed 
+                               to console
+                               default: False
+
+    Returns:
+        - mod_cvs (dict)        : cross-validation dictionary with updated :
+            ['train_{score}'] (list): array of scores for each split
+
+    """
+
+    mod_cvs = copy.deepcopy(mod_cvs)
+
+    for e, est in enumerate(mod_cvs['estimator']):
+        train_X = input_data[cv._set_idx[e][0]]
+        train_Y = targ_data[cv._set_idx[e][0]][est['moddata']._shuff_reidx]
+        for score_type in scoring:
+            sc = get_scorer(score_type)
+            mod_cvs[f'train_{score_type}'][e] = sc(est, train_X, train_Y)
+    print('\nWARNING: Training scores for shuffled dataset recalculated '
+        'correctly.')
+
+    if print_scores:
+        plus_minus = u'\u00B1' # +- symbol
+
+        print('Corrected training scores:')
+        for score_type in scoring:
+            mean = np.mean(mod_cvs[f'train_{score_type}'])
+            sem = np.std(mod_cvs[f'train_{score_type}'])
+            print(f'    {score_type}: {mean:.3f} ' + plus_minus + f' {sem:.3f}')
+
+    return mod_cvs
+
+
+@catch_set_problem_decorator
 ############################################
 def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None, 
                       extra_name=None, extra_cv=None):
@@ -1750,14 +1874,14 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
         - extra_cv (Split object): StratifiedShuffleSplitMod object for extra
                                    dataset
                                    default: None
-
+    
     Returns:
         - mod_cvs (dict): cross-validation dictionary with keys:
-            ['estimator'] (list)    : list of fitted estimator pipelines for 
-                                      each split
+            ['estimator'] (list)         : list of fitted estimator pipelines 
+                                           for each split
             for all combinations of sets ('test_out' and extra_name) and 
                 scores (e.g., 'neg_log_loss', 'accuracy', 'balanced_accuracy'):
-            ['set_score'] (1D array): array of scores for each split
+            ['{set}_{score}'] (1D array): array of scores for each split
     """
 
     mod_cvs = copy.deepcopy(mod_cvs)
@@ -1776,7 +1900,6 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
                 'provide `extra_name` and extra_cv.')
         all_tests.append(extra_name)
         splitter = extra_cv.split(extra_data[0], extra_data[1])
-        
 
     for score in scoring:
         for test in all_tests:
@@ -1790,12 +1913,13 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
             all_data.append([main_data[0][idx], main_data[1][idx]])
         if extra_data is not None:
             all_idx = next(splitter)
+            # regroup arbitrary train/test split
             idx = [i for sub in all_idx for i in sub]
             all_data.append([extra_data[0][idx], extra_data[1][idx]])
         for score in scoring:
-            for test, data in zip(all_tests, all_data):
+            sc = get_scorer(score)
+            for test, data in zip(all_tests, all_data):        
                 key = f'{test}_{score}'
-                sc = get_scorer(score)
                 mod_cvs[key][m] = sc(mod, data[0], data[1])
 
     return mod_cvs
@@ -1839,10 +1963,10 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
 
     Required args:
         - mod_cvs (dict)  : cross-validation dictionary with keys:
-            ['estimator'] (list): list of fitted estimator pipelines for 
-                                  each split
+            ['estimator'] (list)    : list of fitted estimator pipelines for 
+                                      each split
             for all combinations of sets (set_names) and scores (scoring):
-            ['set_score'] (list): array of scores for each split
+            ['{set}_{score}'] (list): array of scores for each split
         - saved_idx (int) : index of the best model
         - set_names (list): set names ('train', 'test', etc.)
         - scoring (list)  : score names ('neg_log_loss', 'accuracy', etc.)
@@ -1891,4 +2015,101 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
         scores.loc[r, 'epoch_n'] = epoch_n
 
     return scores
+
+
+#############################################
+def run_cv_clf(inp, target, cv=5, shuffle=False, stats='mean', error='std', 
+               class_weight='balanced', n_jobs=None, model='logreg', 
+               scaler=None, seed=None):
+               
+    """
+    run_cv_clf(inp, target)
+    
+    Returns scores from running a cross-validation model (log reg or SVM) on 
+    the input and target data.
+
+    Required args:
+        - inp (array-like)   : input array whose first dimension matches the 
+                               target first dimension 
+        - target (array-like): 1D target array
+
+    Optional args:
+        - cv (int)          : number of cross-validation folds (at least 3)
+                              (stratified KFold)
+                              default: 5
+        - shuffle (bool)    : if True, target is shuffled
+                              default: False
+        - stats (str)       : statistic to return across fold scores 
+                              ('mean' or 'median')  If None, all scores are 
+                              returned
+                              default: 'mean'
+        - error (str)       : error statistic to return across fold scores. If 
+                              None or if `stats` is None, no error statistic is 
+                              returned.('std' for std or q1-3 and 'sem' for 
+                              SEM or MAD, depending on the value or `stats`)
+                              default: 'std'
+        - class_weight (str): sklearn class_weight attribute
+                              default: 'balanced'
+        - n_jobs (int)      : number of CPUs to use (see sklearn)
+                              default: None
+        - model (str)       : model to use ('logreg' or 'svm')
+                              default: 'logreg'
+        - seed (int)        : seed or random state to pass to models
+                              default: None 
+
+    Returns:
+        if stats is None and error is None:
+        - sc (1D array): scores for each fold (accuracy or balanced accuracy if 
+                         class_weight is 'balanced')
+        elif only error is None:
+        - me (float)   : mean/median statistic across fold scores
+        else:
+        - me (float)   : mean/median statistic across fold scores
+        - err (float)  : std/SEM/q1-3/MAD across fold scores
+    """
+
+    if model == 'logreg':
+        clf = LogisticRegression(C=1, fit_intercept=True, 
+            class_weight=class_weight, penalty='l2', solver='lbfgs',
+            max_iter=1000, random_state=seed)
+    elif model == 'svm':
+        clf = SVC(C=1, kernel='linear', gamma='auto', 
+            class_weight=class_weight, random_state=seed)                    
+    else:
+        gen_util.accepted_values_error('model', model, ['logreg', 'svm'])
+
+    if scaler is not None:
+        clf = make_pipeline(scaler, clf)
+
+    # first dim must be trials
+    if shuffle:
+        np.random.shuffle(target)
+    
+    if cv < 3:
+        raise ValueError('`cv` must be at least 3.')
+    cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=seed)
+
+    scoring = None
+    if class_weight == 'balanced':
+        scoring = 'balanced_accuracy'
+
+    orig_warnings = warnings.filters
+    if shuffle:
+        # may not work if n_jobs > 1
+        warnings.filterwarnings('ignore', category=ConvergenceWarning)
+
+    sc = cross_val_score(
+        clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs)
+    
+    warnings.filters = orig_warnings
+
+    if stats is None:
+        return sc
+    else:
+        me = math_util.mean_med(sc, stats=stats)
+        if error is None:
+            return me
+        else:
+            err = math_util.error_stat(sc, stats=stats, error=error)
+            return me, err
 
