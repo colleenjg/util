@@ -819,15 +819,15 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
         if not rois_collapsed:
             fr_stats = math_util.get_stats(weights, stats, error, axes=1)
             plot_util.plot_traces(
-                by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, col='dimgrey', 
-                alpha=0.4)
+                by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, 
+                color='dimgrey', alpha=0.4)
         else:
             # plot each set of weights separately
             fr_stats = weights.T
             cols = ['dimgrey', 'grey']
             for f, fr_stat in enumerate(fr_stats):
                 plot_util.plot_traces(
-                    by_fr, xran, fr_stat, title=fr_title, col=cols[f])
+                    by_fr, xran, fr_stat, title=fr_title, color=cols[f])
 
         by_fr.axhline(y=0, ls='dashed', c='k', lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_fr.get_yticks()))
@@ -858,7 +858,7 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
         sorter = np.argsort(roi_stats[0])[::-1] # reverse sort
         plot_util.plot_traces(
             by_roi, roi_stats[0][sorter], xran_rois, roi_stats[1:][:, sorter], 
-            roi_title, col='dimgrey', alpha=0.4, errx=True)
+            roi_title, color='dimgrey', alpha=0.4, errx=True)
         by_roi.axvline(x=0, ls='dashed', c='k', lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_roi.get_xticks()))
         by_roi.set_xticks([-orig_tick_max, 0, orig_tick_max])
@@ -1023,7 +1023,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
             err = None
         leg = f'{class_name}{data_str} (n={ns[i]})'
         plot_util.plot_traces(ax_data, xran, cl_st[0], err, 
-            alpha=0.8/len(classes), label=leg, col=cols[i])
+            alpha=0.8/len(classes), label=leg, color=cols[i])
         cols[i] = ax_data.lines[-1].get_color()
 
     # plot weights as well

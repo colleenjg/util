@@ -215,7 +215,7 @@ def remove_idx(items, rem, axis=0):
 
     if isinstance(items, list):
         make_list = True
-        items     = np.asarray(items)
+        items     = np.asarray(items, dtype=object)
     else:
         make_list = False
 
