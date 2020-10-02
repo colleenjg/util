@@ -13,6 +13,7 @@ Note: this code uses python 3.7.
 
 import copy
 import glob
+import logging
 import os
 import pickle as pkl
 import re
@@ -32,18 +33,22 @@ from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.svm import SVC
 import torch
 
-from util import file_util, gen_util, math_util, plot_util
+from util import file_util, gen_util, logger_util, math_util, plot_util
+
+logger = logging.getLogger(__name__)
+
+TAB = '    '
 
 
 #############################################
-def catch_set_problem_decorator(function):
+def catch_set_problem(function):
     """
-    Decorator for optionally catching set size errors (in classifier calls), 
-    printing them and returning None instead of raising the error.
+    Wrapper for optionally catching set size errors (in classifier calls), 
+    logging them and returning None instead of raising the error.
 
     Optional args:
         - catch_set_prob (bool): if True, errors due to set problems are caught 
-                                 and printed. None is returned instead of the 
+                                 and logged. None is returned instead of the 
                                  normal function returns.
                                  default: False
     
@@ -64,7 +69,7 @@ def catch_set_problem_decorator(function):
             catch_phr = ['threshold', 'true labels', 'size', 'populated class']
             caught = sum(phr in str(err) for phr in catch_phr)
             if catch_set_prob and caught:
-                print(str(err))
+                logger.warning(str(err))
                 return None
             else:
                 raise err
@@ -72,6 +77,7 @@ def catch_set_problem_decorator(function):
     return wrapper
 
 
+#############################################
 #############################################
 class LogReg(torch.nn.Module):
     """
@@ -162,6 +168,32 @@ class weighted_BCE():
 
 
 #############################################
+#############################################
+def get_sklearn_verbosity():
+    """
+    get_sklearn_verbosity()
+
+    Returns a sklearn verbosity level based on the current logger level.
+
+    Returns:
+        - sklearn_verbose (int): a sklearn verbosity level
+    """
+
+    # get level 
+    level = logger.level
+    if level == 0:
+        level = logging.getLogger().level
+
+    if level <= logging.INFO:
+        sklearn_verbose = 3
+    elif level <= logging.WARNING:
+        sklearn_verbose = 1
+    else:
+        sklearn_verbose = 0
+
+    return sklearn_verbose
+
+
 #############################################
 def class_weights(train_classes):
     """
@@ -462,26 +494,27 @@ def run_dl(mod, dl, device, train=True):
 
 
 #############################################
-def print_loss(s, loss, logger=None):
+def log_loss(s, loss, logger=None):
     """
-    print_loss(s, loss)
+    log_loss(s, loss)
 
-    Prints or logs at info level loss for set to console.
+    Logs at info level loss for set to console.
     
     Required args:
         - s (str)     : set (e.g., 'train')
         - loss (num)  : loss score
     
     Optional args:
-        - logger (logger): logger to use. If logger is None, loss is printed to 
-                           console.
+        - logger (logger): logger to use. If logger is None, 
+                           loss is logged to root logger. 
+                           default: None
     """
 
-    print_str = f'    {s} loss: {loss:.4f}'
+    log_str = f'{s} loss: {loss:.4f}'
     if logger is None:
-        print(print_str)
+        logger.info(log_str, extra={'spacing': TAB})
     else:
-        logger.info(print_str)
+        logger.info(log_str, extra={'spacing': TAB})
 
 
 #############################################
@@ -556,7 +589,7 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
     Optional args:
         - dirname (str)      : directory in which to save models and dictionaries
                                default: '.'
-        - ep_freq (int)      : frequency at which to print loss to console
+        - ep_freq (int)      : frequency at which to log loss to console
                                default: 50
         - test_dl2_name (str): name of extra DataLoader
                                default: None
@@ -622,10 +655,10 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
         
         if ep % ep_freq == 0:
             logger.info(f'Epoch {ep}')
-            print_loss(
+            log_loss(
                 'train', scores.loc[ep_loc, 'train_loss'].tolist()[0], 
                 logger)
-            print_loss(
+            log_loss(
                 'val', scores.loc[ep_loc]['val_loss'].tolist()[0], 
                 logger)
     
@@ -652,7 +685,6 @@ def get_epoch_n_pt(dirname, model='best'):
         - ep (int): number of the requested epoch 
     """
 
-    warn_str='===> Warning: '
     ext_str = ''
     if model == 'best':
         ext_str = '_best'
@@ -662,7 +694,7 @@ def get_epoch_n_pt(dirname, model='best'):
         ep_ns = [int(re.findall(r'\d+', os.path.split(mod)[-1])[0]) 
             for mod in models]
     else:
-        print(f'{warn_str} No models were recorded.')
+        logger.warning('No models were recorded.')
         ep = None
         return ep
     
@@ -761,7 +793,8 @@ def load_checkpoint_pt(mod, filename):
     # updates their states.
     checkpt_name = os.path.split(filename)[-1]
     if os.path.isfile(filename):
-        print(f'\nLoading checkpoint found at \'{checkpt_name}\'')
+        logger.info(f'Loading checkpoint found at \'{checkpt_name}\'', 
+            extra={'spacing': '\n'})
         checkpoint = torch.load(filename)
         mod.load_state_dict(checkpoint['net'])
         mod.opt.load_state_dict(checkpoint['opt'])
@@ -1132,8 +1165,6 @@ def check_scores_pt(scores_df, best_ep, hyperpars):
                                   recorded.
     """
 
-    warn_str = '===> Warning: '
-
     ep_info = None
 
     if scores_df is not None:
@@ -1141,25 +1172,25 @@ def check_scores_pt(scores_df, best_ep, hyperpars):
         # was recorded as having lowest validation loss
         ep_rec = scores_df.count(axis=0)
         if min(ep_rec) < hyperpars['logregpar']['n_epochs']:
-            print(f'{warn_str} Only {min(ep_rec)} epochs were fully '
+            logger.warning(f'Only {min(ep_rec)} epochs were fully '
                 'recorded.')
         if max(ep_rec) > hyperpars['logregpar']['n_epochs']:
-            print(f'{warn_str} {max(ep_rec)} epochs were recorded.')
+            logger.warning(f'{max(ep_rec)} epochs were recorded.')
         if len(scores_df.loc[(scores_df['saved'] == 1)][
             'epoch_n'].tolist()) == 0:
-            print(f'{warn_str} No models were recorded in dataframe.')
+            logger.warning(f'No models were recorded in dataframe.')
         else:
             ep_df = scores_df.loc[(scores_df['saved'] == 1)]['epoch_n'].tolist()
             best_val = np.min(scores_df['val_loss'].tolist())
             ep_best = scores_df.loc[
                 (scores_df['val_loss'] == best_val)]['epoch_n'].tolist()[0]
             if ep_best != best_ep:
-                print(f'{warn_str} Best recorded model is actually epoch '
+                logger.warning(f'Best recorded model is actually epoch '
                     f'{ep_best}, but actual best model is {ep_df} based '
                     'on dataframe. Using dataframe one.')
             ep_info = scores_df.loc[(scores_df['epoch_n'] == ep_best)]
             if len(ep_info) != 1:
-                print(f'{warn_str} {len(ep_info)} lines found in dataframe '
+                logger.warning(f'{len(ep_info)} lines found in dataframe '
                     f'for epoch {ep_best}.')
 
     return ep_info
@@ -1173,7 +1204,7 @@ def get_scores(dirname='.', alg='sklearn'):
     Returns line from a saved score dataframe of the max epoch recorded,
     and saved hyperparameter dictionary. 
     
-    Prints a warning if no models are recorded or
+    Logs a warning if no models are recorded or
     the recorded model does not have a score recorded.
     
     Optional args:
@@ -1188,7 +1219,6 @@ def get_scores(dirname='.', alg='sklearn'):
         - hyperpars (dict)      : dictionary containing hyperparameters
     """
 
-    warn_str='===> Warning: '
     df_path = os.path.join(dirname, 'scores_df.csv')
     
     # get max epoch based on recorded model
@@ -1200,10 +1230,10 @@ def get_scores(dirname='.', alg='sklearn'):
     if os.path.exists(df_path):
         scores_df = file_util.loadfile(df_path)
     else:
-        print(f'{warn_str} No scores were recorded.')
+        logger.warning('No scores were recorded.')
         scores_df = None
         if alg == 'pytorch' and best_ep is not None:
-            print(f'{warn_str} Highest recorded model is for epoch {best_ep}, '
+            logger.warning(f'Highest recorded model is for epoch {best_ep}, '
                 'but no score is recorded.')
 
     hyperpars = file_util.loadfile('hyperparameters.json', dirname)
@@ -1661,8 +1691,8 @@ class ModData:
         return X
 
 
-@catch_set_problem_decorator
 #############################################
+@catch_set_problem
 def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar, 
                      scale=True, sample=False, split_test=False, seed=None,
                      parallel=False, max_size=9e7):
@@ -1732,8 +1762,8 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
             if n_jobs in [0, 1]:
                 n_jobs = None
         if n_jobs is None:
-            print('OOM error possibly upcoming as input data '
-                  f'size is {np.prod(input_data.shape)}.')
+            warnings.warn('OOM error possibly upcoming as input data '
+                  f'size is {np.prod(input_data.shape)}.', category=RuntimeWarning)
 
     extrapar = copy.deepcopy(extrapar)
     extrapar['loss_name'] = 'Weighted BCE loss with L2 reg'
@@ -1750,27 +1780,29 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     mod_pip = make_pipeline(scaler, mod)
 
-    orig_warnings = warnings.filters    
+    msgs, categs = [], []
     if extrapar['shuffle']:
-        print('\nWARNING: Reported training scores will be incorrect, as the '
-            'training dataset is not shuffled during final scoring step.\n')
+        logger.warning('Reported training scores are currently incorrect, as '
+            'the training dataset is not shuffled during final scoring step.')
         # also ignore convergence warnings (may not work if n_jobs > 1)
-        warnings.filterwarnings('ignore', category=ConvergenceWarning)
+        msgs = ['']
+        categs = [ConvergenceWarning]
 
-    mod_cvs = cross_validate(mod_pip, input_data, targ_data, cv=cv, 
+    # run cross validate while filtering specific warnings
+    wrapped_cross_val = gen_util.temp_filter_warnings(cross_validate)
+    mod_cvs = wrapped_cross_val(mod_pip, input_data, targ_data, cv=cv, 
         return_estimator=True, return_train_score=True, n_jobs=n_jobs, 
-        verbose=3, scoring=extrapar['scoring'])
-
-    warnings.filters = orig_warnings
+        verbose=get_sklearn_verbosity(), scoring=extrapar['scoring'], 
+        msgs=msgs, categs=categs)
 
     # correct the training set scoring, which is incorrectly evaluated
     # (no shuffling is done automatically during predict step).
     if extrapar['shuffle']:
         rescore_training_logreg_sk(
             mod_cvs, cv, input_data, targ_data, extrapar['scoring'], 
-            print_scores=True)
+            log_scores=True)
 
-    print('Training done.\n')
+    logger.info('Training done.\n')
 
     # Save models
     fullname = os.path.join(extrapar['dirname'], 'models.sav')
@@ -1782,7 +1814,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
 ############################################
 def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring, 
-                               print_scores=False):
+                               log_scores=False):
     """
     rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring)
 
@@ -1805,9 +1837,9 @@ def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring,
         - scoring (list)        : sklearn names of scores to use
 
     Optional args:
-        - print_scores (bool): if True, corrected training scores are printed 
-                               to console
-                               default: False
+        - log_scores (bool): if True, corrected training scores are logged 
+                             to console
+                             default: False
 
     Returns:
         - mod_cvs (dict)        : cross-validation dictionary with updated :
@@ -1823,23 +1855,24 @@ def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring,
         for score_type in scoring:
             sc = get_scorer(score_type)
             mod_cvs[f'train_{score_type}'][e] = sc(est, train_X, train_Y)
-    print('\nWARNING: Training scores for shuffled dataset recalculated '
+    logger.warning('Training scores for shuffled dataset recalculated '
         'correctly.')
 
-    if print_scores:
+    if log_scores:
         plus_minus = u'\u00B1' # +- symbol
 
-        print('Corrected training scores:')
+        logger.info('Corrected training scores:')
         for score_type in scoring:
             mean = np.mean(mod_cvs[f'train_{score_type}'])
             sem = np.std(mod_cvs[f'train_{score_type}'])
-            print(f'    {score_type}: {mean:.3f} ' + plus_minus + f' {sem:.3f}')
+            logger.info(f'{score_type}: {mean:.3f} ' + plus_minus + f' {sem:.3f}', 
+                extra={'spacing': TAB})
 
     return mod_cvs
 
 
-@catch_set_problem_decorator
 ############################################
+@catch_set_problem
 def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None, 
                       extra_name=None, extra_cv=None):
     """
@@ -2008,7 +2041,7 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
                 sc = mod_cvs[key]
                 scores[f'{set_name}_{sc_mod}'] = sc * sign
             else:
-                print(f'{key} score missing.')
+                logger.warning(f'{key} score missing.')
 
     for r in range(len(mod_cvs['estimator'])):
         epoch_n = mod_cvs['estimator'][r]['logisticregression'].n_iter_[0]
@@ -2093,16 +2126,17 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats='mean', error='std',
     if class_weight == 'balanced':
         scoring = 'balanced_accuracy'
 
-    orig_warnings = warnings.filters
+    msgs, categs = [], []
     if shuffle:
         # may not work if n_jobs > 1
-        warnings.filterwarnings('ignore', category=ConvergenceWarning)
+        msgs = ['']
+        categs = [ConvergenceWarning]
 
-    sc = cross_val_score(
-        clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs)
+    # run cross_val_score while filtering specific warnings
+    sc = gen_util.temp_filter_warnings(cross_val_score)(
+        clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs, 
+        msgs=msgs, categs=categs)
     
-    warnings.filters = orig_warnings
-
     if stats is None:
         return sc
     else:

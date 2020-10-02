@@ -12,12 +12,15 @@ Note: this code uses python 3.7.
 """
 
 import os
+import logging
 
 import numpy as np
 import torch
 import torch.utils.data
 
-from util import gen_util, math_util
+from util import gen_util, logger_util, math_util
+
+logger = logging.getLogger(__name__)
 
 
 #############################################
@@ -230,7 +233,7 @@ def checkprop(train_p, val_p=0, test_p=0):
 
     Checks that the proportions assigned to the sets are acceptable. Throws an
     error if proportions sum to greater than 1 or if a proportion is < 0. 
-    Prints a warning (no error) if the sum to less than 1.
+    Logs a warning (no error) if the sum to less than 1.
     
     Required args:
         - train_p (num): proportion of dataset assigned to training set
@@ -261,7 +264,7 @@ def checkprop(train_p, val_p=0, test_p=0):
     
         elif len(set_p) == 3:
         # if all values are given and sum != 1.0
-            print(f'WARNING: proportions given do not sum to 1. {prop_str}')
+            raise ValueError(f'Proportions given do not sum to 1. {prop_str}')
 
 
 #############################################

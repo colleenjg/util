@@ -19,11 +19,54 @@ import os
 import random
 import re
 import sys
+import warnings
 
 import numpy as np
 import pandas as pd
 
+from util import logger_util
 
+logger = logging.getLogger(__name__)
+
+
+#############################################
+def temp_filter_warnings(function):
+    """
+    Wrapper for temporarily filtering specific warnings.
+
+    Optional args:
+        - msgs (list)  : Beginning of message in the warning to filter. 
+                         Must be the same length as categs.
+                         default: []
+        - categs (list): Categories of the warning to filter. Must be 
+                         the same length as msgs.
+                         default: []    
+    """
+
+    def wrapper(*args, msgs=[], categs=[], **kwargs):
+        
+        msgs = list_if_not(msgs)
+        categs = list_if_not(categs)
+
+        if len(msgs) != len(categs):
+            raise ValueError('Must provide as many `msgs` as `categs`.')
+
+        orig_warnings = warnings.filters
+
+        for msg, categ in zip(msgs, categs):
+            warnings.filterwarnings('ignore', message=msg, category=categ)
+
+        returns = function(*args, **kwargs)
+
+        warnings.filters = orig_warnings
+
+        return returns
+
+
+    return wrapper
+
+
+#############################################
 #############################################
 def accepted_values_error(varname, wrong_val, accept_vals):
     """
@@ -386,7 +429,7 @@ def str_to_list(item_str, only_int=False):
 
 
 #############################################
-def seed_all(seed=None, device='cpu', print_seed=True, seed_now=True, 
+def seed_all(seed=None, device='cpu', log_seed=True, seed_now=True, 
              no_torch=False):
     """
     seed_all()
@@ -403,7 +446,7 @@ def seed_all(seed=None, device='cpu', print_seed=True, seed_now=True,
         - device (str)      : if 'cuda', torch.cuda, else if 'cpu', cuda is not
                               seeded
                               default: 'cpu'
-        - print_seed (bool) : if True, seed value is printed to the console
+        - log_seed (bool)   : if True, seed value is logged
                               default: True
         - seed_now (bool)   : if True, random number generators are seeded now
                               default: True
@@ -415,11 +458,11 @@ def seed_all(seed=None, device='cpu', print_seed=True, seed_now=True,
 
     if seed in [None, -1]:
         seed = random.randint(1, 10000)
-        if print_seed:
-            print(f'Random seed: {seed}')
+        if log_seed:
+            logger.info(f'Random seed: {seed}')
     else:
-        if print_seed:
-            print(f'Preset seed: {seed}')
+        if log_seed:
+            logger.info(f'Preset seed: {seed}')
     
     if seed_now:
         random.seed(seed)
@@ -708,67 +751,6 @@ def get_device(cuda=False, device=None):
             device = 'cpu'
 
     return device
-
-
-#############################################
-def get_logger(logtype='both', name='all logs', filename='logs.txt', 
-               fulldir='', level='info'):
-    """
-    get_logger()
-
-    Returns logger and handler(s).
-
-    Optional args:
-        - logtype (str) : type or types of handlers to add to logger 
-                          ('stream', 'file', 'both', 'none')
-                          default: 'both'
-        - name (str)    : logger name
-                          default: 'all logs'
-        - filename (str): name under which to save file handler, if it is 
-                          included
-                          default: 'logs.txt'
-        - fulldir (str) : path under which to save file handler, if it is
-                          included
-                          default: ''
-        - level (str)   : level of the handler ('info', 'error', 'warning', 
-                          'debug')
-                          default: 'info'
-        
-    Returns:
-        - logger (Logger): logger object
-    """
-
-
-    # create one instance
-    logger = logging.getLogger(name)
-    logger.handlers = []
-    
-    # create handlers
-    sh, fh = None, None
-    if logtype in ['stream', 'both']:
-        sh = logging.StreamHandler(sys.stdout)
-        logger.addHandler(sh)
-    if logtype in ['file', 'both']:
-        fh = logging.FileHandler(os.path.join(fulldir, filename))
-        logger.addHandler(fh)
-    all_types = ['file', 'stream', 'both', 'none']
-    if logtype not in all_types:
-        accepted_values_error('logtype', logtype, all_types)
-    
-    if level.lower() == 'info':
-        level = logging.INFO
-    elif level.lower() == 'error':
-        level = logging.ERROR
-    elif level.lower() == 'warning':
-        level = logging.WARNING
-    elif level.lower() == 'debug':
-        level = logging.DEBUG
-    else:
-        accepted_values_error(
-            'level', level, ['info', 'error', 'warning', 'debug'])
-    logger.setLevel(level)
-
-    return logger
 
 
 #############################################

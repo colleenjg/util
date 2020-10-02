@@ -1,16 +1,54 @@
+"""
+debug_util.py
+
+This module contains basic debugging tools.
+
+Authors: Colleen Gillon
+
+Date: October, 2018
+
+Note: this code uses python 3.7.
+
+"""
+
+import logging
 
 from matplotlib import pyplot as plt
 import numpy as np
 
-from util import plot_util
+from util import gen_util, logger_util, plot_util
+
+logger = logging.getLogger(__name__)
 
 
 #############################################
+def set_debug_mode(function):
+    """
+    Wrapper for temporarily setting logging level to debug 
+    while running a function.
+    """
+
+    def wrapper(*args, **kwargs):
+        prev_level = logger.level
+        logger.setLevel(logging.DEBUG)
+
+        returns = function(*args, **kwargs)
+
+        logger.setLevel(prev_level)
+
+        return returns
+
+    return wrapper
+
+
+#############################################
+#############################################
+@set_debug_mode
 def check_match(data1, data2, ret_diff=False):
     """
     check_match(data1, data2)
 
-    Returns whether two data arrays match, including NaN patterns. Prints a 
+    Returns whether two data arrays match, including NaN patterns. Logs a 
     warning if NaN patterns do not match. Optionally return indices of 
     different values.
 
@@ -34,7 +72,7 @@ def check_match(data1, data2, ret_diff=False):
 
     match = ((data1 == data2) | (np.isnan(data1) & np.isnan(data2)))
     if ~(np.isnan(data1) == np.isnan(data2)).all():
-        print(f'WARNING: Different NaN patterns.')
+        logger.debug('Different NaN patterns.')
     match_all = match.all()
     if ret_diff:
         diff_idx = np.where(~match)
@@ -44,6 +82,7 @@ def check_match(data1, data2, ret_diff=False):
     
 
 #############################################
+@set_debug_mode
 def calculate_data_diffs(data1, data2):
     """
     calculate_data_diffs(data1, data2)
@@ -75,11 +114,12 @@ def calculate_data_diffs(data1, data2):
     
 
 #############################################
-def match_print(match, names=None):
+@set_debug_mode
+def match_log(match, names=None):
     """
-    match_print(match)
+    match_log(match)
 
-    Print whether 2 named data arrays based on boolean input.
+    Logs whether 2 named data arrays based on boolean input.
 
     Required args:
         - match (bool): Whether data arrays match
@@ -95,18 +135,19 @@ def match_print(match, names=None):
         raise ValueError('If passing `names`, must pass 2 names.')
 
     if match:
-        print(f'{names[1].capitalize()} matches {names[0].lower()}.')
+        logger.debug(f'{names[1].capitalize()} matches {names[0].lower()}.')
     else:
-        print(f'WARNING: {names[1].capitalize()} does not exactly match '
+        logger.debug(f'{names[1].capitalize()} does not exactly match '
             f'{names[0].lower()}.')
 
 
 #############################################
-def print_max_diff(data1, data2, axis=0, axis_label='IDs'):
+@set_debug_mode
+def log_max_diff(data1, data2, axis=0, axis_label='IDs'):
     """
-    print_max_diff(data1, data2)
+    log_max_diff(data1, data2)
 
-    Prints indices of items that are different between 2 data arrays, along a
+    Logs indices of items that are different between 2 data arrays, along a
     specified axis, and well as the maximum absolute difference between data
     arrays.
 
@@ -125,12 +166,13 @@ def print_max_diff(data1, data2, axis=0, axis_label='IDs'):
     _, diff_idx = check_match(data1, data2, ret_diff=True)
     diff_items = [str(roi_n) for roi_n in sorted(set(diff_idx[axis]))]
     diff_items_str = ', '.join(diff_items)
-    print(f'Diff {axis_label}: {diff_items_str}')
+    logger.debug(f'Diff {axis_label}: {diff_items_str}')
     act_diff = (data2[diff_idx] - data1[diff_idx])
-    print(f'Max absolute diff: {np.nanmax(np.absolute(act_diff))}')
+    logger.debug(f'Max absolute diff: {np.nanmax(np.absolute(act_diff))}')
 
 
 #############################################
+@set_debug_mode
 def plot_diff_data(data1, data2, max=10, title=None, labels=None, 
                    xlabel=None, datatype=None):
     """
@@ -184,9 +226,9 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
     if n_not_zero == 0:
         n_nan = np.isnan(items_max_diffs).sum()
         if n_nan:
-            print(f'Differences in all {n_nan} {datatype} due to NaNs.')
+            logger.debug(f'Differences in all {n_nan} {datatype} due to NaNs.')
         else:
-            print(f'No {datatype} show differences.')
+            logger.debug(f'No {datatype} show differences.')
         return
 
     n_plot = np.min([max, n_not_zero])
@@ -198,7 +240,7 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
         len(item_max_diff_idx), figsize=figsize, squeeze=False, sharex=True)
 
     if not one_dim:
-        print(f'{n_plot}/{n_not_zero} {datatype} with greatest cumulative '
+        logger.debug(f'{n_plot}/{n_not_zero} {datatype} with greatest cumulative '
             'absolute differences shown')
 
     subtitle = ''
@@ -222,6 +264,7 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
 
 
 #############################################
+@set_debug_mode
 def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None, 
                       datatype=None):
     """
@@ -259,9 +302,9 @@ def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None,
     if len(non_zero_diffs) == 0:
         n_nan = np.isnan(non_zero_diffs).sum()
         if n_nan:
-            print(f'Differences in all {n_nan} {datatype} due to NaNs.')
+            logger.debug(f'Differences in all {n_nan} {datatype} due to NaNs.')
         else:
-            print(f'No {datatype} show differences.')
+            logger.debug(f'No {datatype} show differences.')
         return
 
     # set plotting parameters

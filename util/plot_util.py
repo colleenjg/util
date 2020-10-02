@@ -12,7 +12,9 @@ Note: this code uses python 3.7.
 """
 
 import copy
+import logging
 import os
+import warnings
 
 import matplotlib as mpl
 from matplotlib import font_manager as fm
@@ -21,24 +23,27 @@ from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
-from util import file_util, gen_util, math_util
+from util import file_util, gen_util, logger_util, math_util
 
+logger = logging.getLogger(__name__)
 
-LINCLAB_COLS={'blue'  : '#50a2d5', # Linclab blue
-              'red'   : '#eb3920', # Linclab red
-              'grey'  : '#969696', # Linclab grey
-              'green' : '#76bb4b', # Linclab green
-              'purple': '#9370db',
-              'orange': '#ff8c00',
-              'pink'  : '#bb4b76',
-              'yellow': '#e0b424',
-              'brown' : '#b04900',
-              }
+TAB = '    '
+
+LINCLAB_COLS = {'blue'  : '#50a2d5', # Linclab blue
+                'red'   : '#eb3920', # Linclab red
+                'grey'  : '#969696', # Linclab grey
+                'green' : '#76bb4b', # Linclab green
+                'purple': '#9370db',
+                'orange': '#ff8c00',
+                'pink'  : '#bb4b76',
+                'yellow': '#e0b424',
+                'brown' : '#b04900',
+                }
 
 
 #############################################
 def linclab_plt_defaults(font='Liberation Sans', fontdir=None, 
-                         print_fonts=False, example=False, dirname='', 
+                         log_fonts=False, example=False, dirname='', 
                          **cyc_args):
     """
     linclab_plt_defaults()
@@ -50,8 +55,8 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
                               default: 'Liberation Sans'
         - fontdir (str)     : directory to where extra fonts (.ttf) are stored
                               default: None
-        - print_fonts (bool): if True, an alphabetical list of available fonts 
-                              is printed
+        - log_fonts (bool)  : if True, an alphabetical list of available fonts 
+                              is logged
                               default: False
         - example (bool)    : if True, an example plot is created and saved
                               default: False
@@ -99,6 +104,8 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
     # add new fonts to list if a font directory is provided
     if fontdir and os.path.exists(fontdir):
         fontdirs = [fontdir, ]
+        # prevent a long stream of debug messages
+        logging.getLogger('matplotlib.font_manager').disabled = True
         font_files = fm.findSystemFonts(fontpaths=fontdirs)
         for font_file in font_files:
             fm.fontManager.addfont(font_file)
@@ -106,12 +113,13 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
     # list of available fonts
     all_fonts = list(set([f.name for f in fm.fontManager.ttflist]))
 
-    # print list of fonts, if requested
-    if print_fonts:
-        print('Available fonts:')
+    # log list of fonts, if requested
+    if log_fonts:
+        font_log = 'Available fonts:'
         sorted_fonts = sorted(all_fonts)
         for font in sorted_fonts:
-            print(f'    {font}')
+            font_log = f'{font_log}\n{TAB}{font}'
+        logger.info(font_log)
     
     # check whether requested font is available, otherwise warn that
     # default will be used.
@@ -125,8 +133,8 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
         elif f == len(font) - 1:
             font_fam = plt.rcParams['font.family'][0]
             def_font = plt.rcParams[f'font.{font_fam}'][0]
-            print(f'Warning: Desired font ({font}) not found, so default '
-                f'({def_font}) will be used instead.\n')
+            warnings.warn(f'Desired font ({font}) not found, so '
+                f'default ({def_font}) will be used instead.')
         f = f + 1
 
     # update pyplot parameters
@@ -655,7 +663,7 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
 
 #############################################
 def savefig(fig, savename, fulldir='', datetime=True, use_dt=None, 
-            fig_ext='svg', overwrite=False, print_dir=True, **savefig_kw):
+            fig_ext='svg', overwrite=False, log_dir=True, **savefig_kw):
     """
     savefig(fig, savename)
 
@@ -680,7 +688,7 @@ def savefig(fig, savename, fulldir='', datetime=True, use_dt=None,
         - overwrite (bool): if False, overwriting existing figures is prevented 
                             by adding suffix numbers.
                             default: False        
-        - print_dir (bool): if True, the save directory is printed 
+        - log_dir (bool)  : if True, the save directory is logged 
                             default: True
 
     Kewyord args:
@@ -701,7 +709,7 @@ def savefig(fig, savename, fulldir='', datetime=True, use_dt=None,
             fulldir = os.path.join(fulldir, datetime)
 
     # create directory if doesn't exist
-    file_util.createdir(fulldir, print_dir=False)
+    file_util.createdir(fulldir, log_dir=False)
 
     if fig is not None:
         # get extension and savename
@@ -712,8 +720,9 @@ def savefig(fig, savename, fulldir='', datetime=True, use_dt=None,
 
         fig.savefig(os.path.join(fulldir, fullname), **savefig_kw)
         
-        if print_dir:
-            print(f'\nFigures saved under {fulldir}.')
+        if log_dir:
+            logger.info(f'Figures saved under {fulldir}.', 
+                extra={'spacing': '\n'})
             
     return fulldir
 
@@ -1058,7 +1067,7 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color='k', lw=0,
             sub_ax.axvspan(st, e, alpha=alpha, color=color, lw=lw, 
                            **axspan_kw)
         if width is not None:
-            print('Cannot specify both end and width. Using end.')
+            warnings.warn('Cannot specify both end and width. Using end.')
     else:
         for st in start:
             sub_ax.axvspan(st, st + width, alpha=alpha, color=color, lw=lw, 

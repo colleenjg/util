@@ -12,13 +12,18 @@ Note: this code uses python 3.7.
 """
 
 import copy
+import logging
 import re
 
 import numpy as np
 import scipy.ndimage as scn
 import scipy.stats as scist
 
-from util import gen_util
+from util import gen_util, logger_util
+
+logger = logging.getLogger(__name__)
+
+TAB = '    '
 
 
 #############################################
@@ -313,11 +318,11 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
 
 
 #############################################
-def print_stats(stats, stat_str=None, ret_str_only=False):
+def log_stats(stats, stat_str=None, ret_str_only=False):
     """
-    print_stats(stats)
+    log_stats(stats)
 
-    Prints the statistics.
+    Logs the statistics.
 
     Required args:
         - stats (array-like): stats, structured as [me, err]
@@ -325,7 +330,7 @@ def print_stats(stats, stat_str=None, ret_str_only=False):
     Optional args:
         - stat_str (str)     : string associated with statistics
                                default: None
-        - ret_str_only (bool): if True, string is returned instead of printed
+        - ret_str_only (bool): if True, string is returned instead of being logged
                                default: False
     
     Returns:
@@ -349,7 +354,7 @@ def print_stats(stats, stat_str=None, ret_str_only=False):
     if ret_str_only:
         return full_stat_str
     else:
-        print(full_stat_str)
+        logger.info(full_stat_str)
         
 
 #############################################
@@ -1051,8 +1056,8 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                 perm = False
 
         except AssertionError as err:
-            print(err)
-            print('Doing permutations in smaller batches.')
+            logger.warning(err)
+            logger.warning('Doing permutations in smaller batches.')
             # retrieve fold from error message.
             err_fold_str = str(err)[str(err).find('by '):]
             fold = int(re.findall('\d+', err_fold_str)[0])
@@ -1064,11 +1069,11 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
 
 
 #############################################
-def print_elem_list(elems, tail='up', act_vals=None):
+def log_elem_list(elems, tail='up', act_vals=None):
     """
-    print_elem_list(rand_vals, act_vals)
+    log_elem_list(rand_vals, act_vals)
 
-    Print numbers of elements showing significant difference in a specific tail,
+    Logs numbers of elements showing significant difference in a specific tail,
     and optionally their actual values.
 
     Required args:
@@ -1079,19 +1084,21 @@ def print_elem_list(elems, tail='up', act_vals=None):
                                default: 'up'
         - act_vals (1D array): array of actual values corresponding to elems 
                                (same length). If None, actual values are not 
-                               printed.
+                               logged.
     """
 
     if len(elems) == 0:
-        print(f'\tSignif {tail}: None')
+        logger.info(f'Signif {tail}: None', extra={'spacing': f'{TAB}{TAB}'})
     else:
-        print('\tSignif {}: {}'.format(tail, ', '.join(f'{x}' for x in elems)))
+        elems_pr = ', '.join(f'{x}' for x in elems)
+        logger.info(f'Signif {tail}: {elems_pr}', extra={'spacing': f'{TAB}{TAB}'})
         if act_vals is not None:
             if len(act_vals) != len(elems):
                 raise ValueError('`elems` and `act_vals` should be the '
                     f'same length, but are of length {len(elems)} and '
                     f'{len(act_vals)} respectively.')
-            print('\tVals: {}'.format(', '.join([f'{x:.2f}' for x in act_vals])))   
+            vals_pr = ', '.join([f'{x:.2f}' for x in act_vals])
+            logger.info(f'Vals: {vals_pr}', extra={'spacing': f'{TAB}{TAB}'})
 
 
 #############################################
@@ -1121,14 +1128,14 @@ def lin_interp_nan(data_arr):
 
 #############################################    
 def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100, 
-            print_elems=False, ret_th=False, nanpol='omit'):
+            log_elems=False, ret_th=False, nanpol='omit'):
     """
     id_elem(rand_vals, act_vals)
 
     Returns elements whose actual values are beyond the threshold(s) obtained 
     with distributions of randomly generated values. 
     Optionally also returns the threshold(s) for each element.
-    Optionally also prints significant element indices and their values.
+    Optionally also logs significant element indices and their values.
 
     Required args:
         - rand_vals (2D array): random values for each element: elem x val
@@ -1145,8 +1152,8 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
         - min_n (int)       : minimum number of values required outside of the 
                               CI
                               default: 100
-        - print_elems (bool): if True, the indices of significant elements and
-                              their actual values are printed
+        - log_elems (bool)  : if True, the indices of significant elements and
+                              their actual values are logged
                               default: False
         - ret_th (bool)     : if True, thresholds are returned for each element
                               default: False
@@ -1199,23 +1206,23 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
     if tails == 'lo':
         threshs = np.percentile(rand_vals, p_val*100, axis=-1)
         elems = np.where(act_vals < threshs)[0]
-        if print_elems:
-            print_elem_list(elems, 'lo', act_vals[elems])
+        if log_elems:
+            log_elem_list(elems, 'lo', act_vals[elems])
         elems = elems.tolist()
     elif tails == 'up':
         threshs = np.percentile(rand_vals, 100-p_val*100, axis=-1)
         elems = np.where(act_vals > threshs)[0]
-        if print_elems:
-            print_elem_list(elems, 'up', act_vals[elems])
+        if log_elems:
+            log_elem_list(elems, 'up', act_vals[elems])
         elems = elems.tolist()
     elif str(tails) == '2':
         lo_threshs = np.percentile(rand_vals, p_val*100/2., axis=-1)
         lo_elems = np.where(act_vals < lo_threshs)[0]
         up_threshs = np.percentile(rand_vals, 100-p_val*100/2., axis=-1)
         up_elems = np.where(act_vals > up_threshs)[0]
-        if print_elems:
-            print_elem_list(lo_elems, 'lo', act_vals[lo_elems])
-            print_elem_list(up_elems, 'up', act_vals[up_elems])
+        if log_elems:
+            log_elem_list(lo_elems, 'lo', act_vals[lo_elems])
+            log_elem_list(up_elems, 'up', act_vals[up_elems])
         elems = [lo_elems.tolist(), up_elems.tolist()]
     else:
         gen_util.accepted_values_error('tails', tails, ['up', 'lo', '2'])

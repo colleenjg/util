@@ -13,13 +13,16 @@ Note: this code uses python 3.7.
 
 import glob
 import json
-import os.path
+import logging
+import os
 import pickle
 import sys
 
 import pandas as pd
 
-from util import gen_util
+from util import gen_util, logger_util
+
+logger = logging.getLogger(__name__)
 
 
 #############################################
@@ -167,7 +170,7 @@ def glob_depth(direc, pattern, depth=0):
 
 
 #############################################
-def rename_files(direc, pattern, replace='', depth=0, verbose=True, 
+def rename_files(direc, pattern, replace='', depth=0, log=True, 
                  dry_run=False):
     """
     rename_files(direc, pattern)
@@ -184,25 +187,25 @@ def rename_files(direc, pattern, replace='', depth=0, verbose=True,
                           default: ''
         - depth (int)   : depth at which to search for pattern
                           default: 0
-        - verbose (bool): if True, print old and new names of each renamed file 
+        - log (bool)    : if True, logs old and new names of each renamed file 
                           default: True
-        - dry_run (bool : if True, runs a dry run printing old and new names
+        - dry_run (bool : if True, runs a dry run logging old and new names
                           default: False
     """
 
     change_paths = glob_depth(direc, pattern, depth=depth)
 
     if len(change_paths) == 0:
-        print('No pattern matches found.')
+        logger.info('No pattern matches found.')
         return
 
     if dry_run:
-        print('DRY RUN ONLY')
+        logger.info('DRY RUN ONLY')
 
     for change_path in change_paths:
         new_path_name = change_path.replace(pattern, replace)
-        if verbose or dry_run:
-            print(f'\n{change_path} -> {new_path_name}')
+        if log or dry_run:
+            logger.info(f'{change_path} -> {new_path_name}', extra={'spacing': '\n'})
         if not dry_run:
             os.rename(change_path, new_path_name)
 
@@ -280,7 +283,7 @@ def saveinfo(saveobj, savename='info', fulldir='', save_as='pickle',
 
 
     # create directory if it doesn't exist
-    createdir(fulldir, print_dir=False)
+    createdir(fulldir, log_dir=False)
     
     # get extension and savename
     savename, ext = add_ext(savename, save_as) 
@@ -321,7 +324,7 @@ def checkdir(dirname):
 
 
 #############################################
-def createdir(dirname, unique=False, print_dir=True):
+def createdir(dirname, unique=False, log_dir=True):
     """
     createdir(dirname)
 
@@ -333,11 +336,12 @@ def createdir(dirname, unique=False, print_dir=True):
                                  e.g. ['dir', 'subdir', 'subsubdir']
 
     Optional args:
-        - unique (bool)   : if True, ensures that a new directory is created by  
-                            adding a suffix, e.g. '_1' if necessary
-                            default: False
-        - print_dir (bool): if True, the name of the created directory is 
-                            printed
+        - unique (bool) : if True, ensures that a new directory is created by  
+                          adding a suffix, e.g. '_1' if necessary
+                          default: False
+        - log_dir (bool): if True, the name of the created directory is 
+                          logged
+                          default: True
 
     Returns:
         - dirname (str): name of new directory
@@ -359,8 +363,8 @@ def createdir(dirname, unique=False, print_dir=True):
         except OSError:
             pass
 
-    if print_dir:
-        print(f'Directory: {dirname}')
+    if log_dir:
+        logger.info(f'Directory: {dirname}')
 
     return dirname
 
