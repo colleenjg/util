@@ -56,7 +56,7 @@ class CustomDs(torch.utils.data.TensorDataset):
         self.n_samples = self.data.shape[0]
 
         if self.targets is not None and (len(self.data) != len(self.targets)):
-            raise ValueError('data and targets must be of the same length.')
+            raise ValueError("data and targets must be of the same length.")
     
     def __len__(self):
         """
@@ -116,7 +116,7 @@ def bal_classes(data, targets):
     
 
     if len(data) != len(targets):
-        raise ValueError('data and targets must be of the same length.')
+        raise ValueError("data and targets must be of the same length.")
 
     cl_n   = np.unique(targets).tolist()
     counts = np.unique(targets, return_counts=True)[1]
@@ -197,8 +197,8 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
             for s, set_n in enumerate(set_ns):
                 if [train_idx, val_idx, test_idx][s] != 0 and thresh_cl != 0:
                     if set_n < thresh_cl:
-                        raise ValueError('Sets cannot meet the threshold '
-                            'requirement.')
+                        raise ValueError("Sets cannot meet the threshold "
+                            "requirement.")
             train_idx.extend(cl_mixed_idx[0 : set_ns[0]])
             val_idx.extend(cl_mixed_idx[set_ns[0] : set_ns[0] + set_ns[1]])
             test_idx.extend(cl_mixed_idx[set_ns[0] + set_ns[1] : 
@@ -246,25 +246,25 @@ def checkprop(train_p, val_p=0, test_p=0):
     """
 
     set_p = [[x, y] for x, y in zip([train_p, val_p, test_p], 
-        ['train_p', 'val_p', 'test_p'])]
+        ["train_p", "val_p", "test_p"])]
     
     sum_p = sum(list(zip(*set_p))[0])
     min_p = min(list(zip(*set_p))[0])
 
     # raise error if proportions sum to > 1 or if a proportion is < 0.
     if sum_p != 1.0 or min_p < 0.0:
-        props = [f'\n{y}: {x}' for x, y in set_p]
-        prop_str = '{}\nsum_p: {}'.format(''.join(props), sum_p)
+        props = [f"\n{y}: {x}" for x, y in set_p]
+        prop_str = "{}\nsum_p: {}".format("".join(props), sum_p)
         
         if min_p < 0.0:
-            raise ValueError(f'Proportions must not be < 0. {prop_str}')
+            raise ValueError(f"Proportions must not be < 0. {prop_str}")
 
         elif sum_p > 1.0:
-            raise ValueError(f'Proportions must not sum to > 1. {prop_str}')
+            raise ValueError(f"Proportions must not sum to > 1. {prop_str}")
     
         elif len(set_p) == 3:
         # if all values are given and sum != 1.0
-            raise ValueError(f'Proportions given do not sum to 1. {prop_str}')
+            raise ValueError(f"Proportions given do not sum to 1. {prop_str}")
 
 
 #############################################
@@ -330,11 +330,11 @@ def split_idx(n, train_p=0.75, val_p=None, test_p=None, thresh_set=10,
 
     # raise error if val or test n is below threshold (unless prop is 0)
     for set_n, set_p, name in zip(
-        [val_n, test_n], [val_p, test_p], ['val n', 'test n']):
+        [val_n, test_n], [val_p, test_p], ["val n", "test n"]):
         if set_n < thresh_set:
             if set_p != 0:
-                raise ValueError(f'{name} is {set_n} (below threshold '
-                    f'of {thresh_set})')
+                raise ValueError(f"{name} is {set_n} (below threshold "
+                    f"of {thresh_set})")
 
     train_idx, val_idx, test_idx = data_indices(
         n, train_n, val_n, test_n, targets, thresh_cl, strat_cl)
@@ -415,7 +415,7 @@ def init_dl(data, targets=None, batchsize=200, shuffle=False):
 
 
 #############################################
-def scale_datasets(set_data, sc_dim='all', sc_type='min_max', extrem='reg', 
+def scale_datasets(set_data, sc_dim="all", sc_type="min_max", extrem="reg", 
                    mult=1.0, shift=0.0, sc_facts=None):
     """
     scale_datasets(set_data)
@@ -428,21 +428,21 @@ def scale_datasets(set_data, sc_dim='all', sc_type='min_max', extrem='reg',
     
     Optional args:
         - sc_dim (int)    : data array dimension along which to scale 
-                            data ('last', 'all')
-                            default: 'all'
+                            data ("last", "all")
+                            default: "all"
         - sc_type (str)   : type of scaling to use
-                            'min_max'  : (data - min)/(max - min)
-                            'scale'    : (data - 0.0)/std
-                            'stand'    : (data - mean)/std
-                            'stand_rob': (data - median)/IQR (75-25)
-                            'center'   : (data - mean)/1.0
-                            'unit'     : (data - 0.0)/abs(mean)
-                            default: 'min_max'
+                            "min_max"  : (data - min)/(max - min)
+                            "scale"    : (data - 0.0)/std
+                            "stand"    : (data - mean)/std
+                            "stand_rob": (data - median)/IQR (75-25)
+                            "center"   : (data - mean)/1.0
+                            "unit"     : (data - 0.0)/abs(mean)
+                            default: "min_max"
         - extrem (str)    : only needed if min_max  or stand_rob scaling is 
                             used. 
-                            'reg': the minimum and maximum (min_max) or 
+                            "reg": the minimum and maximum (min_max) or 
                                    25-75 IQR of the data are used 
-                            'perc': the 5th and 95th percentiles are used as 
+                            "perc": the 5th and 95th percentiles are used as 
                                     min and max respectively (robust to 
                                     outliers)
         - mult (num)      : value by which to multiply scaled data
@@ -473,12 +473,12 @@ def scale_datasets(set_data, sc_dim='all', sc_type='min_max', extrem='reg',
     new = False
     if sc_facts is None:
         new = True
-        if sc_dim == 'all':
+        if sc_dim == "all":
             data_flat = set_data[0].reshape([-1]).numpy()
-        elif sc_dim == 'last':
+        elif sc_dim == "last":
             data_flat = set_data[0].reshape([-1, set_data[0].shape[-1]]).numpy()
         else:
-            gen_util.accepted_values_error('sc_dim', sc_dim, ['all', 'last'])
+            gen_util.accepted_values_error("sc_dim", sc_dim, ["all", "last"])
         sc_facts = math_util.scale_facts(
             data_flat, 0, sc_type=sc_type, extrem=extrem, mult=mult, shift=shift)
 
@@ -499,7 +499,7 @@ def scale_datasets(set_data, sc_dim='all', sc_type='min_max', extrem='reg',
 
 #############################################
 def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None, 
-               sc_dim='none', sc_type=None, extrem='reg', mult=1.0, shift=0.0, 
+               sc_dim="none", sc_type=None, extrem="reg", mult=1.0, shift=0.0, 
                shuffle=False, batchsize=200, thresh_set=5, thresh_cl=2, 
                strat_cl=True, train_shuff=True):
     """
@@ -534,21 +534,21 @@ def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None,
                               and val_p.
                               default: None
         - sc_dim (int)      : data array dimension along which to scale 
-                              data ('last', 'all')
-                              default: 'all'
+                              data ("last", "all")
+                              default: "all"
         - sc_type (str)     : type of scaling to use
-                              'min_max'  : (data - min)/(max - min)
-                              'scale'    : (data - 0.0)/std
-                              'stand'    : (data - mean)/std
-                              'stand_rob': (data - median)/IQR (75-25)
-                              'center'   : (data - mean)/1.0
-                              'unit'     : (data - 0.0)/abs(mean)
-                              default: 'min_max'
+                              "min_max"  : (data - min)/(max - min)
+                              "scale"    : (data - 0.0)/std
+                              "stand"    : (data - mean)/std
+                              "stand_rob": (data - median)/IQR (75-25)
+                              "center"   : (data - mean)/1.0
+                              "unit"     : (data - 0.0)/abs(mean)
+                              default: "min_max"
         - extrem (str)      : only needed if min_max  or stand_rob scaling is 
                               used. 
-                              'reg': the minimum and maximum (min_max) or 
+                              "reg": the minimum and maximum (min_max) or 
                                      25-75 IQR of the data are used 
-                              'perc': the 5th and 95th percentiles are used as 
+                              "perc": the 5th and 95th percentiles are used as 
                                       min and max respectively (robust to 
                                       outliers)
         - mult (num)        : value by which to multiply scaled data
@@ -612,7 +612,7 @@ def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None,
     if targets is not None:
         set_targets = split_data(targets, set_idxs)
 
-    if sc_dim not in ['None', 'none']:
+    if sc_dim not in ["None", "none"]:
         set_data, sc_facts = scale_datasets(
             set_data, sc_dim, sc_type, extrem, mult, shift)
         returns.append(sc_facts)
@@ -697,7 +697,7 @@ def window_1d(data, win_leng, step_size=1, writeable=False):
     Returns original data array with updated stride view to be interpreted
     as a 2D array with the original data split into windows.
 
-    Note: Uses 'numpy.lib.stride_tricks.as_strided' function to allow
+    Note: Uses "numpy.lib.stride_tricks.as_strided" function to allow
     windowing without copying the data. May lead to unexpected behaviours
     when using functions on the new array. 
     See: https://docs.scipy.org/doc/numpy/reference/generated/
@@ -741,7 +741,7 @@ def window_2d(data, win_leng, step_size=1, writeable=False):
     as a 3D array with the original data split into windows along the first
     dimension.
 
-    Note: Uses 'numpy.lib.stride_tricks.as_strided' function to allow
+    Note: Uses "numpy.lib.stride_tricks.as_strided" function to allow
     windowing without copying the data. May lead to unexpected behaviours
     when using functions on the new array. 
     See: https://docs.scipy.org/doc/numpy/reference/generated/

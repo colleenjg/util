@@ -27,23 +27,23 @@ from util import file_util, gen_util, logger_util, math_util
 
 logger = logging.getLogger(__name__)
 
-TAB = '    '
+TAB = "    "
 
-LINCLAB_COLS = {'blue'  : '#50a2d5', # Linclab blue
-                'red'   : '#eb3920', # Linclab red
-                'grey'  : '#969696', # Linclab grey
-                'green' : '#76bb4b', # Linclab green
-                'purple': '#9370db',
-                'orange': '#ff8c00',
-                'pink'  : '#bb4b76',
-                'yellow': '#e0b424',
-                'brown' : '#b04900',
+LINCLAB_COLS = {"blue"  : "#50a2d5", # Linclab blue
+                "red"   : "#eb3920", # Linclab red
+                "grey"  : "#969696", # Linclab grey
+                "green" : "#76bb4b", # Linclab green
+                "purple": "#9370db",
+                "orange": "#ff8c00",
+                "pink"  : "#bb4b76",
+                "yellow": "#e0b424",
+                "brown" : "#b04900",
                 }
 
 
 #############################################
-def linclab_plt_defaults(font='Liberation Sans', fontdir=None, 
-                         log_fonts=False, example=False, dirname='', 
+def linclab_plt_defaults(font="Liberation Sans", fontdir=None, 
+                         log_fonts=False, example=False, dirname="", 
                          **cyc_args):
     """
     linclab_plt_defaults()
@@ -52,7 +52,7 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
 
     Optional args:
         - font (str or list): font to use, or list in order of preference
-                              default: 'Liberation Sans'
+                              default: "Liberation Sans"
         - fontdir (str)     : directory to where extra fonts (.ttf) are stored
                               default: None
         - log_fonts (bool)  : if True, an alphabetical list of available fonts 
@@ -62,50 +62,51 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
                               default: False
         - dirname (str)     : directory in which to save example if example is 
                               True 
-                              default: ''
+                              default: ""
 
     Kewyord args:
         - cyc_args (dict): keyword arguments for plt.cycler()
     """
 
-    col_order = ['blue', 'red', 'grey', 'green', 'purple', 'orange', 'pink', 
-                 'yellow', 'brown']
+    col_order = ["blue", "red", "grey", "green", "purple", "orange", "pink", 
+                 "yellow", "brown"]
     colors = [get_color(key) for key in col_order] 
     col_cyc = plt.cycler(color=colors)
 
     # set pyplot params
-    params = {'axes.labelsize'       : 'xx-large', # xx-large axis labels
-              'axes.linewidth'       : 1.5,        # thicker axis lines
-              'axes.prop_cycle'      : col_cyc,    # line color cycle
-              'axes.spines.right'    : False,      # no axis spine on right
-              'axes.spines.top'      : False,      # no axis spine at top
-              'axes.titlesize'       : 'x-large',  # x-large axis title
-              'errorbar.capsize'     : 4,          # errorbar cap length
-              'figure.titlesize'     : 'x-large',  # x-large figure title
-              'figure.autolayout'    : True,       # adjusts layout
-              'font.size'            : 12,         # basic font size value
-              'legend.fontsize'      : 'x-large',  # x-large legend text
-              'lines.dashed_pattern' : [8.0, 4.0], # longer dashes
-              'lines.linewidth'      : 2.5,        # thicker lines
-              'lines.markeredgewidth': 2.5,        # thick marker edge widths 
+    params = {"axes.labelsize"       : "xx-large", # xx-large axis labels
+              "axes.linewidth"       : 1.5,        # thicker axis lines
+              "axes.prop_cycle"      : col_cyc,    # line color cycle
+              "axes.spines.right"    : False,      # no axis spine on right
+              "axes.spines.top"      : False,      # no axis spine at top
+              "axes.titlesize"       : "x-large",  # x-large axis title
+              "errorbar.capsize"     : 4,          # errorbar cap length
+              "figure.titlesize"     : "x-large",  # x-large figure title
+              "figure.autolayout"    : True,       # adjusts layout
+              "font.size"            : 12,         # basic font size value
+              "legend.fontsize"      : "x-large",  # x-large legend text
+              "lines.dashed_pattern" : [8.0, 4.0], # longer dashes
+              "lines.linewidth"      : 2.5,        # thicker lines
+              "lines.markeredgewidth": 2.5,        # thick marker edge widths 
                                                    # (e.g., cap thickness) 
-              'lines.markersize'     : 10,         # bigger markers
-              'patch.linewidth'      : 2.5,        # thicker lines for patches
-              'savefig.format'       : 'svg',      # figure save format
-              'savefig.bbox'         : 'tight',    # tight cropping of figure
-              'xtick.labelsize'      : 'x-large',  # x-large x-tick labels
-              'xtick.major.size'     : 8.0,        # longer x-ticks
-              'xtick.major.width'    : 2.0,        # thicker x-ticks
-              'ytick.labelsize'      : 'x-large',  # x-large y-tick labels
-              'ytick.major.size'     : 8.0,        # longer y-ticks
-              'ytick.major.width'    : 2.0,        # thicker y-ticks
+              "lines.markersize"     : 10,         # bigger markers
+              "patch.linewidth"      : 2.5,        # thicker lines for patches
+              "savefig.format"       : "svg",      # figure save format
+              "savefig.bbox"         : "tight",    # tight cropping of figure
+              "xtick.labelsize"      : "x-large",  # x-large x-tick labels
+              "xtick.major.size"     : 8.0,        # longer x-ticks
+              "xtick.major.width"    : 2.0,        # thicker x-ticks
+              "ytick.labelsize"      : "x-large",  # x-large y-tick labels
+              "ytick.major.size"     : 8.0,        # longer y-ticks
+              "ytick.major.width"    : 2.0,        # thicker y-ticks
               }
+
 
     # add new fonts to list if a font directory is provided
     if fontdir and os.path.exists(fontdir):
         fontdirs = [fontdir, ]
         # prevent a long stream of debug messages
-        logging.getLogger('matplotlib.font_manager').disabled = True
+        logging.getLogger("matplotlib.font_manager").disabled = True
         font_files = fm.findSystemFonts(fontpaths=fontdirs)
         for font_file in font_files:
             fm.fontManager.addfont(font_file)
@@ -115,10 +116,10 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
 
     # log list of fonts, if requested
     if log_fonts:
-        font_log = 'Available fonts:'
+        font_log = "Available fonts:"
         sorted_fonts = sorted(all_fonts)
         for font in sorted_fonts:
-            font_log = f'{font_log}\n{TAB}{font}'
+            font_log = f"{font_log}\n{TAB}{font}"
         logger.info(font_log)
     
     # check whether requested font is available, otherwise warn that
@@ -128,13 +129,13 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
     f = 0
     while set_font and f < len(font):
         if font[f] in all_fonts:
-            params['font.family'] = font
+            params["font.family"] = font[f]
             set_font = False
         elif f == len(font) - 1:
-            font_fam = plt.rcParams['font.family'][0]
-            def_font = plt.rcParams[f'font.{font_fam}'][0]
-            warnings.warn(f'Desired font ({font}) not found, so '
-                f'default ({def_font}) will be used instead.')
+            font_fam = plt.rcParams["font.family"][0]
+            def_font = plt.rcParams[f"font.{font_fam}"][0]
+            warnings.warn(f"Desired font ({font}) not found, so "
+                f"default ({def_font}) will be used instead.")
         f = f + 1
 
     # update pyplot parameters
@@ -150,12 +151,12 @@ def linclab_plt_defaults(font='Liberation Sans', fontdir=None,
             np.asarray(list(range(-n_col, 0)))[np.newaxis, :]
         ax.plot(x, y)
         ax.legend(colors)
-        ax.set_xlabel('X axis')
-        ax.set_ylabel('Y axis')
-        ax.set_title('Example plot')
-        ax.axvline(x=1, ls='dashed', c='k')
+        ax.set_xlabel("X axis")
+        ax.set_ylabel("Y axis")
+        ax.set_title("Example plot")
+        ax.axvline(x=1, ls="dashed", c="k")
         
-        fig.savefig(os.path.join(dirname, 'example_plot'))
+        fig.savefig(os.path.join(dirname, "example_plot"))
 
 
 #############################################
@@ -176,7 +177,7 @@ def linclab_colormap(nbins=100, gamma=1.0):
         - cmap (colormap): a matplotlib colormap
     """
 
-    colors = [get_color('blue'), "#ffffff", get_color('red')]
+    colors = [get_color("blue"), "#ffffff", get_color("red")]
 
     # convert to RGB
     rgb_col = [[] for _ in range(len(colors))]
@@ -186,13 +187,13 @@ def linclab_colormap(nbins=100, gamma=1.0):
             rgb_col[c].append(ch_val)
 
     cmap = mpl.colors.LinearSegmentedColormap.from_list(
-        'linclab_byr', rgb_col, N=nbins, gamma=gamma)
+        "linclab_byr", rgb_col, N=nbins, gamma=gamma)
 
     return cmap
 
 
 #############################################
-def get_color(col='red', ret='single'):
+def get_color(col="red", ret="single"):
     """
     get_color()
 
@@ -200,67 +201,67 @@ def get_color(col='red', ret='single'):
 
     Optional args:
         - col (str): color for which to return info
-                     default: 'red'
+                     default: "red"
         - ret (str): type of information to return for color
-                     default: 'single'
+                     default: "single"
 
     Returns:
-        if ret == 'single' or 'both':
+        if ret == "single" or "both":
         - single (str)   : single hex code corresponding to requested color
-        if ret == 'col_ends' or 'both':
+        if ret == "col_ends" or "both":
         - col_ends (list): hex codes for each end of a gradient corresponding to 
                            requested color
     """
     
     # list of defined colors
-    curr_cols = ['blue', 'red', 'grey', 'green', 'purple', 'orange', 'pink', 
-        'yellow', 'brown']
+    curr_cols = ["blue", "red", "grey", "green", "purple", "orange", "pink", 
+        "yellow", "brown"]
     
-    if col == 'blue':
-        # cols  = ['#7cc7f9', '#50a2d5', '#2e78a9', '#16547d']
-        col_ends = ['#8DCCF6', '#07395B']
-        single   = LINCLAB_COLS['blue']
-    elif col == 'red':
-        # cols = ['#f36d58', '#eb3920', '#c12a12', '#971a07']
-        col_ends = ['#EF6F5C', '#7D1606']
-        single   = LINCLAB_COLS['red']
-    elif col == 'grey':
-        col_ends = ['#969696', '#060707']
-        single   = LINCLAB_COLS['grey']
-    elif col == 'green':
-        col_ends = ['#B3F38E', '#2D7006']
-        single   = LINCLAB_COLS['green']
-    elif col == 'purple':
-        col_ends = ['#B391F6', '#372165']
-        single   = LINCLAB_COLS['purple']
-    elif col == 'orange':
-        col_ends = ['#F6B156', '#CD7707']
-        single   = LINCLAB_COLS['orange']
-    elif col == 'pink':
-        col_ends = ['#F285AD', '#790B33']
-        single   = LINCLAB_COLS['pink']
-    elif col == 'yellow':
-        col_ends = ['#F6D25D', '#B38B08']
-        single   = LINCLAB_COLS['yellow']
-    elif col == 'brown':
-        col_ends = ['#F7AD75', '#7F3904']
-        single   = LINCLAB_COLS['brown']
+    if col == "blue":
+        # cols  = ["#7cc7f9", "#50a2d5", "#2e78a9", "#16547d"]
+        col_ends = ["#8DCCF6", "#07395B"]
+        single   = LINCLAB_COLS["blue"]
+    elif col == "red":
+        # cols = ["#f36d58", "#eb3920", "#c12a12", "#971a07"]
+        col_ends = ["#EF6F5C", "#7D1606"]
+        single   = LINCLAB_COLS["red"]
+    elif col == "grey":
+        col_ends = ["#969696", "#060707"]
+        single   = LINCLAB_COLS["grey"]
+    elif col == "green":
+        col_ends = ["#B3F38E", "#2D7006"]
+        single   = LINCLAB_COLS["green"]
+    elif col == "purple":
+        col_ends = ["#B391F6", "#372165"]
+        single   = LINCLAB_COLS["purple"]
+    elif col == "orange":
+        col_ends = ["#F6B156", "#CD7707"]
+        single   = LINCLAB_COLS["orange"]
+    elif col == "pink":
+        col_ends = ["#F285AD", "#790B33"]
+        single   = LINCLAB_COLS["pink"]
+    elif col == "yellow":
+        col_ends = ["#F6D25D", "#B38B08"]
+        single   = LINCLAB_COLS["yellow"]
+    elif col == "brown":
+        col_ends = ["#F7AD75", "#7F3904"]
+        single   = LINCLAB_COLS["brown"]
     else:
-        gen_util.accepted_values_error('col', col, curr_cols)
+        gen_util.accepted_values_error("col", col, curr_cols)
 
-    if ret == 'single':
+    if ret == "single":
         return single
-    elif ret == 'col_ends':
+    elif ret == "col_ends":
         return col_ends
-    elif ret == 'both':
+    elif ret == "both":
         return single, col_ends
     else:
         gen_util.accepted_values_error(
-            'ret', ret, ['single', 'col_ends', 'both'])
+            "ret", ret, ["single", "col_ends", "both"])
 
 
 #############################################
-def get_color_range(n=4, col='red'):
+def get_color_range(n=4, col="red"):
     """
     get_color_range()
 
@@ -271,7 +272,7 @@ def get_color_range(n=4, col='red'):
                              default: 4
         - col (str or list): general color or two colors (see get_color() for 
                              accepted colors)
-                             default: 'red'
+                             default: "red"
 
     Returns:
         - cols (list): list of colors
@@ -280,13 +281,13 @@ def get_color_range(n=4, col='red'):
     
     cols = gen_util.list_if_not(col)
     if len(cols) not in [1, 2]:
-        raise ValueError('`col` must be of length one or two')
+        raise ValueError("'col' must be of length one or two")
     if len(cols) == 2 and n == 1:
         cols = cols[0:1] # retain only first colour
 
     ends = []
     for col in cols:
-        single, col_ends = get_color(col, ret='both')
+        single, col_ends = get_color(col, ret="both")
         if len(cols) == 2:
             ends.append(single)
         else:
@@ -318,7 +319,7 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
                            default: None
         - cmap (bool)    : if True, a colormap is returned. If linclab is True,
                            the Linclab colormap is returned, otherwise the 
-                           'jet' colormap
+                           "jet" colormap
                            default: False
         - nbins (int)    : number of bins to use to create colormap
                            default: 100
@@ -333,18 +334,18 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
     
     if linclab:
         linclab_plt_defaults(
-            font=['Arial', 'Liberation Sans'], fontdir=fontdir)
+            font=["Arial", "Liberation Sans"], fontdir=fontdir)
 
     if cmap:
         if linclab:
             cmap = linclab_colormap(nbins)
         else:
-            cmap = 'jet'
+            cmap = "jet"
         return cmap
 
 
 #############################################
-def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05, 
+def set_ticks(sub_ax, axis="x", min_tick=0, max_tick=1.5, n=6, pad_p=0.05, 
               minor=False):
     """
     set_ticks(sub_ax)
@@ -357,7 +358,7 @@ def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05,
 
     Optional args:
         - axis (str)    : axis for which to set ticks, i.e., x, y or both
-                          default: 'x'
+                          default: "x"
         - min_tick (num): first tick value
                           default: 0
         - max_tick (num): last tick value
@@ -374,20 +375,20 @@ def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05,
     min_end = min_tick - pad
     max_end = max_tick + pad
 
-    if axis == 'both':
-        axis = ['x', 'y']
-    elif axis in ['x', 'y']:
+    if axis == "both":
+        axis = ["x", "y"]
+    elif axis in ["x", "y"]:
         axis = gen_util.list_if_not(axis)
     else:
-        gen_util.accepted_values_error('axis', axis, ['x', 'y', 'both'])
+        gen_util.accepted_values_error("axis", axis, ["x", "y", "both"])
 
-    if 'x' in axis:
+    if "x" in axis:
         if min_end != max_end:
             sub_ax.set_xlim(min_end, max_end)
             sub_ax.set_xticks(np.linspace(min_tick, max_tick, n), minor=minor)
         else:
             sub_ax.set_xticks([min_end])
-    elif 'y' in axis:
+    elif "y" in axis:
         if min_end != max_end:
             sub_ax.set_ylim(min_end, max_end)
             sub_ax.set_yticks(np.linspace(min_tick, max_tick, n), minor=minor)
@@ -396,7 +397,7 @@ def set_ticks(sub_ax, axis='x', min_tick=0, max_tick=1.5, n=6, pad_p=0.05,
 
 
 #############################################
-def set_ticks_from_vals(sub_ax, vals, axis='x', n=6, pad_p=0.05):
+def set_ticks_from_vals(sub_ax, vals, axis="x", n=6, pad_p=0.05):
     """
     set_ticks_from_vals(sub_ax, vals)
 
@@ -409,7 +410,7 @@ def set_ticks_from_vals(sub_ax, vals, axis='x', n=6, pad_p=0.05):
 
     Optional args:
         - axis (str  )    : axis for which to set ticks, i.e., x, y or both
-                            default: 'x'
+                            default: "x"
         - n (int)         : number of ticks
                             default: 6
         - pad_p (num)     : percentage to pad axis length
@@ -474,7 +475,7 @@ def turn_off_extra(ax, n_plots):
 
 
 #############################################
-def share_lims(ax, dim='row'):
+def share_lims(ax, dim="row"):
     """
     share_lims(ax)
 
@@ -485,39 +486,39 @@ def share_lims(ax, dim='row'):
 
     Optional args:
         - dim (str): which dimension to match limits along
-                     default: 'row'
+                     default: "row"
     """
 
     if len(ax.shape) != 2:
-        raise NotImplementedError('Function only implemented for 2D axis '
-                                  'arrays.')
+        raise NotImplementedError("Function only implemented for 2D axis "
+                                  "arrays.")
     
-    if dim == 'row':
+    if dim == "row":
         for r in range(ax.shape[0]):
             ylims = [np.inf, -np.inf]
-            for task in ['get', 'set']:    
+            for task in ["get", "set"]:    
                 for c in range(ax.shape[1]):
-                    if task == 'get':
+                    if task == "get":
                         lim = ax[r, c].get_ylim()
                         if lim[0] < ylims[0]:
                             ylims[0] = lim[0]
                         if lim[1] > ylims[1]:
                             ylims[1] = lim[1]
-                    elif task == 'set':
+                    elif task == "set":
                         ax[r, c].set_ylim(ylims)
     
-    if dim == 'col':
+    if dim == "col":
         for r in range(ax.shape[1]):
             xlims = [np.inf, -np.inf]
-            for task in ['get', 'set']:   
+            for task in ["get", "set"]:   
                 for c in range(ax.shape[0]):
-                    if task == 'get':
+                    if task == "get":
                         lim = ax[r, c].get_xlim()
                         if lim[0] < xlims[0]:
                             xlims[0] = lim[0]
                         if lim[1] > xlims[1]:
                             xlims[1] = lim[1]
-                    elif task == 'set':
+                    elif task == "set":
                         ax[r, c].set_xlim(xlims)
 
 
@@ -539,11 +540,11 @@ def set_axis_digits(sub_ax, xaxis=None, yaxis=None):
     """
 
     if xaxis is not None:
-        n_dig_str = f'%.{int(xaxis)}f'
+        n_dig_str = f"%.{int(xaxis)}f"
         sub_ax.xaxis.set_major_formatter(FormatStrFormatter(n_dig_str))
 
     if yaxis is not None:
-        n_dig_str = f'%.{int(yaxis)}f'
+        n_dig_str = f"%.{int(yaxis)}f"
         sub_ax.yaxis.set_major_formatter(FormatStrFormatter(n_dig_str))
 
 
@@ -565,15 +566,15 @@ def remove_ticks(sub_ax, xaxis=True, yaxis=True):
     """
 
     if xaxis:
-        sub_ax.tick_params(axis='x', which='both', bottom=False) 
+        sub_ax.tick_params(axis="x", which="both", bottom=False) 
         sub_ax.set_xticks([])
     if yaxis:
-        sub_ax.tick_params(axis='y', which='both', bottom=False) 
+        sub_ax.tick_params(axis="y", which="both", bottom=False) 
         sub_ax.set_yticks([])
 
 
 #############################################
-def remove_graph_bars(sub_ax, bars='all'):
+def remove_graph_bars(sub_ax, bars="all"):
     """
     remove_graph_bars(sub_ax)
 
@@ -583,10 +584,10 @@ def remove_graph_bars(sub_ax, bars='all'):
         - sub_ax (plt Axis subplot): subplot
     
     Optional args:
-        - bars (str or list): bars to remove ('all', 'vert', 'horiz' or a list 
-                              of bars (amongst 'top', 'bottom', 'left', 
-                              'right'))
-                              default: 'all'
+        - bars (str or list): bars to remove ("all", "vert", "horiz" or a list 
+                              of bars (amongst "top", "bottom", "left", 
+                              "right"))
+                              default: "all"
     """
 
     if isinstance(bars, list):
@@ -594,14 +595,14 @@ def remove_graph_bars(sub_ax, bars='all'):
             sub_ax.spines[bar].set_visible(False)
 
     else: 
-        if bars in ['top', 'bottom', 'right', 'left']:
+        if bars in ["top", "bottom", "right", "left"]:
             keys = [bars]
-        if bars == 'all':
+        if bars == "all":
             keys = sub_ax.spines.keys()
-        elif bars == 'vert':
-            keys = ['left', 'right']
-        elif bars == 'horiz':
-            keys = ['top', 'bottom']    
+        elif bars == "vert":
+            keys = ["left", "right"]
+        elif bars == "horiz":
+            keys = ["top", "bottom"]    
         for key in keys:
             sub_ax.spines[key].set_visible(False)
 
@@ -631,7 +632,7 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
                              default: 7
         - gs (dict)        : plt gridspec dictionary
                              default: None
-        - proj (str)       : plt projection argument (e.g. '3d')
+        - proj (str)       : plt projection argument (e.g. "3d")
                              default: None
  
     Kewyord args:
@@ -656,14 +657,14 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
         ncols=ncols, nrows=nrows, 
         figsize=(ncols*subplot_wid, nrows*subplot_hei), sharex=sharex, 
         sharey=sharey, squeeze=False, gridspec_kw=gs, 
-        subplot_kw={'projection': proj}, **fig_kw)
+        subplot_kw={"projection": proj}, **fig_kw)
 
     return fig, ax
 
 
 #############################################
-def savefig(fig, savename, fulldir='', datetime=True, use_dt=None, 
-            fig_ext='svg', overwrite=False, log_dir=True, **savefig_kw):
+def savefig(fig, savename, fulldir="", datetime=True, use_dt=None, 
+            fig_ext="svg", overwrite=False, log_dir=True, **savefig_kw):
     """
     savefig(fig, savename)
 
@@ -677,14 +678,14 @@ def savefig(fig, savename, fulldir='', datetime=True, use_dt=None,
     
     Optional args:
         - fulldir (str)   : directory in which to save figure
-                            default: ''
+                            default: ""
         - datetime (bool) : if True, figures are saved in a subfolder named 
                             based on the date and time.
                             default: True
         - use_dt (str)    : datetime folder to use
                             default: None
         - fig_ext (str)   : figure extension
-                            default: 'svg'
+                            default: "svg"
         - overwrite (bool): if False, overwriting existing figures is prevented 
                             by adding suffix numbers.
                             default: False        
@@ -721,8 +722,8 @@ def savefig(fig, savename, fulldir='', datetime=True, use_dt=None,
         fig.savefig(os.path.join(fulldir, fullname), **savefig_kw)
         
         if log_dir:
-            logger.info(f'Figures saved under {fulldir}.', 
-                extra={'spacing': '\n'})
+            logger.info(f"Figures saved under {fulldir}.", 
+                extra={"spacing": "\n"})
             
     return fulldir
 
@@ -757,8 +758,8 @@ def get_repeated_bars(xmin, xmax, cycle=1.0, offset=0):
 
 
 #############################################
-def add_labels(sub_ax, labels, xpos, t_hei=0.9, color='k', fontsize=18, 
-               ha='center', **text_kw):
+def add_labels(sub_ax, labels, xpos, t_hei=0.9, color="k", fontsize=18, 
+               ha="center", **text_kw):
     """
     add_labels(sub_ax, labels, xpos)
 
@@ -774,11 +775,11 @@ def add_labels(sub_ax, labels, xpos, t_hei=0.9, color='k', fontsize=18,
         - t_hei (num)   : height relative to y limits at which to place labels. 
                           default: 0.9
         - color (str)   : text color
-                          default: 'k'
+                          default: "k"
         - fontsize (int): fontsize
                           default: 18
         - ha (str)      : text horizontal alignment
-                          default: 'center'
+                          default: "center"
 
     Kewyord args:
         - text_kw (dict): keyword arguments for plt.text()
@@ -788,8 +789,8 @@ def add_labels(sub_ax, labels, xpos, t_hei=0.9, color='k', fontsize=18,
     xpos = gen_util.list_if_not(xpos)
 
     if len(labels) != len(xpos):
-        raise ValueError('Arguments `labels` and `xpos` must be of '
-            'the same length.')
+        raise ValueError("Arguments 'labels' and 'xpos' must be of "
+            "the same length.")
 
     ymin, ymax = sub_ax.get_ylim()
     ypos = (ymax - ymin) * t_hei + ymin
@@ -798,7 +799,7 @@ def add_labels(sub_ax, labels, xpos, t_hei=0.9, color='k', fontsize=18,
 
 
 #############################################
-def add_bars(sub_ax, hbars=None, bars=None, color='k', alpha=0.5, ls='dashed', 
+def add_bars(sub_ax, hbars=None, bars=None, color="k", alpha=0.5, ls="dashed", 
              lw=None, **axline_kw):
     """
     add_bars(sub_ax)
@@ -816,12 +817,12 @@ def add_bars(sub_ax, hbars=None, bars=None, color='k', alpha=0.5, ls='dashed',
                                dashed vertical bars
                                default: None
         - color (str)        : color to use
-                               default: 'k'
+                               default: "k"
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
         - ls (str or tuple)  : linestyle
-                               default: 'dashed'
+                               default: "dashed"
         - lw (list)          : list of 2 linewidths 
                                (if None, default values are used)
                                default: None
@@ -833,7 +834,7 @@ def add_bars(sub_ax, hbars=None, bars=None, color='k', alpha=0.5, ls='dashed',
     if lw is None:
         lw = [2.5, 1.5]
     elif not isinstance(lw, list) or len(lw) != 2:
-        raise ValueError('`lw` must be a list of length 2.')
+        raise ValueError("'lw' must be a list of length 2.")
 
     torem = []
     if hbars is not None:
@@ -866,8 +867,8 @@ def hex_to_rgb(col):
     pos = [1, 3, 5] # start of each component
     leng = 2 
 
-    if '#' not in col:
-        raise ValueError('All colors must be provided in hex format.')
+    if "#" not in col:
+        raise ValueError("All colors must be provided in hex format.")
     
     # get the int value for each color component
     col_rgb = [int(col[pos[i]:pos[i] + leng], 16) for i in range(n_comp)]
@@ -890,9 +891,9 @@ def rgb_to_hex(col_rgb):
     """
 
     if len(col_rgb) != 3:
-        raise ValueError('`col_rgb` must comprise 3 values.')
+        raise ValueError("'col_rgb' must comprise 3 values.")
  
-    col = '#{}{}{}'.format(*[hex(c)[2:] for c in col_rgb])
+    col = "#{}{}{}".format(*[hex(c)[2:] for c in col_rgb])
 
     return col
 
@@ -917,10 +918,10 @@ def get_col_series(col_ends, n=3):
     """
 
     if len(col_ends) != 2:
-        raise ValueError('Must provide exactly 2 reference colours as input.')
+        raise ValueError("Must provide exactly 2 reference colours as input.")
 
     if n < 2:
-        raise ValueError('Must request at least 2 colors.')
+        raise ValueError("Must request at least 2 colors.")
     else:
         cols = col_ends[:]
         cols_rgb = [hex_to_rgb(col) for col in col_ends]
@@ -1027,7 +1028,7 @@ def rel_confine_ylims(sub_ax, sub_ran, rel=5):
 
 
 #############################################
-def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color='k', lw=0, 
+def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color="k", lw=0, 
                **axspan_kw):
     """
     add_vshade(sub_ax, start)
@@ -1058,16 +1059,16 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color='k', lw=0,
     start = gen_util.list_if_not(start)
     
     if end is None and width is None:
-        raise ValueError('Must specify end or width.')
+        raise ValueError("Must specify end or width.")
     elif end is not None:
         end = gen_util.list_if_not(end)
         if len(start) != len(end):
-            raise ValueError('end and start must be of the same length.')
+            raise ValueError("end and start must be of the same length.")
         for st, e in zip(start, end):
             sub_ax.axvspan(st, e, alpha=alpha, color=color, lw=lw, 
                            **axspan_kw)
         if width is not None:
-            warnings.warn('Cannot specify both end and width. Using end.')
+            warnings.warn("Cannot specify both end and width. Using end.")
     else:
         for st in start:
             sub_ax.axvspan(st, st + width, alpha=alpha, color=color, lw=lw, 
@@ -1075,7 +1076,7 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color='k', lw=0,
 
 
 #############################################
-def plot_traces(sub_ax, x, y, err=None, title='', lw=None, color=None, 
+def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None, 
                 alpha=0.5, n_xticks=6, xticks=None, yticks=None, label=None, 
                 alpha_line=1.0, zorder=None, errx=False, **plot_kw):
     """
@@ -1093,7 +1094,7 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, color=None,
                                quintiles, 2D array structured as stat x vals
                                default: None
         - title (str)        : subplot title
-                               default: ''
+                               default: ""
         - lw (num)           : plt line weight variable
                                default: None
         - color (str)        : color to use
@@ -1162,9 +1163,9 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, color=None,
                     zorder=zorder)
 
     if xticks is None:
-        set_ticks_from_vals(sub_ax, x, axis='x', n=n_xticks)
-    elif xticks in ['none', 'None']:
-        sub_ax.tick_params(axis='x', which='both', bottom=False) 
+        set_ticks_from_vals(sub_ax, x, axis="x", n=n_xticks)
+    elif isinstance(xticks, str) and xticks in ["none", "None"]:
+        sub_ax.tick_params(axis="x", which="both", bottom=False) 
     else:
         sub_ax.set_xticks(xticks)
 
@@ -1178,7 +1179,7 @@ def plot_traces(sub_ax, x, y, err=None, title='', lw=None, color=None,
 
 
 #############################################
-def plot_btw_traces(sub_ax, y1, y2, x=None, color='k', alpha=0.5, **fillbtw_kw):
+def plot_btw_traces(sub_ax, y1, y2, x=None, color="k", alpha=0.5, **fillbtw_kw):
     """
     plot_btw_traces(sub_ax, y1, y2)
 
@@ -1194,7 +1195,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color='k', alpha=0.5, **fillbtw_kw):
                                default: None
         - color (str)        : color to use. If a list is provided, the
                                average is used.
-                               default: 'k'
+                               default: "k"
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
@@ -1212,8 +1213,8 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color='k', alpha=0.5, **fillbtw_kw):
         x = np.asarray(x).squeeze()
 
     if len(y1) != len(y2) or len(x) != len(y1):
-        raise ValueError('y1 and y2, and x if provided, must have the same '
-            'length.')
+        raise ValueError("y1 and y2, and x if provided, must have the same "
+            "length.")
 
     comp_arr = np.concatenate([y1[:, np.newaxis], y2[:, np.newaxis]], axis=1)
     maxes = np.max(comp_arr, axis=1)
@@ -1227,8 +1228,8 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color='k', alpha=0.5, **fillbtw_kw):
 
 
 #############################################
-def plot_errorbars(sub_ax, y, err=None, x=None, title='', alpha=0.8, 
-                   xticks=None, yticks=None, label=None, fmt='-o', 
+def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8, 
+                   xticks=None, yticks=None, label=None, fmt="-o", 
                    **errorbar_kw):
     """
     plot_errorbars(sub_ax, y, err)
@@ -1246,18 +1247,18 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title='', alpha=0.8,
         - x (array-like)     : array of x values. 
                                default: None
         - title (str)        : subplot title
-                               default: ''
+                               default: ""
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
-        - xticks (str)       : xtick labels ('None' to omit ticks entirely)
+        - xticks (str)       : xtick labels ("None" to omit ticks entirely)
                                default: None
         - yticks (str)       : ytick labels
                                default: None
         - label (str)        : label for legend
                                default: None
         - fmt (str)          : data point/lines format.
-                               default: '-o'
+                               default: "-o"
 
     Kewyord args:
         - errorbar_kw (dict): keyword arguments for plt.errorbar(), 
@@ -1269,8 +1270,8 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title='', alpha=0.8,
     if x is None:
         x = np.arange(1, len(y) + 1)
     
-    if not isinstance(xticks, list) and xticks in ['None', 'none']:
-        sub_ax.tick_params(axis='x', which='both', bottom=False) 
+    if isinstance(xticks, str) and xticks in ["None", "none"]:
+        sub_ax.tick_params(axis="x", which="both", bottom=False) 
     elif xticks is None:
         sub_ax.set_xticks(x)
     else:
@@ -1350,9 +1351,9 @@ def get_barplot_xpos(n_grps, n_bars_per, barw, in_grp=1.5, btw_grps=4.0):
 
 
 #############################################
-def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color='k', 
-                    fig_coord=False, fontsize='xx-large', fontweight='bold', 
-                    ha='center', va='top', **text_kw):
+def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color="k", 
+                    fig_coord=False, fontsize="xx-large", fontweight="bold", 
+                    ha="center", va="top", **text_kw):
     """
     add_signif_mark(sub_ax, xpos, yval)
 
@@ -1372,18 +1373,18 @@ def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color='k',
         - rel_y (num)     : relative position above ypos at which to place star.
                             default: 0.01
         - color (str)     : color for stars
-                             default: 'k'
+                             default: "k"
         - fig_coord (bool): if True, coordinates are first converted from data 
                             to figure coordinates
                             default: False
         - fontsize (str)  : text (star) fontsize
-                            default: 'xx-large'
+                            default: "xx-large"
         - fontweight (str): text (star) fontweight
-                            default: 'bold'
+                            default: "bold"
         - ha (str)        : text (star) horizontal alignment
-                            default: 'center' 
+                            default: "center" 
         - va (str)        : text (star) vertical alignment
-                            default: 'top'
+                            default: "top"
 
     Kewyord args:
         - text_kw (dict): keyword arguments for plt.text()
@@ -1411,7 +1412,7 @@ def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color='k',
 
 
 #############################################
-def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color='k', 
+def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k", 
                         lw=2, star_rel_y=0.05, **text_kw):
     """
     Plots significance markers (line and star) above bars showing a significant
@@ -1431,7 +1432,7 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color='k',
                              line.
                              default: 0.02
         - color (str)      : line and star colour
-                             default: 'k'
+                             default: "k"
         - lw (int)         : line width
                              default: 2
         - star_rel_y (num) : relative position above bar at which to place star
@@ -1445,7 +1446,7 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color='k',
     
     # x positions
     if len(xpos) < 2:
-        raise ValueError('xpos must be at least of length 2.')
+        raise ValueError("xpos must be at least of length 2.")
     xpos = [np.min(xpos), np.max(xpos)]
     xmid = np.mean(xpos)
 
@@ -1460,7 +1461,7 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color='k',
 
     yerr = np.asarray(yerr)
     if len(yval) != len(yerr):
-        raise ValueError('If provided, yerr must have the same length as yval.')
+        raise ValueError("If provided, yerr must have the same length as yval.")
 
     # if quintiles are provided, the second (high) one is retained
     if yerr.shape == 2:
@@ -1480,7 +1481,7 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color='k',
 
 
 #############################################
-def plot_bars(sub_ax, x, y, err=None, title='', width=0.75, lw=None, alpha=0.5, 
+def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5, 
               xticks=None, yticks=None, xlims=None, label=None, hline=None, 
               capsize=8, **bar_kw):
     """
@@ -1497,13 +1498,13 @@ def plot_bars(sub_ax, x, y, err=None, title='', width=0.75, lw=None, alpha=0.5,
                                quintiles, 2D array structured as stat x vals
                                default: None
         - title (str)        : subplot title
-                               default: ''
+                               default: ""
         - lw (num)           : plt line weight variable
                                default: None
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
-        - xticks (str)       : xtick labels ('None' to omit ticks entirely) 
+        - xticks (str)       : xtick labels ("None" to omit ticks entirely) 
                                default: None
         - yticks (str)       : ytick labels
                                default: None
@@ -1533,7 +1534,7 @@ def plot_bars(sub_ax, x, y, err=None, title='', width=0.75, lw=None, alpha=0.5,
     if err is not None and np.sum(np.isfinite(err)):
 
         sub_ax.errorbar(
-            x, y, np.squeeze(err), fmt='None', elinewidth=lw, 
+            x, y, np.squeeze(err), fmt="None", elinewidth=lw, 
             capsize=capsize, capthick=lw, ecolor=fc)
 
     # set edge color to match patch face color
@@ -1549,10 +1550,10 @@ def plot_bars(sub_ax, x, y, err=None, title='', width=0.75, lw=None, alpha=0.5,
         sub_ax.set_xlim(xlims)
     
     if hline is not None:
-        sub_ax.axhline(y=hline, c='k', lw=1.5)
+        sub_ax.axhline(y=hline, c="k", lw=1.5)
     
-    if not isinstance(xticks, list) and xticks in ['None', 'none']:
-        sub_ax.tick_params(axis='x', which='both', bottom=False) 
+    if isinstance(xticks, str) and xticks in ["None", "none"]:
+        sub_ax.tick_params(axis="x", which="both", bottom=False) 
     elif xticks is None:
         sub_ax.set_xticks(xticks)
 
@@ -1595,7 +1596,7 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
 
 
 #############################################
-def plot_colormap(sub_ax, data, xran=None, yran=None, title='', cmap=None, 
+def plot_colormap(sub_ax, data, xran=None, yran=None, title="", cmap=None, 
                   n_xticks=6, xticks=None, yticks_ev=10, xlims=None, 
                   ylims=None, **cmesh_kw):
     """
@@ -1615,7 +1616,7 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title='', cmap=None,
                            will be inferred from the data.
                            default: None
         - title (str)    : subplot title
-                           default: ''
+                           default: ""
         - cmap (colormap): a matplotlib colormap
                            default: None
         - n_xticks (int) : number of xtick labels
@@ -1637,12 +1638,12 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title='', cmap=None,
     """
     
     if xran is None:
-        xran = [data.shape[0]+0.5, 0.5, data.shape[0]+1]
+        xran = np.linspace(0.5, data.shape[0]+0.5, data.shape[0]+1)
     else:
         xran = np.linspace(xran[0], xran[1], data.shape[0]+1)
 
     if yran is None:
-        yran = np.linspace(data.shape[1]+0.5, 0.5, data.shape[1]+1)
+        yran = np.linspace(0.5, data.shape[1]+0.5, data.shape[1]+1)
     else:
         yran = np.linspace(yran[0], yran[1], data.shape[1]+1)
 
@@ -1687,7 +1688,7 @@ def plot_sep_data(sub_ax, data, lw=0.1, no_edges=True):
                            default: True
     """
 
-    data_sc = math_util.scale_data(data, axis=1, sc_type='min_max')[0]
+    data_sc = math_util.scale_data(data, axis=1, sc_type="min_max")[0]
     add = np.linspace(0, data.shape[0] * 1.2 + 1, data.shape[0])[:, np.newaxis]
     data_sep = data_sc + add
 
@@ -1697,13 +1698,13 @@ def plot_sep_data(sub_ax, data, lw=0.1, no_edges=True):
         # removes ticks
         remove_ticks(sub_ax, True, True)
         # removes subplot edges
-        remove_graph_bars(sub_ax, bars='all')
+        remove_graph_bars(sub_ax, bars="all")
         # tighten y limits
         sub_ax.set_ylim(np.min(data_sep), np.max(data_sep))
 
 
 #############################################
-def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color='black', width=0.4, 
+def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color="black", width=0.4, 
                alpha=1.0, **bar_kw):
     """
     plot_lines(sub_ax, y)
@@ -1720,7 +1721,7 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color='black', width=0.4,
         - y_rat (float) : med line thickness, relative to subplot height
                           default: 0.0075
         - col0r (str)   : bar color
-                          default: 'black'
+                          default: "black"
         - width (float) : bar thickness
                           default: 0.4
         - alpha (num)   : plt alpha variable controlling shading 
@@ -1734,7 +1735,7 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color='black', width=0.4,
     if x is None:
         x = range(len(y))
     if len(x) != len(y):
-        raise ValueError('`x` and `y` must have the same last length.')
+        raise ValueError("'x' and 'y' must have the same last length.")
 
     y_lim = sub_ax.get_ylim()
     y_th = y_rat * (y_lim[1] - y_lim[0])
@@ -1746,7 +1747,7 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color='black', width=0.4,
 
 #############################################
 def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None, 
-            color='lightgrey', med_col='grey', med_rat=0.015, zorder=None):
+            color="lightgrey", med_col="grey", med_rat=0.015, zorder=None):
     """
     plot_CI(sub_ax, extr)
 
@@ -1767,9 +1768,9 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
         - label (str)     : label for the bars
                             default: None
         - color (str)     : bar color
-                            default: 'lightgrey'
+                            default: "lightgrey"
         - med_col (str)   : med line color, if med is provided
-                            default: 'grey'
+                            default: "grey"
         - med_rat (float) : med line thickness, relative to subplot height
                             default: 0.015
         - zorder (int)    : plt zorder variable controlling fore-background 
@@ -1781,13 +1782,13 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
     if len(extr.shape) == 1:
         extr.reshape([-1, 1])
     if extr.shape[0] != 2:
-        raise ValueError('Must provide exactly 2 extrema values for each bar.')
+        raise ValueError("Must provide exactly 2 extrema values for each bar.")
 
     if x is None:
         x = range(len(extr.shape[1]))
     if len(x) != extr.shape[1]:
-        raise ValueError('`x` and `extr` must have the same last '
-            'dimension length.')
+        raise ValueError("'x' and 'extr' must have the same last "
+            "dimension length.")
 
     # plot CI
     sub_ax.bar(x, height=extr[1]-extr[0], bottom=extr[0], color=color, 
@@ -1800,8 +1801,8 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
     if med is not None:
         med = np.asarray(med)
         if len(x) != len(med):
-            raise ValueError('`x` and `med` must have the same last '
-                'dimension length.')
+            raise ValueError("'x' and 'med' must have the same last "
+                "dimension length.")
         
         plot_lines(
             sub_ax, med, x, med_rat, color=med_col, width=width, 
@@ -1810,7 +1811,7 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
 
 #############################################
 def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None, 
-                    color='k', alpha=0.5, zorder=None, **plot_kw):
+                    color="k", alpha=0.5, zorder=None, **plot_kw):
     """
     plot_data_cloud(sub_ax, extr)
 
@@ -1829,7 +1830,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
         - label (str)        : label for the bars
                                default: None
         - color (str)        : marker color
-                               default: 'k'
+                               default: "k"
         - alpha (float)      : transparency
                                default: 0.5
 
@@ -1848,7 +1849,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
     x_vals[np.where(x_vals > max_val)] = max_val
 
     cloud = sub_ax.plot(
-        x_vals, y_vals, marker='.', lw=0, color=color, alpha=alpha, 
+        x_vals, y_vals, marker=".", lw=0, color=color, alpha=alpha, 
         label=label, **plot_kw)[0]
 
     if label is not None:
@@ -1858,7 +1859,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
 
     
 #############################################
-def get_fig_rel_pos(ax, grp_len, dim='x'):
+def get_fig_rel_pos(ax, grp_len, dim="x"):
     """
     get_fig_rel_pos(ax, grp_len)
 
@@ -1870,23 +1871,23 @@ def get_fig_rel_pos(ax, grp_len, dim='x'):
         - grp_len (n)  : grouping
 
     Optional args:
-        - dim (str)      : dimension for which to get position ('x' or 'y')
-                           default: 'x'
+        - dim (str)      : dimension for which to get position ("x" or "y")
+                           default: "x"
     Returns:
         - poses (list): positions for each group
     """
 
 
     if not isinstance(ax, np.ndarray) and len(ax.shape):
-        raise ValueError('ax must be a 2D numpy array.')
+        raise ValueError("ax must be a 2D numpy array.")
 
     fig = ax.reshape(-1)[0].figure
     n_rows, n_cols = ax.shape
     poses = []
-    if dim == 'x':
+    if dim == "x":
         if n_cols % grp_len != 0:
-            raise ValueError(f'Group length of {grp_len} does not fit with '
-                '{n_cols} columns.')
+            raise ValueError(f"Group length of {grp_len} does not fit with "
+                "{n_cols} columns.")
         n_grps = int(n_cols/grp_len)
         for n in range(n_grps):
             left_subax = ax[0, n * grp_len]
@@ -1898,10 +1899,10 @@ def get_fig_rel_pos(ax, grp_len, dim='x'):
                 right_subax.transAxes.transform([1, 0]))[0]
 
             poses.append(np.mean([left_pos, right_pos]))
-    elif dim == 'y':
+    elif dim == "y":
         if n_rows % grp_len != 0:
-            raise ValueError(f'Group length of {grp_len} does not fit with '
-                f'{n_rows} rows.')
+            raise ValueError(f"Group length of {grp_len} does not fit with "
+                f"{n_rows} rows.")
         n_grps = int(n_rows/grp_len)
         for n in range(n_grps):
             top_subax = ax[n * grp_len, 0]
@@ -1914,13 +1915,13 @@ def get_fig_rel_pos(ax, grp_len, dim='x'):
 
             poses.append(np.mean([top_pos, bottom_pos]))
     else:
-        gen_util.accepted_values_error('dim', dim, ['x', 'y'])
+        gen_util.accepted_values_error("dim", dim, ["x", "y"])
 
     return poses
 
 
 #############################################
-def set_interm_ticks(ax, n_ticks, dim='x', share=True, **font_kw):
+def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
     """
     set_interm_ticks(ax)
 
@@ -1933,7 +1934,7 @@ def set_interm_ticks(ax, n_ticks, dim='x', share=True, **font_kw):
         - n_ticks (n)  : max number of labelled ticks
 
     Optional args:
-        - dim (str)   : dimension for which to get position ('x' or 'y')
+        - dim (str)   : dimension for which to get position ("x" or "y")
         - share (bool): if True, all axes set the same, based on first axis.
                         default: True
 
@@ -1943,19 +1944,19 @@ def set_interm_ticks(ax, n_ticks, dim='x', share=True, **font_kw):
     """
 
     if not isinstance(ax, np.ndarray):
-        raise ValueError('Must pass an axis array.')
+        raise ValueError("Must pass an axis array.")
 
     sub_ax = ax.reshape(-1)[0]
 
 
     for s, sub_ax in enumerate(ax.reshape(-1)):
         if s == 0 or not share:
-            if dim == 'x':
+            if dim == "x":
                 ticks = sub_ax.get_xticks()
-            elif dim == 'y':
+            elif dim == "y":
                 ticks = sub_ax.get_yticks()
             else:
-                gen_util.accepted_values_error('dim', dim, ['x', 'y'])
+                gen_util.accepted_values_error("dim", dim, ["x", "y"])
 
             diff = np.mean(np.diff(ticks)) # get original tick steps
             ratio = np.ceil(len(ticks)/n_ticks)
@@ -1975,22 +1976,22 @@ def set_interm_ticks(ax, n_ticks, dim='x', share=True, **font_kw):
             idx = np.where(tick_vals == 0)[0]
             if 0 not in tick_vals:
                 idx = 0
-            labels = ['{:.{prec}f}'.format(val, prec=o)
-                if (v % 2 == idx % 2) else '' 
+            labels = ["{:.{prec}f}".format(val, prec=o)
+                if (v % 2 == idx % 2) else "" 
                 for v, val in enumerate(tick_vals)]
 
-        if dim == 'x':
+        if dim == "x":
             sub_ax.set_xticks(tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_xticklabels(labels, fontdict=font_kw)
-        elif dim == 'y':
+        elif dim == "y":
             sub_ax.set_yticks(tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_yticklabels(labels, fontdict=font_kw)
 
 
 #############################################
-def get_shared_axes(ax, axis='x'):
+def get_shared_axes(ax, axis="x"):
     """
     get_shared_axes(ax)
 
@@ -2011,12 +2012,12 @@ def get_shared_axes(ax, axis='x'):
 
     all_subplots = ax.reshape(-1).tolist()
 
-    if axis == 'x':
+    if axis == "x":
         grps = list(all_subplots[0].get_shared_x_axes())
-    elif axis == 'y':
+    elif axis == "y":
         grps = list(all_subplots[0].get_shared_y_axes())
     else:
-        gen_util.accepted_values_error('axis', axis, ['x', 'y'])
+        gen_util.accepted_values_error("axis", axis, ["x", "y"])
 
     fixed_grps = []
     for grp in grps:

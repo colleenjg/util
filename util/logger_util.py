@@ -15,9 +15,40 @@ import logging
 import os
 import sys
 
-from util import gen_util
+from util import gen_util, logreg_util
 
 
+#############################################
+def temp_change_log_level(function):
+    """
+    Wrapper for temporarily changing logging level.
+
+    Optional args:
+        - logger (logger) : logging Logger object. If None, root logger is used.
+                            default: None
+        - level (int, str): logging level to temporarily set logger to.
+                            default: []
+    """
+
+    def wrapper(*args, logger=None, level="info", **kwargs):
+        
+        if logger is None or logger.level == logging.NOTSET:
+            logger = logging.getLogger()
+
+        prev_level = logger.level
+        set_level(level=level, logger=logger)
+
+        returns = function(*args, **kwargs)
+
+        set_level(level=prev_level, logger=logger)
+        
+        return returns
+
+    return wrapper
+
+
+#############################################
+#############################################
 class BasicLogFormatter(logging.Formatter):
     """
     BasicLogFormatter()
@@ -37,12 +68,12 @@ class BasicLogFormatter(logging.Formatter):
         Optional args:
             - fmt (str): default format style.
         """
-        super().__init__(fmt=fmt, datefmt=None, style='%') 
+        super().__init__(fmt=fmt, datefmt=None, style="%") 
 
     def format(self, record):
 
-        if not hasattr(record, 'spacing'):
-            record.spacing = ''
+        if not hasattr(record, "spacing"):
+            record.spacing = ""
 
         # Original format as default
         format_orig = self._style._fmt
@@ -69,46 +100,49 @@ class BasicLogFormatter(logging.Formatter):
 
 
 #############################################
-def set_level(level='info', name=None):
+def set_level(level="info", logger=None):
     """
     set_level()
 
     Sets level of the named logger.
 
     Optional args:
-        - level (str)       : level of the logger ('info', 'error', 'warning', 
-                               'debug', 'critical')
-                              default: 'info'
-        - name (str)        : logger name. If None, the root logger is set.
+        - level (int or str): level of the logger ("info", "error", "warning", 
+                              "debug", "critical", 10, 50)
+                              default: "info"
+        - logger (Logger)   : logging Logger. If None, the root logger is set.
+                              default: None
+        - logger (Logger)   : logging Logger. If None, the root logger is set.
                               default: None
 
-    Returns:
-        - logger (Logger): logger object
     """
     
-    logger = logging.getLogger(name)
+    if logger is None:
+        logger = logging.getLogger()
 
-    if level.lower() == 'debug':
+    if isinstance(level, int):
+        level = level
+    elif level.lower() == "debug":
         level = logging.DEBUG
-    elif level.lower() == 'info':
+    elif level.lower() == "info":
         level = logging.INFO
-    elif level.lower() == 'warning':
+    elif level.lower() == "warning":
         level = logging.WARNING
-    elif level.lower() == 'error':
+    elif level.lower() == "error":
         level = logging.ERROR
-    elif level.lower() == 'critical':
+    elif level.lower() == "critical":
         level = logging.CRITICAL
     else:
         gen_util.accepted_values_error(
-            'level', level, 
-            ['debug', 'info', 'warning', 'error', 'critical'])
+            "level", level, 
+            ["debug", "info", "warning", "error", "critical"])
 
     logger.setLevel(level)
 
 
 #############################################
-def get_logger(logtype='stream', name=None, filename='logs.log', 
-               fulldir='', level='info', fmt=None, set_root=True, 
+def get_logger(logtype="stream", name=None, filename="logs.log", 
+               fulldir="", level="info", fmt=None, set_root=True, 
                skip_exists=True):
     """
     get_logger()
@@ -117,19 +151,19 @@ def get_logger(logtype='stream', name=None, filename='logs.log',
 
     Optional args:
         - logtype (str)     : type or types of handlers to add to logger 
-                              ('stream', 'file', 'both', 'none')
-                              default: 'stream'
+                              ("stream", "file", "both", "none")
+                              default: "stream"
         - name (str)        : logger name. If None, the root logger is returned.
                               default: None
         - filename (str)    : name under which to save file handler, if it is 
                               included
-                              default: 'logs.log'
+                              default: "logs.log"
         - fulldir (str)     : path under which to save file handler, if it is
                               included
-                              default: ''
-        - level (str)       : level of the logger ('info', 'error', 'warning', 
-                               'debug', 'critical')
-                              default: 'info'
+                              default: ""
+        - level (str)       : level of the logger ("info", "error", "warning", 
+                               "debug", "critical")
+                              default: "info"
         - fmt (Formatter)   : logging Formatter to use for the handlers
                               default: None
         - skip_exists (bool): if a logger with the name already has handlers, 
@@ -151,19 +185,19 @@ def get_logger(logtype='stream', name=None, filename='logs.log',
     
     # create handlers
     sh, fh = None, None
-    if logtype in ['stream', 'both']:
+    if logtype in ["stream", "both"]:
         sh = logging.StreamHandler(sys.stdout)
         if fmt is not None:
             sh.setFormatter(fmt)
         logger.addHandler(sh)
-    if logtype in ['file', 'both']:
+    if logtype in ["file", "both"]:
         fh = logging.FileHandler(os.path.join(fulldir, filename))
         if fmt is not None:
             fh.setFormatter(fmt)
         logger.addHandler(fh)
-    all_types = ['file', 'stream', 'both', 'none']
+    all_types = ["file", "stream", "both", "none"]
     if logtype not in all_types:
-        gen_util.accepted_values_error('logtype', logtype, all_types)
+        gen_util.accepted_values_error("logtype", logtype, all_types)
     
     set_level(level, name)
 

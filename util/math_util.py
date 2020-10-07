@@ -23,11 +23,11 @@ from util import gen_util, logger_util
 
 logger = logging.getLogger(__name__)
 
-TAB = '    '
+TAB = "    "
 
 
 #############################################
-def mean_med(data, stats='mean', axis=None, nanpol=None):
+def mean_med(data, stats="mean", axis=None, nanpol=None):
     """
     mean_med(data)
 
@@ -38,47 +38,47 @@ def mean_med(data, stats='mean', axis=None, nanpol=None):
         - data (nd array): data on which to calculate statistic
 
     Optional args:
-        - stats (str) : 'mean' or 'median'
-                        default: 'mean'
+        - stats (str) : "mean" or "median"
+                        default: "mean"
         - axis (int)  : axis along which to take the statistic
                         default: None
-        - nanpol (str): policy for NaNs, 'omit' or None
+        - nanpol (str): policy for NaNs, "omit" or None
                         default: None
     
     Returns:
         - me (nd array or num): mean or median of data along specified axis
     """
 
-    if stats == 'mean':
+    if stats == "mean":
         if nanpol is None:
             me = np.mean(data, axis=axis)
-        elif nanpol == 'omit':
+        elif nanpol == "omit":
             me = np.nanmean(data, axis=axis)
-    elif stats == 'median':
+    elif stats == "median":
         if nanpol is None:
             me = np.median(data, axis=axis)
-        elif nanpol == 'omit':
+        elif nanpol == "omit":
             me = np.nanmedian(data, axis=axis)
     else:
-        gen_util.accepted_values_error('stats', stats, ['mean', 'median'])
-    if nanpol is not None and nanpol != 'omit':
-        gen_util.accepted_values_error('nanpol', nanpol, ['None', 'omit'])
+        gen_util.accepted_values_error("stats", stats, ["mean", "median"])
+    if nanpol is not None and nanpol != "omit":
+        gen_util.accepted_values_error("nanpol", nanpol, ["None", "omit"])
 
     return me
 
 
 #############################################
-def error_stat_name(stats='mean', error='sem', qu=[25, 75]):
+def error_stat_name(stats="mean", error="sem", qu=[25, 75]):
     """
     error_stat_name()
 
     Returns the name(s) of the error statistic(s).
 
     Optional args:
-        - stats (str) : 'mean' or 'median'
-                        default: 'mean'
-        - error (str) : 'std' (for std or quintiles) or 'sem' (for SEM or MAD)
-                        default: 'sem'
+        - stats (str) : "mean" or "median"
+                        default: "mean"
+        - error (str) : "std" (for std or quintiles) or "sem" (for SEM or MAD)
+                        default: "sem"
         - qu (list)   : quintiles to take, if median and std along which 
                         to take the statistic
                         default: [25, 75]
@@ -87,26 +87,26 @@ def error_stat_name(stats='mean', error='sem', qu=[25, 75]):
         - error_names (str or list): name(s) of error statistic(s)
     """
 
-    if stats == 'mean':
-        if error == 'std':
+    if stats == "mean":
+        if error == "std":
             error_name = error
-        elif error == 'sem':
-            error_name = 'SEM'
-    elif stats == 'median':
-        if error == 'std':
-            error_name = [f'q{qu[0]}', f'q{qu[1]}']        
-        elif error == 'sem':
-            error_name = 'MAD'
+        elif error == "sem":
+            error_name = "SEM"
+    elif stats == "median":
+        if error == "std":
+            error_name = [f"q{qu[0]}", f"q{qu[1]}"]        
+        elif error == "sem":
+            error_name = "MAD"
     else:
-        gen_util.accepted_values_error('stats', stats, ['mean', 'median'])
-    if error not in ['std', 'sem']:
-        gen_util.accepted_values_error('error', error, ['std', 'sem'])
+        gen_util.accepted_values_error("stats", stats, ["mean", "median"])
+    if error not in ["std", "sem"]:
+        gen_util.accepted_values_error("error", error, ["std", "sem"])
 
     return error_name
 
 
 #############################################
-def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None, 
+def error_stat(data, stats="mean", error="sem", axis=None, nanpol=None, 
                qu=[25, 75]):
     """
     error_stat(data)
@@ -118,13 +118,13 @@ def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None,
         - data (nd array): data on which to calculate statistic
 
     Optional args:
-        - stats (str) : 'mean' or 'median'
-                        default: 'mean'
-        - error (str) : 'std' (for std or quintiles) or 'sem' (for SEM or MAD)
-                        default: 'sem'
+        - stats (str) : "mean" or "median"
+                        default: "mean"
+        - error (str) : "std" (for std or quintiles) or "sem" (for SEM or MAD)
+                        default: "sem"
         - axis (int)  : axis along which to take the statistic
                         default: None
-        - nanpol (str): policy for NaNs, 'omit' or None
+        - nanpol (str): policy for NaNs, "omit" or None
                         default: None
         - qu (list)   : quintiles to take, if median and std along which 
                         to take the statistic
@@ -135,25 +135,25 @@ def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None,
                                    specified axis
     """
 
-    if stats == 'mean' and error == 'std':
+    if stats == "mean" and error == "std":
         if nanpol is None:
             error = np.std(data, axis=axis)
-        elif nanpol == 'omit':
+        elif nanpol == "omit":
             error = np.nanstd(data, axis=axis)
-    elif stats == 'mean' and error == 'sem':
+    elif stats == "mean" and error == "sem":
         if nanpol is None:
             error = scist.sem(data, axis=axis)
-        elif nanpol == 'omit':
-            error = scist.sem(data, axis=axis, nan_policy='omit')
-    elif stats == 'median' and error == 'std':
+        elif nanpol == "omit":
+            error = scist.sem(data, axis=axis, nan_policy="omit")
+    elif stats == "median" and error == "std":
         if nanpol is None:
             error = [np.percentile(data, qu[0], axis=axis), 
                 np.percentile(data, qu[1], axis=axis)]
-        elif nanpol == 'omit':
+        elif nanpol == "omit":
             error = [np.nanpercentile(data, qu[0], axis=axis), 
                 np.nanpercentile(data, qu[1], axis=axis)]
         
-    elif stats == 'median' and error == 'sem':
+    elif stats == "median" and error == "sem":
         # MAD: median(abs(x - median(x)))
         if axis is not None:
             me_shape       = list(data.shape)
@@ -163,15 +163,15 @@ def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None,
         if nanpol is None:
             me    = np.asarray(np.median(data, axis=axis)).reshape(me_shape)
             error = np.median(np.absolute(data - me), axis=axis)
-        elif nanpol == 'omit':
+        elif nanpol == "omit":
             me    = np.asarray(np.nanmedian(data, axis=axis)).reshape(me_shape)
             error = np.nanmedian(np.absolute(data - me), axis=axis)
-    elif stats != 'median' and stats != 'mean':
-        gen_util.accepted_values_error('stats', stats, ['mean', 'median'])
+    elif stats != "median" and stats != "mean":
+        gen_util.accepted_values_error("stats", stats, ["mean", "median"])
     else:
-        gen_util.accepted_values_error('error', error, ['std', 'sem'])
-    if nanpol is not None and nanpol != 'omit':
-        gen_util.accepted_values_error('nanpol', nanpol, ['[None]', 'omit'])
+        gen_util.accepted_values_error("error", error, ["std", "sem"])
+    if nanpol is not None and nanpol != "omit":
+        gen_util.accepted_values_error("nanpol", nanpol, ["[None]", "omit"])
 
     error = np.asarray(error)
     if len(error.shape) == 0:
@@ -181,7 +181,7 @@ def error_stat(data, stats='mean', error='sem', axis=None, nanpol=None,
 
 
 #############################################
-def outlier_bounds(data, fences='outer', axis=None, nanpol=None):
+def outlier_bounds(data, fences="outer", axis=None, nanpol=None):
     """
     outlier_bounds(data)
 
@@ -191,12 +191,12 @@ def outlier_bounds(data, fences='outer', axis=None, nanpol=None):
         - data (nd array): data on which to calculate statistic
 
     Optional args:
-        - fences (str): 'inner': inner fences [Q1 - 1.5 * IQR, Q3 + 1.5 * IQR]
-                        'outer': outer fences [Q1 - 3.0 * IQR, Q3 + 3.0 * IQR]
-                        default: 'outer'
+        - fences (str): "inner": inner fences [Q1 - 1.5 * IQR, Q3 + 1.5 * IQR]
+                        "outer": outer fences [Q1 - 3.0 * IQR, Q3 + 3.0 * IQR]
+                        default: "outer"
         - axis (int)  : axis along which to take the statistic
                         default: None
-        - nanpol (str): policy for NaNs, 'omit' or None
+        - nanpol (str): policy for NaNs, "omit" or None
                         default: None
     
     Returns:
@@ -206,22 +206,22 @@ def outlier_bounds(data, fences='outer', axis=None, nanpol=None):
     if nanpol is None:
         q1 = np.percentile(data, q=25, axis=axis)
         q3 = np.percentile(data, q=75, axis=axis)
-    elif nanpol == 'omit':
+    elif nanpol == "omit":
         q1 = np.nanpercentile(data, q=25, axis=axis)
         q3 = np.nanpercentile(data, q=75, axis=axis)
     else:
-        gen_util.accepted_values_error('nanpol', nanpol, ['[None]', 'omit'])
+        gen_util.accepted_values_error("nanpol", nanpol, ["[None]", "omit"])
 
     iqr = q3 - q1
 
-    if fences == 'inner':
+    if fences == "inner":
         low_fence = q1 - 1.5 * iqr
         upp_fence = q3 + 1.5 * iqr
-    elif fences == 'outer':
+    elif fences == "outer":
         low_fence = q1 - 3.0 * iqr
         upp_fence = q3 + 3.0 * iqr
     else:
-        gen_util.accepted_values_error('fences', fences, ['inner', 'outer'])
+        gen_util.accepted_values_error("fences", fences, ["inner", "outer"])
 
     fences = [low_fence, upp_fence]
 
@@ -229,7 +229,7 @@ def outlier_bounds(data, fences='outer', axis=None, nanpol=None):
 
 
 #############################################
-def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
+def get_stats(data, stats="mean", error="sem", axes=None, nanpol=None,
               qu=[25, 75]):
     """
     get_stats(data)
@@ -239,24 +239,24 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
     the last axis in the list. 
     
     Returns statistics (me, error x values) statistics as a single array.
-    Note that is stats='median' and error='std', the error will be in two 
+    Note that is stats="median" and error="std", the error will be in two 
     rows/cols.
     
     Required args:
         - data (nd array): data array (at least 2D)
 
     Optional args:
-        - stats (str)       : stats to take, i.e., 'mean' or 'median'
-                              default: 'mean'
-        - error (str)       : error to take, i.e., 'std' (for std or quintiles) 
-                              or 'sem' (for SEM or MAD)
-                              default: 'std'
+        - stats (str)       : stats to take, i.e., "mean" or "median"
+                              default: "mean"
+        - error (str)       : error to take, i.e., "std" (for std or quintiles) 
+                              or "sem" (for SEM or MAD)
+                              default: "std"
         - axes (int or list): axes along which to  take statistics. If a list  
                               is passed.
                               If None, axes are ordered reverse sequentially 
                               (-1 to 0).
                               default: None
-        - nanpol (str)      : policy for NaNs, 'omit' or None
+        - nanpol (str)      : policy for NaNs, "omit" or None
                               default: None
         - qu (list)         : quintiles to take, if median and std along which 
                               to take the statistic
@@ -269,7 +269,7 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
     """
 
     if data.shape == 1:
-        raise ValueError('Data array must comprise at least 2 dimensions.')
+        raise ValueError("Data array must comprise at least 2 dimensions.")
 
     if axes is None:
         # reversed list of axes, omitting last one
@@ -280,8 +280,8 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
     axes = gen_util.pos_idx(axes, len(data.shape))
 
     if len(axes) > len(data.shape):
-        raise ValueError('Must provide no more axes value than the number of '
-            'data axes.')
+        raise ValueError("Must provide no more axes value than the number of "
+            "data axes.")
     
     if len(axes) > 1:
         # take the mean/median successively across axes
@@ -308,7 +308,7 @@ def get_stats(data, stats='mean', error='sem', axes=None, nanpol=None,
     me = np.asarray(me)
     err = np.asarray(err)
 
-    if stats=='median' and error=='std':
+    if stats=="median" and error=="std":
         me = np.expand_dims(me, 0)
         data_stats = np.concatenate([me, err], axis=0)
     else:
@@ -341,16 +341,16 @@ def log_stats(stats, stat_str=None, ret_str_only=False):
     me = stats[0]
     err = stats[1:]
     
-    err_str = '/'.join([f'{e:.3f}' for e in err])
+    err_str = "/".join([f"{e:.3f}" for e in err])
 
-    plusmin = u'\u00B1'
+    plusmin = u"\u00B1"
 
     if stat_str is None:
-        stat_str = ''
+        stat_str = ""
     else:
-        stat_str = f'{stat_str}: '
+        stat_str = f"{stat_str}: "
 
-    full_stat_str = u'{}{:.5f} {} {}'.format(stat_str, me, plusmin, err_str)
+    full_stat_str = u"{}{:.5f} {} {}".format(stat_str, me, plusmin, err_str)
     if ret_str_only:
         return full_stat_str
     else:
@@ -371,7 +371,7 @@ def integ(data, dx, axis=None, nanpol=None):
     Optional args:
         - axis (int)  : axis along which to take the statistic
                         default: None
-        - nanpol (str): policy for NaNs, 'omit' or None
+        - nanpol (str): policy for NaNs, "omit" or None
                         default: None
     
     Returns:
@@ -379,12 +379,12 @@ def integ(data, dx, axis=None, nanpol=None):
     """
 
     # sum * freq
-    if nanpol == 'omit':
+    if nanpol == "omit":
         integ_data = np.nansum(data, axis)*dx
     elif nanpol is None:
         integ_data = np.sum(data, axis)*dx
     else:
-        gen_util.accepted_values_error('nanpol', nanpol, ['None', 'omit'])
+        gen_util.accepted_values_error("nanpol", nanpol, ["None", "omit"])
 
     return integ_data
 
@@ -410,7 +410,7 @@ def get_divisors(val, min_val=None, max_val=None):
     """
 
     if int(val) != float(val):
-        raise ValueError('`val` must be an int.')
+        raise ValueError("'val' must be an int.")
 
     if min_val is None:
         min_val = 1
@@ -447,13 +447,13 @@ def rolling_mean(vals, win=3):
 
     targ_dims = tuple([1] * (len(vals.shape) - 1) + [win])
     weights = (np.repeat(1.0, win)/win).reshape(targ_dims)
-    vals_out = scn.convolve(vals, weights, mode='mirror')
+    vals_out = scn.convolve(vals, weights, mode="mirror")
 
     return vals_out
 
 
 #############################################
-def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
+def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
     """
     calc_op(data)
 
@@ -465,20 +465,20 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
                            dim (or list of arrays if dim = 0).
 
     Optional args:
-        - op (str)    : 'diff': index 1 - 0
-                        'ratio': index 1/0, or 
-                        'rel_diff': (index 1 - 0)/(index 1 + 0)
-                        'discr': (mean(index 1) - mean(index 0)) / 
+        - op (str)    : "diff": index 1 - 0
+                        "ratio": index 1/0, or 
+                        "rel_diff": (index 1 - 0)/(index 1 + 0)
+                        "discr": (mean(index 1) - mean(index 0)) / 
                                  (sqrt(
                                      1/2 * (std(index 1)**2 + std(index 0)**2))
-                        default: 'diff'
+                        default: "diff"
         - dim (int)   : dimension along which to do operation
                         default: 0
         - rev (bool)  : if True, indices 1 and 0 are reversed
                         default: False
-        - nanpol (str): policy for NaNs, 'omit' or None
+        - nanpol (str): policy for NaNs, "omit" or None
                         default: None
-        - axis (int)  : axis along which to take stats, e.g. std for 'discr'
+        - axis (int)  : axis along which to take stats, e.g. std for "discr"
                         default: -1
     
     Returns:
@@ -490,7 +490,7 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
     else:
         len_dim = data.shape[dim]
     if len_dim != 2:
-        raise ValueError(f'Data should have length 2 along dim: {dim}')
+        raise ValueError(f"Data should have length 2 along dim: {dim}")
 
     if isinstance(op, int):
         data_idx = gen_util.slice_idx(dim, op)
@@ -505,14 +505,14 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
         else:
             fir_idx = gen_util.slice_idx(dim, fir)
             sec_idx = gen_util.slice_idx(dim, sec)
-        if op == 'diff':
+        if op == "diff":
             data = (data[fir_idx] - data[sec_idx])
-        elif op == 'ratio':
+        elif op == "ratio":
             data = (data[fir_idx]/data[sec_idx])
-        elif op == 'rel_diff':
+        elif op == "rel_diff":
             data = (data[fir_idx] - data[sec_idx])/ \
                 (data[fir_idx] + data[sec_idx])
-        elif op == 'discr':
+        elif op == "discr":
             mean_diff = (np.mean(data[fir_idx], axis=axis) 
                         - np.mean(data[sec_idx], axis=axis))
             stds = (np.std(data[fir_idx], axis=axis),
@@ -521,13 +521,13 @@ def calc_op(data, op='diff', dim=0, rev=False, nanpol=None, axis=-1):
             data = mean_diff/div
         else:
             gen_util.accepted_values_error(
-                'op', op, ['diff', 'ratio', 'rel_diff', 'discr'])
+                "op", op, ["diff", "ratio", "rel_diff", "discr"])
     
     return data
 
 
 #############################################
-def scale_fact_names(sc_type='min_max', extrem='reg'):
+def scale_fact_names(sc_type="min_max", extrem="reg"):
     """
     scale_fact_names()
 
@@ -536,17 +536,17 @@ def scale_fact_names(sc_type='min_max', extrem='reg'):
 
     Optional args:
         - sc_type (str) : type of scaling to use
-                          'min_max'  : (data - min)/(max - min)
-                          'scale'    : (data - 0.0)/std
-                          'stand'    : (data - mean)/std
-                          'stand_rob': (data - median)/IQR (75-25)
-                          'center'   : (data - mean)/1.0
-                          'unit'     : (data - 0.0)/abs(mean)
-                          default: 'min_max'
+                          "min_max"  : (data - min)/(max - min)
+                          "scale"    : (data - 0.0)/std
+                          "stand"    : (data - mean)/std
+                          "stand_rob": (data - median)/IQR (75-25)
+                          "center"   : (data - mean)/1.0
+                          "unit"     : (data - 0.0)/abs(mean)
+                          default: "min_max"
         - extrem (str)  : only needed if min_max  or stand_rob scaling is used. 
-                          'reg': the minimum and maximum (min_max) or 25-75 IQR 
+                          "reg": the minimum and maximum (min_max) or 25-75 IQR 
                                  of the data are used 
-                          'perc': the 5th and 95th percentiles are used as min
+                          "perc": the 5th and 95th percentiles are used as min
                                   and max respectively (robust to outliers)
     
     Returns:
@@ -554,42 +554,42 @@ def scale_fact_names(sc_type='min_max', extrem='reg'):
         - div (str): type of statistic by which the data is divided
     """
 
-    if sc_type == 'stand':
-        sub = 'mean'
-        div = 'std'
-    elif sc_type == 'stand_rob':
-        sub = 'median'
-        if extrem == 'reg':
-            div = 'IQR'
-        elif extrem == 'perc':
-            div = 'IQR_5_95'
+    if sc_type == "stand":
+        sub = "mean"
+        div = "std"
+    elif sc_type == "stand_rob":
+        sub = "median"
+        if extrem == "reg":
+            div = "IQR"
+        elif extrem == "perc":
+            div = "IQR_5_95"
         else:
-            gen_util.accepted_values_error('extrem', extrem, ['reg', 'perc'])
-    elif sc_type == 'center':
-        sub = 'mean'
-        div = 'unit'
-    elif sc_type == 'scale':
-        sub = 'null'
-        div = 'std'
-    elif sc_type == 'unit':
-        sub = 'null'
-        div = 'abs_mean'
-    elif sc_type == 'min_max':
-        if extrem == 'reg':
-            sub = 'minim'
-            div = 'range'
-        elif extrem == 'perc':
-            sub = 'p5'
-            div = 'IQR_5_95'
+            gen_util.accepted_values_error("extrem", extrem, ["reg", "perc"])
+    elif sc_type == "center":
+        sub = "mean"
+        div = "unit"
+    elif sc_type == "scale":
+        sub = "null"
+        div = "std"
+    elif sc_type == "unit":
+        sub = "null"
+        div = "abs_mean"
+    elif sc_type == "min_max":
+        if extrem == "reg":
+            sub = "minim"
+            div = "range"
+        elif extrem == "perc":
+            sub = "p5"
+            div = "IQR_5_95"
     else:
-        gen_util.accepted_values_error('sc_type', sc_type, 
-                 ['stand', 'stand_rob', 'center', 'scale', 'min_max'])
+        gen_util.accepted_values_error("sc_type", sc_type, 
+                 ["stand", "stand_rob", "center", "scale", "min_max"])
 
     return sub, div
 
 
 #############################################
-def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg', 
+def scale_facts(data, axis=None, pos=None, sc_type="min_max", extrem="reg", 
                 mult=1.0, shift=0.0, nanpol=None, allow_0=False):
     """
     scale_facts(data)
@@ -605,24 +605,24 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
         - pos (int)     : position along axis along which to calculate scaling 
                           values (if None, each position is scaled separately)
         - sc_type (str) : type of scaling to use
-                          'min_max'  : (data - min)/(max - min)
-                          'scale'    : (data - 0.0)/std
-                          'stand'    : (data - mean)/std
-                          'stand_rob': (data - median)/IQR (75-25)
-                          'center'   : (data - mean)/1.0
-                          'unit'     : (data - 0.0)/abs(mean)
-                          default: 'min_max'
+                          "min_max"  : (data - min)/(max - min)
+                          "scale"    : (data - 0.0)/std
+                          "stand"    : (data - mean)/std
+                          "stand_rob": (data - median)/IQR (75-25)
+                          "center"   : (data - mean)/1.0
+                          "unit"     : (data - 0.0)/abs(mean)
+                          default: "min_max"
         - extrem (str)  : only needed if min_max  or stand_rob scaling is used. 
-                          'reg': the minimum and maximum (min_max) or 25-75 IQR 
+                          "reg": the minimum and maximum (min_max) or 25-75 IQR 
                                  of the data are used 
-                          'perc': the 5th and 95th percentiles are used as min
+                          "perc": the 5th and 95th percentiles are used as min
                                   and max respectively (robust to outliers)
         - mult (num)    : value by which to multiply scaled data
                           default: 1.0
         - shift (num)   : value by which to shift scaled data (applied after
                           mult)
                           default: 0.0
-        - nanpol (str)  : policy for NaNs, 'omit' or None
+        - nanpol (str)  : policy for NaNs, "omit" or None
                           default: None
         - allow_0 (bool): if True, div == 0 is allowed (likely resulting from 
                           np.nans)
@@ -636,7 +636,7 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
     """  
 
     if pos is not None and axis is None:
-        raise ValueError('Must pass an axis if passing a position.')
+        raise ValueError("Must pass an axis if passing a position.")
     
     if pos is not None:
         sc_idx = gen_util.slice_idx(axis, pos) # for a slice
@@ -644,61 +644,61 @@ def scale_facts(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
     else:
         sc_idx = gen_util.slice_idx(None, None) # for entire data
 
-    if sc_type == 'stand':
-        sub = mean_med(data[sc_idx], stats='mean', axis=axis, nanpol=nanpol)
-        div = error_stat(data[sc_idx], stats='mean', error='std', axis=axis, 
+    if sc_type == "stand":
+        sub = mean_med(data[sc_idx], stats="mean", axis=axis, nanpol=nanpol)
+        div = error_stat(data[sc_idx], stats="mean", error="std", axis=axis, 
             nanpol=nanpol)
-    elif sc_type == 'stand_rob':
-        sub = mean_med(data[sc_idx], stats='median', axis=axis, nanpol=nanpol)
-        if extrem == 'reg':
+    elif sc_type == "stand_rob":
+        sub = mean_med(data[sc_idx], stats="median", axis=axis, nanpol=nanpol)
+        if extrem == "reg":
             qus = [25, 75]
-        elif extrem == 'perc':
+        elif extrem == "perc":
             qus = [5, 95]
         else:
-            gen_util.accepted_values_error('extrem', extrem, ['reg', 'perc'])
+            gen_util.accepted_values_error("extrem", extrem, ["reg", "perc"])
         qs  = error_stat(
-            data[sc_idx], stats='median', error='std', axis=axis, qu=qus, 
+            data[sc_idx], stats="median", error="std", axis=axis, qu=qus, 
             nanpol=nanpol)
         div = qs[1] - qs[0]
-    elif sc_type == 'center':
-        sub = mean_med(data[sc_idx], stats='mean', axis=axis, nanpol=nanpol)
+    elif sc_type == "center":
+        sub = mean_med(data[sc_idx], stats="mean", axis=axis, nanpol=nanpol)
         div = 1.0
-    elif sc_type == 'scale':
+    elif sc_type == "scale":
         sub = 0.0
         div = error_stat(
-            data[sc_idx], stats='mean', error='std', axis=axis, nanpol=nanpol)
-    elif sc_type == 'unit':
+            data[sc_idx], stats="mean", error="std", axis=axis, nanpol=nanpol)
+    elif sc_type == "unit":
         sub = 0.0
-        div = np.absolute(mean_med(data[sc_idx], stats='mean', axis=axis, 
+        div = np.absolute(mean_med(data[sc_idx], stats="mean", axis=axis, 
                                    nanpol=nanpol))
-    elif sc_type == 'min_max':
-        if nanpol is not None and nanpol != 'omit':
-            gen_util.accepted_values_error('nanpol', nanpol, ['[None]', 'omit'])
-        if extrem == 'reg':
+    elif sc_type == "min_max":
+        if nanpol is not None and nanpol != "omit":
+            gen_util.accepted_values_error("nanpol", nanpol, ["[None]", "omit"])
+        if extrem == "reg":
             if nanpol is None:
                 minim = np.min(data[sc_idx], axis=axis)
                 maxim = np.max(data[sc_idx], axis=axis)
-            elif nanpol == 'omit':
+            elif nanpol == "omit":
                 minim = np.nanmin(data[sc_idx], axis=axis)
                 maxim = np.nanmax(data[sc_idx], axis=axis)
-        elif extrem == 'perc':
+        elif extrem == "perc":
             if nanpol is None:
                 minim = np.percentile(data[sc_idx], 5, axis=axis)
                 maxim = np.percentile(data[sc_idx], 95, axis=axis)
-            elif nanpol == 'omit':
+            elif nanpol == "omit":
                 minim = np.nanpercentile(data[sc_idx], 5, axis=axis)
                 maxim = np.nanpercentile(data[sc_idx], 95, axis=axis)
         else:
-            gen_util.accepted_values_error('extrem', extrem, ['reg', 'perc'])
+            gen_util.accepted_values_error("extrem", extrem, ["reg", "perc"])
         sub = minim
         div = maxim - minim
     else:
         gen_util.accepted_values_error(
-            'sc_type', sc_type, 
-            ['stand', 'stand_rob', 'center', 'scale', 'min_max'])
+            "sc_type", sc_type, 
+            ["stand", "stand_rob", "center", "scale", "min_max"])
     
     if not allow_0 and (np.asarray(div) == 0).any():
-        raise ValueError('Scaling cannot proceed due to division by 0.')
+        raise ValueError("Scaling cannot proceed due to division by 0.")
 
     if isinstance(sub, np.ndarray):
         sub = sub.tolist()
@@ -729,7 +729,7 @@ def extrem_to_med(data, ext_p=[5, 95]):
     p_lo, p_hi = ext_p
 
     if p_hi < p_lo:
-        raise ValueError('p_lo must be smaller than p_hi.')
+        raise ValueError("p_lo must be smaller than p_hi.")
     meds, lo, hi = [np.nanpercentile(data, p, axis=0).reshape([1, -1]) 
         for p in [50, p_lo, p_hi]]
     modif = np.where(np.add(data < lo, data > hi))
@@ -739,7 +739,7 @@ def extrem_to_med(data, ext_p=[5, 95]):
 
 
 #############################################
-def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg', 
+def scale_data(data, axis=None, pos=None, sc_type="min_max", extrem="reg", 
                mult=1.0, shift=0.0, facts=None, nanpol=None):
     """
     scale_data(data)
@@ -755,17 +755,17 @@ def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
         - pos (int)    : position along axis to retain when calculating scaling 
                          values (if None, each position is scaled separately)
         - sc_type (str) : type of scaling to use
-                          'min_max'  : (data - min)/(max - min)
-                          'scale'    : (data - 0.0)/std
-                          'stand'    : (data - mean)/std
-                          'stand_rob': (data - median)/IQR (75-25)
-                          'center'   : (data - mean)/1.0
-                          'unit'     : (data - 0.0)/abs(mean)
-                          default: 'min_max'
+                          "min_max"  : (data - min)/(max - min)
+                          "scale"    : (data - 0.0)/std
+                          "stand"    : (data - mean)/std
+                          "stand_rob": (data - median)/IQR (75-25)
+                          "center"   : (data - mean)/1.0
+                          "unit"     : (data - 0.0)/abs(mean)
+                          default: "min_max"
         - extrem (str)  : only needed if min_max  or stand_rob scaling is used. 
-                          'reg': the minimum and maximum (min_max) or 25-75 IQR 
+                          "reg": the minimum and maximum (min_max) or 25-75 IQR 
                                  of the data are used 
-                          'perc': the 5th and 95th percentiles are used as min
+                          "perc": the 5th and 95th percentiles are used as min
                                   and max respectively (robust to outliers)
         - mult (num)   : value by which to multiply scaled data
                          default: 1.0
@@ -777,7 +777,7 @@ def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
                          sub is the value subtracted and div is the value
                          used as divisor (before applying mult and shift)
                          default: None
-        - nanpol (str) : policy for NaNs, 'omit' or None
+        - nanpol (str) : policy for NaNs, "omit" or None
                          default: None
 
     Returns:
@@ -795,8 +795,8 @@ def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
             shift=shift, nanpol=nanpol)
         ret_facts = True
     elif len(facts) != 4:
-        raise ValueError('If passing factors, must pass 4 items: '
-            'sub, div, mult and shift.')
+        raise ValueError("If passing factors, must pass 4 items: "
+            "sub, div, mult and shift.")
 
     sub, div, mult, shift = [np.asarray(fact).astype(float) for fact in facts]
 
@@ -814,9 +814,9 @@ def scale_data(data, axis=None, pos=None, sc_type='min_max', extrem='reg',
 
 
 #############################################
-def calc_mag_change(data, change_dim, item_dim, order=1, op='diff', 
-                    stats='mean', error='sem', scale=False, axis=0, pos=0, 
-                    sc_type='unit'):
+def calc_mag_change(data, change_dim, item_dim, order=1, op="diff", 
+                    stats="mean", error="sem", scale=False, axis=0, pos=0, 
+                    sc_type="unit"):
     """
     calc_mag_change(data, change_dim, item_dim)
 
@@ -829,16 +829,16 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op='diff',
         - item_dim (int)  : dimension along which to scale or take statistics
     
     Optional args:
-        - order (int)    : order of the norm (or 'stats' to take change stats)
+        - order (int)    : order of the norm (or "stats" to take change stats)
                            default: 1
-        - op (str)       : 'diff': index 1 - 0, or 'ratio': index 1/0, or 
-                           'rel_diff': (index 1 - 0)/(index 1 + 0)
-                           default: 'diff'
-        - stats (str)    : stats to take, i.e., 'mean' or 'median'
-                           default: 'mean'
-        - error (str)    : error to take, i.e., 'std' (for std or quintiles) 
-                           or 'sem' (for SEM or MAD)
-                           default: 'std'
+        - op (str)       : "diff": index 1 - 0, or "ratio": index 1/0, or 
+                           "rel_diff": (index 1 - 0)/(index 1 + 0)
+                           default: "diff"
+        - stats (str)    : stats to take, i.e., "mean" or "median"
+                           default: "mean"
+        - error (str)    : error to take, i.e., "std" (for std or quintiles) 
+                           or "sem" (for SEM or MAD)
+                           default: "std"
         - scale (bool)   : if True, data is scaled using axis, pos and sc_type
                            default: False
         - axis (int)     : axis along which to calculate scaling values (if  
@@ -846,16 +846,16 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op='diff',
         - pos (int)      : position along axis along which to calculate scaling 
                            values (if None, each position is scaled separately)
         - sc_type (str) : type of scaling to use
-                          'min_max'  : (data - min)/(max - min)
-                          'scale'    : (data - 0.0)/std
-                          'stand'    : (data - mean)/std
-                          'stand_rob': (data - median)/IQR (75-25)
-                          'center'   : (data - mean)/1.0
-                          'unit'     : (data - 0.0)/abs(mean)
-                          default: 'min_max'
+                          "min_max"  : (data - min)/(max - min)
+                          "scale"    : (data - 0.0)/std
+                          "stand"    : (data - mean)/std
+                          "stand_rob": (data - median)/IQR (75-25)
+                          "center"   : (data - mean)/1.0
+                          "unit"     : (data - 0.0)/abs(mean)
+                          default: "min_max"
 
     Returns:
-        if order == 'stats:
+        if order == "stats:
             - data_ch_stats (nd array): array of magnitude change statistics,
                                         where first dimension are the stats
                                         (me, de)
@@ -863,8 +863,8 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op='diff',
             - data_ch_norm (nd array) : array of norm values
     """
 
-    if op not in ['diff', 'ratio']:
-        raise ValueError('op can only take values `diff` or `ratio`.')
+    if op not in ["diff", "ratio"]:
+        raise ValueError("op can only take values 'diff' or 'ratio'.")
     
     data_change = np.absolute(calc_op(data, op, dim=change_dim))
 
@@ -874,7 +874,7 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op='diff',
     if scale and axis is not None and axis > change_dim: # adjust dim if needed
         axis += -1
 
-    if order == 'stats':
+    if order == "stats":
         if scale:
             data_change, _ = scale_data(data_change, axis, pos, sc_type)
         data_ch_stats = get_stats(data_change, stats, error, axes=item_dim)
@@ -941,7 +941,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
         - n_perms  (int): nbr of permutations to run
                           default: 10000
         - lim_e6 (num)  : limit (when multiplied by 1e6) to permuted data array 
-                          size at which an AssertionError is thrown. 'none' for
+                          size at which an AssertionError is thrown. "none" for
                           no limit
                           default: 350
     Returns:
@@ -951,17 +951,17 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
     """
 
     if len(all_data.shape) > 2:
-        raise NotImplementedError('Permutation analysis only implemented for '
-            '2D data.')
+        raise NotImplementedError("Permutation analysis only implemented for "
+            "2D data.")
 
     # checks final size of permutation array and throws an error if
     # it is bigger than accepted limit.
     perm_size = np.product(all_data.shape) * n_perms
-    if lim_e6 != 'none':
+    if lim_e6 != "none":
         lim = int(lim_e6*1e6)
         fold = int(np.ceil(float(perm_size)/lim))
-        permute_cri = ('\nPermutation array exceeds allowed size '
-            f'({lim_e6} * 10^6) by {fold} fold.')
+        permute_cri = ("Permutation array exceeds allowed size "
+            f"({lim_e6} * 10^6) by {fold} fold.")
         assert (perm_size < lim), permute_cri
 
     # (item x datapoints (all groups))
@@ -976,8 +976,8 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
 
 
 #############################################
-def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean', 
-                       nanpol=None, op='diff'):       
+def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean", 
+                       nanpol=None, op="diff"):       
     """
     permute_diff_ratio(all_data)
 
@@ -990,38 +990,38 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
 
     Optional args:
         - div (str or int)  : nbr of datapoints in first group
-                              default: 'half'
+                              default: "half"
         - n_perms (int)     : nbr of permutations to run
                               default: 10000
-        - stats (str)       : statistic parameter, i.e. 'mean' or 'median'
-                              default: 'mean'
-        - nanpol (str)      : policy for NaNs, 'omit' or None when taking 
+        - stats (str)       : statistic parameter, i.e. "mean" or "median"
+                              default: "mean"
+        - nanpol (str)      : policy for NaNs, "omit" or None when taking 
                               statistics
                               default: None
         - op (str)          : operation to use to compare groups, 
-                              'diff': grp2-grp1
-                              'ratio': grp2/grp1
-                              'rel_diff': (grp2-grp1)/(grp2+grp1)
-                              'discr': 2 * (grp2-grp1)/(std(grp2) + std(grp1))
-                              'none'
-                              default: 'diff'
+                              "diff": grp2-grp1
+                              "ratio": grp2/grp1
+                              "rel_diff": (grp2-grp1)/(grp2+grp1)
+                              "discr": 2 * (grp2-grp1)/(std(grp2) + std(grp1))
+                              "none"
+                              default: "diff"
 
     Returns:
         - all_rand_vals (2 or 3D array): permutation results, structured as:
-                                             (grps if op is 'none' x) 
+                                             (grps if op is "none" x) 
                                              items x perms
     """
 
     if len(all_data.shape) > 2:
-        raise NotImplementedError('Significant difference/ratio analysis only '
-            'implemented for 2D data.')
+        raise NotImplementedError("Significant difference/ratio analysis only "
+            "implemented for 2D data.")
     
     all_rand_res = []
     perm = True
     n_perms_tot = n_perms
     perms_done = 0
 
-    if div == 'half':
+    if div == "half":
         div = int(all_data.shape[1]//2)
 
     while perm:
@@ -1031,7 +1031,7 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                 n_perms = perms_rem
             permed_data = run_permute(all_data, n_perms=n_perms)
 
-            if op != 'discr':
+            if op != "discr":
                 axis = None
                 rand = np.stack([
                     mean_med(permed_data[:, 0:div], stats, axis=1, nanpol=nanpol), 
@@ -1041,7 +1041,7 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
                 axis = 1
                 rand = [permed_data[:, 0:div], permed_data[:, div:]]
 
-            if op == 'none':
+            if op == "none":
                 rand_res = rand
             else:
                 # calculate grp2-grp1 or grp2/grp1... -> elem x perms
@@ -1057,10 +1057,10 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
 
         except AssertionError as err:
             logger.warning(err)
-            logger.warning('Doing permutations in smaller batches.')
+            logger.warning("Doing permutations in smaller batches.")
             # retrieve fold from error message.
-            err_fold_str = str(err)[str(err).find('by '):]
-            fold = int(re.findall('\d+', err_fold_str)[0])
+            err_fold_str = str(err)[str(err).find("by "):]
+            fold = int(re.findall("\d+", err_fold_str)[0])
             n_perms = int(n_perms//fold)
 
     all_rand_res = np.concatenate(all_rand_res, axis=-1)
@@ -1069,7 +1069,7 @@ def permute_diff_ratio(all_data, div='half', n_perms=10000, stats='mean',
 
 
 #############################################
-def log_elem_list(elems, tail='up', act_vals=None):
+def log_elem_list(elems, tail="up", act_vals=None):
     """
     log_elem_list(rand_vals, act_vals)
 
@@ -1080,25 +1080,25 @@ def log_elem_list(elems, tail='up', act_vals=None):
         - elems (1D array): array of elements showing significant differences
 
     Optional args:
-        - tails (str)        : which tail the elements are in: 'up', 'lo'
-                               default: 'up'
+        - tails (str)        : which tail the elements are in: "up", "lo"
+                               default: "up"
         - act_vals (1D array): array of actual values corresponding to elems 
                                (same length). If None, actual values are not 
                                logged.
     """
 
     if len(elems) == 0:
-        logger.info(f'Signif {tail}: None', extra={'spacing': f'{TAB}{TAB}'})
+        logger.info(f"Signif {tail}: None", extra={"spacing": f"{TAB}{TAB}"})
     else:
-        elems_pr = ', '.join(f'{x}' for x in elems)
-        logger.info(f'Signif {tail}: {elems_pr}', extra={'spacing': f'{TAB}{TAB}'})
+        elems_pr = ", ".join(f"{x}" for x in elems)
+        logger.info(f"Signif {tail}: {elems_pr}", extra={"spacing": f"{TAB}{TAB}"})
         if act_vals is not None:
             if len(act_vals) != len(elems):
-                raise ValueError('`elems` and `act_vals` should be the '
-                    f'same length, but are of length {len(elems)} and '
-                    f'{len(act_vals)} respectively.')
-            vals_pr = ', '.join([f'{x:.2f}' for x in act_vals])
-            logger.info(f'Vals: {vals_pr}', extra={'spacing': f'{TAB}{TAB}'})
+                raise ValueError("'elems' and 'act_vals' should be the "
+                    f"same length, but are of length {len(elems)} and "
+                    f"{len(act_vals)} respectively.")
+            vals_pr = ", ".join([f"{x:.2f}" for x in act_vals])
+            logger.info(f"Vals: {vals_pr}", extra={"spacing": f"{TAB}{TAB}"})
 
 
 #############################################
@@ -1127,8 +1127,8 @@ def lin_interp_nan(data_arr):
 
 
 #############################################    
-def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100, 
-            log_elems=False, ret_th=False, nanpol='omit'):
+def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100, 
+            log_elems=False, ret_th=False, nanpol="omit"):
     """
     id_elem(rand_vals, act_vals)
 
@@ -1144,8 +1144,8 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
         - act_vals (1D array) : actual values for each element
 
     Optional args:
-        - tails (str or int): which tail(s) to test: 'up', 'lo', '2'
-                              default: '2'
+        - tails (str or int): which tail(s) to test: "up", "lo", "2"
+                              default: "2"
         - p_val (num)       : p-value to use for significance thresholding 
                               (0 to 1)
                               default: 0.05
@@ -1157,7 +1157,7 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
                               default: False
         - ret_th (bool)     : if True, thresholds are returned for each element
                               default: False
-        - nanpol (str)      : if 'omit', NaNs in act_vals are allowed, and
+        - nanpol (str)      : if "omit", NaNs in act_vals are allowed, and
                               prevented from leading to positive significance
                               evaluation
                               default: False
@@ -1177,7 +1177,7 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
     if len(rand_vals.shape) == 1:
         single = True
 
-    if nanpol == 'omit':
+    if nanpol == "omit":
         act_vals = copy.deepcopy(act_vals)
         rand_vals = copy.deepcopy(rand_vals)
         nan_idx = np.where(~np.isfinite(act_vals))[0]
@@ -1193,42 +1193,42 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
     nan_rand_vals = np.isnan(rand_vals).any()
 
     if nan_act_vals > 0:
-        raise ValueError('NaNs encountered in actual values.')
+        raise ValueError("NaNs encountered in actual values.")
     if nan_rand_vals > 0:
-        raise ValueError('NaNs encountered in random values.')
+        raise ValueError("NaNs encountered in random values.")
 
     # check whether there are enough values for determining thresholds
     out_vals = int(rand_vals.shape[-1] * p_val)
     if out_vals < min_n:
-        raise ValueError(f'Insufficient number of values ({out_vals}) outside '
-            f'the CI (< {min_n}).')
+        raise ValueError(f"Insufficient number of values ({out_vals}) outside "
+            f"the CI (< {min_n}).")
 
-    if tails == 'lo':
+    if tails == "lo":
         threshs = np.percentile(rand_vals, p_val*100, axis=-1)
         elems = np.where(act_vals < threshs)[0]
         if log_elems:
-            log_elem_list(elems, 'lo', act_vals[elems])
+            log_elem_list(elems, "lo", act_vals[elems])
         elems = elems.tolist()
-    elif tails == 'up':
+    elif tails == "up":
         threshs = np.percentile(rand_vals, 100-p_val*100, axis=-1)
         elems = np.where(act_vals > threshs)[0]
         if log_elems:
-            log_elem_list(elems, 'up', act_vals[elems])
+            log_elem_list(elems, "up", act_vals[elems])
         elems = elems.tolist()
-    elif str(tails) == '2':
+    elif str(tails) == "2":
         lo_threshs = np.percentile(rand_vals, p_val*100/2., axis=-1)
         lo_elems = np.where(act_vals < lo_threshs)[0]
         up_threshs = np.percentile(rand_vals, 100-p_val*100/2., axis=-1)
         up_elems = np.where(act_vals > up_threshs)[0]
         if log_elems:
-            log_elem_list(lo_elems, 'lo', act_vals[lo_elems])
-            log_elem_list(up_elems, 'up', act_vals[up_elems])
+            log_elem_list(lo_elems, "lo", act_vals[lo_elems])
+            log_elem_list(up_elems, "up", act_vals[up_elems])
         elems = [lo_elems.tolist(), up_elems.tolist()]
     else:
-        gen_util.accepted_values_error('tails', tails, ['up', 'lo', '2'])
+        gen_util.accepted_values_error("tails", tails, ["up", "lo", "2"])
     
     if ret_th:
-        if tails in ['lo', 'up']:
+        if tails in ["lo", "up"]:
             if single:
                 threshs = [threshs]
             else:
@@ -1244,7 +1244,7 @@ def id_elem(rand_vals, act_vals, tails='2', p_val=0.05, min_n=100,
 
 
 #############################################
-def get_diff_p_val(act_data, n_perms=10000, stats='mean', op='diff'):
+def get_diff_p_val(act_data, n_perms=10000, stats="mean", op="diff"):
     """
     get_diff_p_val(act_data)
 
@@ -1256,9 +1256,9 @@ def get_diff_p_val(act_data, n_perms=10000, stats='mean', op='diff'):
         - n_perms (int): number of permutations
                          default: 10000
         - stats (str)  : stats to use for permutation test
-                         default: 'mean'
+                         default: "mean"
         - op (str)     : operation to use to compare the groups (see calc_op())
-                         default: 'diff'
+                         default: "diff"
 
     Returns:
         - p_val (float): p-value calculated from a randomly generated 
@@ -1266,7 +1266,7 @@ def get_diff_p_val(act_data, n_perms=10000, stats='mean', op='diff'):
     """
     
     if len(act_data) != 2:
-        raise ValueError('Expected `act_data` to comprise 2 groups.')
+        raise ValueError("Expected 'act_data' to comprise 2 groups.")
 
     grp1, grp2 = act_data
 
@@ -1289,7 +1289,7 @@ def get_diff_p_val(act_data, n_perms=10000, stats='mean', op='diff'):
 
 
 #############################################
-def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats='mean'):
+def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats="mean"):
     """
     comp_vals_acr_groups(vals)
 
@@ -1303,7 +1303,7 @@ def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats='mean'):
                          test. If None, a different test is used
                          default: None
         - stats (str)  : stats to use for permutation test
-                         default: 'mean'
+                         default: "mean"
         - normal (bool): whether data is expected to be normal or not 
                          (determines whether a t-test or Mann Whitney test 
                          will be done. Ignored if n_perms is not None.)
@@ -1324,7 +1324,7 @@ def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats='mean'):
                len(s_vals) != 0 and len(v_vals) != 0:
                 if n_perms is not None:
                     p_vals[i] = get_diff_p_val(
-                        [s_vals, v_vals], n_perms, stats=stats, op='diff')
+                        [s_vals, v_vals], n_perms, stats=stats, op="diff")
                 elif normal:
                     p_vals[i] = scist.ttest_ind(
                         s_vals, v_vals, axis=None)[1]
@@ -1346,31 +1346,31 @@ def get_percentiles(CI=0.95, tails=2):
     Optional args:
         - CI (num)          : confidence interval
                               default: 0.95
-        - tails (str or int): which tail(s) to test: 'up', 'lo', '2'
-                              default: '2'
+        - tails (str or int): which tail(s) to test: "up", "lo", "2"
+                              default: "2"
 
     Returns:
         - ps (list)     : list of percentile values, e.g., [2.5, 97.5]
-        - p_names (list): list of percentile names, e.g., ['p2-5', 'p97-5']
+        - p_names (list): list of percentile names, e.g., ["p2-5", "p97-5"]
     """
 
     if CI < 0 or CI > 1:
-        raise ValueError('CI must be between 0 and 1.')
+        raise ValueError("CI must be between 0 and 1.")
 
     CI *= 100
 
-    if tails == 'up':
+    if tails == "up":
         ps = [0.0, CI]
-    elif tails == 'lo':
+    elif tails == "lo":
         ps = [100 - CI, 100]
-    elif tails in ['2', 2]:
+    elif tails in ["2", 2]:
         ps = [0.5 * (100 + v) for v in [-CI, CI]]
     else:
-        gen_util.accepted_values_error('tails', tails, ['up', 'lo', 2])
+        gen_util.accepted_values_error("tails", tails, ["up", "lo", 2])
 
     p_names = []
     for p in ps:
-        p_names.append(f'p{gen_util.num_to_str(p)}')
+        p_names.append(f"p{gen_util.num_to_str(p)}")
 
     return ps, p_names
 
@@ -1388,7 +1388,7 @@ def autocorr(data, lag):
         - autoc_snip (1D array): 1D array of autocorrelations at specified lag
     """
 
-    autoc = np.correlate(data, data, 'full')
+    autoc = np.correlate(data, data, "full")
     mid = int((autoc.shape[0] - 1)//2)
     autoc_snip = autoc[mid - lag:mid + lag + 1]
     autoc_snip /= np.max(autoc_snip)
@@ -1396,7 +1396,7 @@ def autocorr(data, lag):
 
 
 #############################################
-def autocorr_stats(data, lag, spu=None, byitem=True, stats='mean', error='std', 
+def autocorr_stats(data, lag, spu=None, byitem=True, stats="mean", error="std", 
                    nanpol=None):
     """
     autocorr_stats(data, lag)
@@ -1419,11 +1419,11 @@ def autocorr_stats(data, lag, spu=None, byitem=True, stats='mean', error='std',
         - byitem (bool): if True, autocorrelation statistics are taken by 
                          item, else across items
                          default: True
-        - stats (str)  : statistic parameter, i.e. 'mean' or 'median'
-                         default: 'mean'
-        - error (str)  : error statistic parameter, i.e. 'std' or 'sem'
-                         default: 'std
-        - nanpol (str) : policy for NaNs, 'omit' or None when taking statistics
+        - stats (str)  : statistic parameter, i.e. "mean" or "median"
+                         default: "mean"
+        - error (str)  : error statistic parameter, i.e. "std" or "sem"
+                         default: "std
+        - nanpol (str) : policy for NaNs, "omit" or None when taking statistics
                          default: None
 
     Returns:

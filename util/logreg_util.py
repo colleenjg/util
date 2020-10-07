@@ -37,7 +37,7 @@ from util import file_util, gen_util, logger_util, math_util, plot_util
 
 logger = logging.getLogger(__name__)
 
-TAB = '    '
+TAB = "    "
 
 
 #############################################
@@ -62,11 +62,11 @@ def catch_set_problem(function):
     """
 
     def wrapper(*args, catch_set_prob=False, **kwargs):
-        catch_phr = ['threshold', 'true labels', 'size', 'populated class']
+        catch_phr = ["threshold", "true labels", "size", "populated class"]
         try:
             return function(*args, **kwargs)
         except ValueError as err:
-            catch_phr = ['threshold', 'true labels', 'size', 'populated class']
+            catch_phr = ["threshold", "true labels", "size", "populated class"]
             caught = sum(phr in str(err) for phr in catch_phr)
             if catch_set_prob and caught:
                 logger.warning(str(err))
@@ -134,10 +134,10 @@ class weighted_BCE():
         """
 
         if weights is not None and len(weights) != 2:
-            raise ValueError('Exactly 2 weights must be provided, if any.')
+            raise ValueError("Exactly 2 weights must be provided, if any.")
         
         self.weights = weights
-        self.name = 'Weighted BCE loss'
+        self.name = "Weighted BCE loss"
 
     def calc(self, pred_class, act_class):
         """
@@ -181,7 +181,7 @@ def get_sklearn_verbosity():
 
     # get level 
     level = logger.level
-    if level == 0:
+    if level == logging.NOTSET:
         level = logging.getLogger().level
 
     if level <= logging.INFO:
@@ -258,7 +258,7 @@ def accuracy(pred_class, act_class):
 
 
 #############################################
-def get_sc_types(info='label'):
+def get_sc_types(info="label"):
     """
     get_sc_types()
 
@@ -267,23 +267,23 @@ def get_sc_types(info='label'):
     
     Optional args:
         - info (str)  : type of info to return (label, title, idx or track)
-                        default: 'label'
+                        default: "label"
 
     Returns:
-        if info == 'label':
+        if info == "label":
             - label (list): list of score type labels
-        elif info == 'title':
+        elif info == "title":
             - title (list): list of score type titles
     """
 
-    label = ['loss', 'acc', 'acc_class0', 'acc_class1', 'acc_bal']
+    label = ["loss", "acc", "acc_class0", "acc_class1", "acc_bal"]
     
-    if info == 'label':
+    if info == "label":
         return label
 
-    elif info == 'title':
-        title = ['Loss', 'Accuracy (%)', 'Accuracy on class0 trials (%)', 
-            'Accuracy on class1 trials (%)', 'Balanced accuracy (%)']
+    elif info == "title":
+        title = ["Loss", "Accuracy (%)", "Accuracy on class0 trials (%)", 
+            "Accuracy on class1 trials (%)", "Balanced accuracy (%)"]
         return title
 
 
@@ -303,12 +303,12 @@ def get_sc_names(loss_name, classes):
         - sc_names (list): list of specific score names
     """
 
-    sc_names = get_sc_types(info='title')
+    sc_names = get_sc_types(info="title")
     for i, sc_name in enumerate(sc_names):
-        if sc_name.lower() == 'loss':
+        if sc_name.lower() == "loss":
             sc_names[i] = loss_name
         for j, class_name in enumerate(classes):
-            generic = f'class{j}'
+            generic = f"class{j}"
             if generic in sc_name:
                 sc_names[i] = sc_name.replace(generic, class_name)
     
@@ -334,12 +334,12 @@ def get_set_labs(test=True, ext_test=False, ext_test_name=None):
         - sets (list): list of set labels
     """
 
-    sets = ['train', 'val']
+    sets = ["train", "val"]
     if test:
-        sets.extend(['test'])
+        sets.extend(["test"])
     if ext_test:
         if ext_test_name is None:
-            sets.extend(['ext_test'])
+            sets.extend(["ext_test"])
         else:
             sets.extend([ext_test_name])
     
@@ -347,7 +347,7 @@ def get_set_labs(test=True, ext_test=False, ext_test_name=None):
 
 
 #############################################
-def get_sc_labs(test=True, by='flat', ext_test=False, ext_test_name=None):
+def get_sc_labs(test=True, by="flat", ext_test=False, ext_test_name=None):
     """
     get_sc_labs()
 
@@ -356,9 +356,9 @@ def get_sc_labs(test=True, by='flat', ext_test=False, ext_test_name=None):
     Optional args:
         - test (bool)        : if True, a test set is included
                                default: True
-        - by (str)           : if 'flat', labels are returned flat. If 'set', 
+        - by (str)           : if "flat", labels are returned flat. If "set", 
                                labels are returned by set.
-                               default: 'flat'
+                               default: "flat"
         - ext_test (bool)    : if True, an extra test set is included
                                default: False
         - ext_test_name (str): name of extra test set, if included
@@ -366,7 +366,7 @@ def get_sc_labs(test=True, by='flat', ext_test=False, ext_test_name=None):
 
     Returns:
         - sc_labs (list): list of set and score labels, 
-                          nested by set if by is 'set'.
+                          nested by set if by is "set".
     """
 
     if ext_test_name is not None:
@@ -374,12 +374,12 @@ def get_sc_labs(test=True, by='flat', ext_test=False, ext_test_name=None):
 
     sets = get_set_labs(test, ext_test=ext_test, ext_test_name=ext_test_name)
     scores = get_sc_types()
-    if by == 'flat':
-        sc_labs = [f'{s}_{sc}' for s in sets for sc in scores]
-    elif by == 'set':
-        sc_labs = [[f'{s}_{sc}' for sc in scores] for s in sets]
+    if by == "flat":
+        sc_labs = [f"{s}_{sc}" for s in sets for sc in scores]
+    elif by == "set":
+        sc_labs = [[f"{s}_{sc}" for sc in scores] for s in sets]
     else:
-        gen_util.accepted_values_error('by', by, ['flat', 'set'])
+        gen_util.accepted_values_error("by", by, ["flat", "set"])
 
     return sc_labs
 
@@ -395,7 +395,7 @@ def run_batches(mod, dl, device, train=True):
         - mod (torch.nn.Module): Neural network module with optimizer and loss 
                                  function as attributes
         - dl (torch DataLoader): Dataloader
-        - device (str)         : device to use ('cuda' or 'cpu') 
+        - device (str)         : device to use ("cuda" or "cpu") 
 
     Optional args:
         - train (bool): if True, network is trained on data. If False, 
@@ -407,12 +407,12 @@ def run_batches(mod, dl, device, train=True):
                         acc_class1)
     """
 
-    labs = get_sc_types('label')
+    labs = get_sc_types("label")
     ep_sc, divs = dict(), dict()
 
     for lab in labs:
         ep_sc[lab] = 0
-        if lab in ['loss', 'acc']:
+        if lab in ["loss", "acc"]:
             divs[lab] = dl.dataset.n_samples
         else:
             divs[lab] = 0
@@ -426,9 +426,9 @@ def run_batches(mod, dl, device, train=True):
             loss.backward()
             mod.opt.step()
         # retrieve sum across batch
-        ep_sc['loss'] += loss.item()*len(data) 
+        ep_sc["loss"] += loss.item()*len(data) 
         ns, accs = accuracy(pred_class.cpu().detach(), targ.cpu().detach())
-        ep_sc['acc'] += accs[0] + accs[1]
+        ep_sc["acc"] += accs[0] + accs[1]
         for lab, n, acc in zip(labs[-3:-1], ns, accs):
             if acc is not None:
                 ep_sc[lab] += acc
@@ -436,21 +436,21 @@ def run_batches(mod, dl, device, train=True):
     
     for lab in labs:
         mult = 1.0
-        if 'acc' in lab:
+        if "acc" in lab:
             mult = 100.0
-        if lab != 'acc_bal':
+        if lab != "acc_bal":
             ep_sc[lab] = ep_sc[lab] * mult/divs[lab]
     
     cl_accs = []
-    if 'acc_bal' in labs: # get balanced accuracy (across classes)
+    if "acc_bal" in labs: # get balanced accuracy (across classes)
         for lab in labs:
-            if 'class' in lab:
+            if "class" in lab:
                 cl_accs.append(ep_sc[lab])
         if len(cl_accs) > 0:
-            ep_sc['acc_bal'] = np.mean(cl_accs) 
+            ep_sc["acc_bal"] = np.mean(cl_accs) 
         else:
-            raise ValueError('No class accuracies. Cannot calculate '
-                'balanced accuracy.')
+            raise ValueError("No class accuracies. Cannot calculate "
+                "balanced accuracy.")
     
     return ep_sc
 
@@ -467,7 +467,7 @@ def run_dl(mod, dl, device, train=True):
         - mod (torch.nn.Module): Neural network module with optimizer and loss 
                                  function as attributes
         - dl (torch DataLoader): Dataloader
-        - device (str)         : device to use ('cuda' or 'cpu') 
+        - device (str)         : device to use ("cuda" or "cpu") 
 
     Optional args:
         - train (bool): if True, network is trained on data. If False, 
@@ -501,7 +501,7 @@ def log_loss(s, loss, logger=None):
     Logs at info level loss for set to console.
     
     Required args:
-        - s (str)     : set (e.g., 'train')
+        - s (str)     : set (e.g., "train")
         - loss (num)  : loss score
     
     Optional args:
@@ -510,15 +510,15 @@ def log_loss(s, loss, logger=None):
                            default: None
     """
 
-    log_str = f'{s} loss: {loss:.4f}'
+    log_str = f"{s} loss: {loss:.4f}"
     if logger is None:
-        logger.info(log_str, extra={'spacing': TAB})
+        logger.info(log_str, extra={"spacing": TAB})
     else:
-        logger.info(log_str, extra={'spacing': TAB})
+        logger.info(log_str, extra={"spacing": TAB})
 
 
 #############################################
-def save_model(info, ep, mod, scores, dirname='.', rectype=None): 
+def save_model(info, ep, mod, scores, dirname=".", rectype=None): 
     """
     save_model(info, ep, mod, scores)
 
@@ -536,40 +536,40 @@ def save_model(info, ep, mod, scores, dirname='.', rectype=None):
 
     Optional args:
         - dirname (str): directory in which to save
-                         default: '.'
-        - rectype (str): type of model being recorded, i.e., 'best' or 'max'
-                         If 'best', the previous best models are removed and
-                         'best' is included in the name of the recorded model.
+                         default: "."
+        - rectype (str): type of model being recorded, i.e., "best" or "max"
+                         If "best", the previous best models are removed and
+                         "best" is included in the name of the recorded model.
                          default: None
     """
 
-    if rectype == 'best':
+    if rectype == "best":
         # delete previous model
-        prev_model = glob.glob(os.path.join(dirname, 'ep*_best.pth'))
-        prev_json = glob.glob(os.path.join(dirname, 'ep*_best.json'))
+        prev_model = glob.glob(os.path.join(dirname, "ep*_best.pth"))
+        prev_json = glob.glob(os.path.join(dirname, "ep*_best.json"))
         
         if len(prev_model) == 1 and len(prev_json) == 1:
             os.remove(prev_model[0])
             os.remove(prev_json[0])
-        savename = f'ep{ep}_best'
+        savename = f"ep{ep}_best"
 
     else:
-        savename = f'ep{ep}'
+        savename = f"ep{ep}"
 
     savefile = os.path.join(dirname, savename)
     
-    torch.save({'net': mod.state_dict(), 'opt': mod.opt.state_dict()},
-        f'{savefile}.pth')
+    torch.save({"net": mod.state_dict(), "opt": mod.opt.state_dict()},
+        f"{savefile}.pth")
     
     info = copy.deepcopy(info)
-    info['epoch_n'] = ep
-    info['scores'] = scores
+    info["epoch_n"] = ep
+    info["scores"] = scores
 
-    file_util.saveinfo(info, savename, dirname, 'json')
+    file_util.saveinfo(info, savename, dirname, "json")
     
 
 #############################################
-def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50, 
+def fit_model_pt(info, n_epochs, mod, dls, device, dirname=".", ep_freq=50, 
                  test_dl2_name=None, logger=None):
     """
     fit_model_pt(info, epochs, mod, dls, device)
@@ -584,11 +584,11 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
         - mod (torch.nn.Module): Neural network module with optimizer and loss 
                                  function as attributes
         - dls (list)           : list of Torch Dataloaders
-        - device (str)         : device to use ('cuda' or 'cpu') 
+        - device (str)         : device to use ("cuda" or "cpu") 
 
     Optional args:
         - dirname (str)      : directory in which to save models and dictionaries
-                               default: '.'
+                               default: "."
         - ep_freq (int)      : frequency at which to log loss to console
                                default: 50
         - test_dl2_name (str): name of extra DataLoader
@@ -603,7 +603,7 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
     """
 
     if logger is None:
-        logger = gen_util.get_logger('stream', 'loss_logs', level='info')
+        logger = gen_util.get_logger("stream", "loss_logs", level="info")
 
     test = False
     ext_test = False
@@ -617,117 +617,117 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname='.', ep_freq=50,
             test = True
 
     sets = get_set_labs(test, ext_test=ext_test, ext_test_name=test_dl2_name)
-    scs = get_sc_types('label')
+    scs = get_sc_types("label")
     col_names = get_sc_labs(
-        test, 'flat', ext_test=ext_test, ext_test_name=test_dl2_name)
+        test, "flat", ext_test=ext_test, ext_test_name=test_dl2_name)
     scores = pd.DataFrame(
         np.nan, index=list(range(n_epochs)), columns=col_names)
-    scores.insert(0, 'epoch_n', list(range(n_epochs)))
-    scores['saved'] = np.zeros([n_epochs], dtype=int)
+    scores.insert(0, "epoch_n", list(range(n_epochs)))
+    scores["saved"] = np.zeros([n_epochs], dtype=int)
     
     rectype = None
     min_val = np.inf # value to beat to start recording models
     for ep in range(n_epochs):
-        ep_loc = (scores['epoch_n'] == ep)
+        ep_loc = (scores["epoch_n"] == ep)
         ep_sc  = dict()
         for se, dl in zip(sets, dls):
             train = False
             # First train epoch: record untrained model
-            if ep != 0 and se == 'train': 
+            if ep != 0 and se == "train": 
                 train = True
             set_sc = run_dl(mod, dl, device, train=train)
             for sc in scs:
-                col = f'{se}_{sc}'
+                col = f"{se}_{sc}"
                 scores.loc[ep_loc, col] = set_sc[sc]
                 ep_sc[col] = set_sc[sc]
         
         # record model if val reaches a new low or if last epoch
-        if (scores.loc[ep_loc]['val_loss'].tolist()[0] < min_val):
-            rectype = 'best'
-            min_val = scores.loc[ep_loc]['val_loss'].tolist()[0]
-            scores['saved'] = np.zeros([n_epochs], dtype=int)
+        if (scores.loc[ep_loc]["val_loss"].tolist()[0] < min_val):
+            rectype = "best"
+            min_val = scores.loc[ep_loc]["val_loss"].tolist()[0]
+            scores["saved"] = np.zeros([n_epochs], dtype=int)
         elif ep == n_epochs - 1:
-            rectype = 'max'
-        if rectype in ['best', 'max']:
-            scores.loc[ep_loc, 'saved'] = 1
+            rectype = "max"
+        if rectype in ["best", "max"]:
+            scores.loc[ep_loc, "saved"] = 1
             save_model(info, ep, mod, ep_sc, dirname, rectype)
             rectype = None
         
         if ep % ep_freq == 0:
-            logger.info(f'Epoch {ep}')
+            logger.info(f"Epoch {ep}")
             log_loss(
-                'train', scores.loc[ep_loc, 'train_loss'].tolist()[0], 
+                "train", scores.loc[ep_loc, "train_loss"].tolist()[0], 
                 logger)
             log_loss(
-                'val', scores.loc[ep_loc]['val_loss'].tolist()[0], 
+                "val", scores.loc[ep_loc]["val_loss"].tolist()[0], 
                 logger)
     
     return scores
 
 
 #############################################
-def get_epoch_n_pt(dirname, model='best'):
+def get_epoch_n_pt(dirname, model="best"):
     """
     get_epoch_n_pt(dirname)
 
     Returns requested recorded epoch number in a directory. Expects models to 
-    be recorded as 'ep*.pth', where the digits in the name specify the epoch 
+    be recorded as "ep*.pth", where the digits in the name specify the epoch 
     number.
     
     Required args:
         - dirname (str): directory path
 
     Optional args:
-        - model (str): model to return ('best', 'min' or 'max')
-                       default: 'best'
+        - model (str): model to return ("best", "min" or "max")
+                       default: "best"
 
     Returns:
         - ep (int): number of the requested epoch 
     """
 
-    ext_str = ''
-    if model == 'best':
-        ext_str = '_best'
-    models = glob.glob(os.path.join(dirname, f'ep*{ext_str}.pth'))
+    ext_str = ""
+    if model == "best":
+        ext_str = "_best"
+    models = glob.glob(os.path.join(dirname, f"ep*{ext_str}.pth"))
     
     if len(models) > 0:
-        ep_ns = [int(re.findall(r'\d+', os.path.split(mod)[-1])[0]) 
+        ep_ns = [int(re.findall(r"\d+", os.path.split(mod)[-1])[0]) 
             for mod in models]
     else:
-        logger.warning('No models were recorded.')
+        logger.warning("No models were recorded.")
         ep = None
         return ep
     
-    if model == 'best':
+    if model == "best":
         ep = np.max(ep_ns)
-    elif model == 'min':
+    elif model == "min":
         ep = np.min(ep_ns)
-    elif model == 'max':
+    elif model == "max":
         ep = np.max(ep_ns)
     else:
-        gen_util.accepted_values_error('model', model, ['best', 'min', 'max'])
+        gen_util.accepted_values_error("model", model, ["best", "min", "max"])
 
     return ep
 
 
 #############################################
-def load_params(dirname, model='best', alg='sklearn'):
+def load_params(dirname, model="best", alg="sklearn"):
     """
     load_params(dirname)
 
     Returns model parameters: epoch number, model weights and model biases. 
-    Expects models to be recorded as 'ep*.pth', where the digits in the name 
+    Expects models to be recorded as "ep*.pth", where the digits in the name 
     specify the epoch number. 
     
     Required args:
         - dirname (str): directory path
 
     Optional args:
-        - model (str or idx): model to return ('best', 'first' or 'last')
-                              default: 'best'
+        - model (str or idx): model to return ("best", "first" or "last")
+                              default: "best"
         - alg (str)         : algorithm used to run logistic regression 
-                              ('sklearn' or 'pytorch')
-                              default: 'sklearn'
+                              ("sklearn" or "pytorch")
+                              default: "sklearn"
 
     Returns:
         if recorded models are found:
@@ -735,16 +735,16 @@ def load_params(dirname, model='best', alg='sklearn'):
             - weights (2D array): LogReg network weights, 
                                   structured as 1 x n input values
             - biases  (1D array): LogReg network bias, single value 
-        if alg == 'sklearn':
+        if alg == "sklearn":
             - model (int)       : model number
         otherwise returns None
     """
 
-    if alg == 'sklearn':
-        filename = os.path.join(dirname, 'models.sav')
+    if alg == "sklearn":
+        filename = os.path.join(dirname, "models.sav")
         if os.path.exists(filename) and not isinstance(model, str):
-            with open(filename, 'rb') as f:
-                mod = pkl.load(f)['estimator'][model]['logisticregression']
+            with open(filename, "rb") as f:
+                mod = pkl.load(f)["estimator"][model]["logisticregression"]
             weights = mod.coef_
             biases  = mod.intercept_
             ep      = mod.n_iter_[0]
@@ -752,24 +752,24 @@ def load_params(dirname, model='best', alg='sklearn'):
         else:
             return None
 
-    elif alg == 'pytorch':
+    elif alg == "pytorch":
         ep = get_epoch_n_pt(dirname, model)
-        ext_str = ''
-        if model == 'best':
-            ext_str = '_best'
+        ext_str = ""
+        if model == "best":
+            ext_str = "_best"
 
         if ep is None:
             return None
         else:
             models = glob.glob(os.path.join(
-                dirname, f'ep{ep}*{ext_str}.pth'))[0]
+                dirname, f"ep{ep}*{ext_str}.pth"))[0]
             checkpoint = torch.load(models)
-            weights = checkpoint['net']['lin.weight'].numpy()
-            biases = checkpoint['net']['lin.bias'].numpy()
+            weights = checkpoint["net"]["lin.weight"].numpy()
+            biases = checkpoint["net"]["lin.bias"].numpy()
             return ep, weights, biases
 
     else:
-        gen_util.accepted_values_error('alg', alg, ['sklearn', 'pytorch'])
+        gen_util.accepted_values_error("alg", alg, ["sklearn", "pytorch"])
 
 
 #############################################
@@ -782,7 +782,7 @@ def load_checkpoint_pt(mod, filename):
     Required args:
         - mod (torch.nn.Module): Neural network module with optimizer as 
                                  attribute
-        - filename (str)       : name of the file (should be '.pth')
+        - filename (str)       : name of the file (should be ".pth")
 
     Returns:
         - mod (torch.nn.Module): Neural network module with model parameters 
@@ -793,19 +793,19 @@ def load_checkpoint_pt(mod, filename):
     # updates their states.
     checkpt_name = os.path.split(filename)[-1]
     if os.path.isfile(filename):
-        logger.info(f'Loading checkpoint found at \'{checkpt_name}\'', 
-            extra={'spacing': '\n'})
+        logger.info(f"Loading checkpoint found at '{checkpt_name}'.", 
+            extra={"spacing": "\n"})
         checkpoint = torch.load(filename)
-        mod.load_state_dict(checkpoint['net'])
-        mod.opt.load_state_dict(checkpoint['opt'])
+        mod.load_state_dict(checkpoint["net"])
+        mod.opt.load_state_dict(checkpoint["opt"])
     else:
-        raise OSError(f'No checkpoint found at \'{checkpt_name}\'')
+        raise OSError(f"No checkpoint found at '{checkpt_name}'.")
 
     return mod
 
 
 #############################################
-def plot_weights(ax, mod_params, xran, stats='mean', error='sem', 
+def plot_weights(ax, mod_params, xran, stats="mean", error="sem", 
                  rois_collapsed=False):
     """
     plot_weights(ax, mod_params, xran)
@@ -820,11 +820,11 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
         - xran (1D array)  : array of x range values
 
     Optional args:
-        - stats (str)           : stats to take, i.e., 'mean' or 'median'
-                                  default: 'mean'
-        - error (str)           : error to take, i.e., 'std' (for std or 
-                                  quintiles) or 'sem' (for SEM or MAD)
-                                  default: 'std'
+        - stats (str)           : stats to take, i.e., "mean" or "median"
+                                  default: "mean"
+        - error (str)           : error to take, i.e., "std" (for std or 
+                                  quintiles) or "sem" (for SEM or MAD)
+                                  default: "std"
         - rois_collapsed (bool) : if True, ROIs were collapsed into their stats 
                                   to run logistic regression
                                   default: False
@@ -834,8 +834,8 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
     n_plts = mod_params[1].shape[0] + 1
 
     if ax.shape != (n_plts, n_plts):
-        raise ValueError(f'Axis should be of shape ({n_plts}, {n_plts}), '
-            f'but is of shape {ax.shape}.')
+        raise ValueError(f"Axis should be of shape ({n_plts}, {n_plts}), "
+            f"but is of shape {ax.shape}.")
 
     for n in range(n_plts-1):
         weights = np.asarray(mod_params[1][n]).reshape(len(xran), -1)
@@ -843,9 +843,9 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
         # plot weights by fr (bottom, left subplot)
         by_fr = ax[n+1, 0]
         if n == 0:
-            fr_title = f'Model weights (ep {mod_params[0]})'
+            fr_title = f"Model weights (ep {mod_params[0]})"
             if len(mod_params) == 4:
-                fr_title = f'{fr_title} (mod {mod_params[3]})'
+                fr_title = f"{fr_title} (mod {mod_params[3]})"
         else:
             fr_title = None
 
@@ -853,28 +853,28 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
             fr_stats = math_util.get_stats(weights, stats, error, axes=1)
             plot_util.plot_traces(
                 by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, 
-                color='dimgrey', alpha=0.4)
+                color="dimgrey", alpha=0.4)
         else:
             # plot each set of weights separately
             fr_stats = weights.T
-            cols = ['dimgrey', 'grey']
+            cols = ["dimgrey", "grey"]
             for f, fr_stat in enumerate(fr_stats):
                 plot_util.plot_traces(
                     by_fr, xran, fr_stat, title=fr_title, color=cols[f])
 
-        by_fr.axhline(y=0, ls='dashed', c='k', lw=1, alpha=0.5)
+        by_fr.axhline(y=0, ls="dashed", c="k", lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_fr.get_yticks()))
         by_fr.set_yticks([-orig_tick_max, 0, orig_tick_max])
 
         for m in range(n_plts-1):
             # write intercept (bottom, right subplot)
             bias_subax = ax[n+1, m+1]
-            bias_subax.axis('off')
+            bias_subax.axis("off")
             if m == n:
-                bias_text = f'Bias\n{mod_params[2][n]:.2f}'
+                bias_text = f"Bias\n{mod_params[2][n]:.2f}"
                 bias_subax.text(
-                    0.5, 0.5, bias_text, fontsize='x-large', 
-                    fontweight='bold', ha='center', va='bottom')
+                    0.5, 0.5, bias_text, fontsize="x-large", 
+                    fontweight="bold", ha="center", va="bottom")
 
         if rois_collapsed:
             return
@@ -882,7 +882,7 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
         # plot weights by ROI, sorted (top, right subplot)
         by_roi = ax[0, n + 1]
         if n == n_plts // 2 - 1:
-            roi_title = 'ROI weights'
+            roi_title = "ROI weights"
         else:
             roi_title = None
         
@@ -891,15 +891,15 @@ def plot_weights(ax, mod_params, xran, stats='mean', error='sem',
         sorter = np.argsort(roi_stats[0])[::-1] # reverse sort
         plot_util.plot_traces(
             by_roi, roi_stats[0][sorter], xran_rois, roi_stats[1:][:, sorter], 
-            roi_title, color='dimgrey', alpha=0.4, errx=True)
-        by_roi.axvline(x=0, ls='dashed', c='k', lw=1, alpha=0.5)
+            roi_title, color="dimgrey", alpha=0.4, errx=True)
+        by_roi.axvline(x=0, ls="dashed", c="k", lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_roi.get_xticks()))
         by_roi.set_xticks([-orig_tick_max, 0, orig_tick_max])
         
 
 #############################################
-def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean', 
-              error='sem'):
+def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats="mean", 
+              error="sem"):
     """
     get_stats(tr_data, tr_classes, classes, len_s)
 
@@ -918,11 +918,11 @@ def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean',
         - classes (list): list of class values (if None, inferred from 
                           tr_classes)
                           default: None
-        - stats (str)   : stats to take, i.e., 'mean' or 'median'
-                          default: 'mean'
-        - error (str)   : error to take, i.e., 'std' (for std or quintiles) or 
-                          'sem' (for SEM or MAD)
-                          default: 'std
+        - stats (str)   : stats to take, i.e., "mean" or "median"
+                          default: "mean"
+        - error (str)   : error to take, i.e., "std" (for std or quintiles) or 
+                          "sem" (for SEM or MAD)
+                          default: "std
     Returns:
         - xran (1D array)     : x values for frames
         - all_stats (3D array): training statistics, structured as 
@@ -962,8 +962,8 @@ def get_stats(tr_data, tr_classes, pre=0, post=1.5, classes=None, stats='mean',
 
 #############################################
 def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None, 
-                 plot_wei=True, alg='sklearn', stats='mean', error='sem', 
-                 modeldir='.', cols=None, data_type=None, xlabel=None, 
+                 plot_wei=True, alg="sklearn", stats="mean", error="sem", 
+                 modeldir=".", cols=None, data_type=None, xlabel=None, 
                  rois_collapsed=False):
     """
     plot_tr_data(xran, class_stats, ns)
@@ -991,16 +991,16 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
                                   to be passed.
                                   default: True
         - alg (str)             : algorithm used to run logistic regression 
-                                  ('sklearn' or 'pytorch')
-                                  default: 'sklearn'
-        - stats (str)           : stats to take, i.e., 'mean' or 'median'
-                                  default: 'mean'
-        - error (str)           : error to take, i.e., 'std' (for std or 
-                                  quintiles) or 'sem' (for SEM or MAD)
-                                  default: 'std
+                                  ("sklearn" or "pytorch")
+                                  default: "sklearn"
+        - stats (str)           : stats to take, i.e., "mean" or "median"
+                                  default: "mean"
+        - error (str)           : error to take, i.e., "std" (for std or 
+                                  quintiles) or "sem" (for SEM or MAD)
+                                  default: "std
         - dirname (str)         : name of the directory from which to load
                                   model parameters
-                                  default: '.'
+                                  default: "."
         - cols (list)           : colors to use
                                   default: None 
         - data_type (str)       : data type if not training (e.g., test)
@@ -1017,7 +1017,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
         - cols (list)                  : list of trace colors
     """
 
-    model = 'best'
+    model = "best"
     if not isinstance(plot_wei, bool): # check if it's an int
         model = plot_wei
         plot_wei = True
@@ -1032,7 +1032,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
             fig, ax = plt.subplots(
                 n_plts, n_plts, figsize=(2*sum(wid_rat), 2*sum(hei_rat)), 
                 gridspec_kw = {
-                    'height_ratios': hei_rat, 'width_ratios': wid_rat})
+                    "height_ratios": hei_rat, "width_ratios": wid_rat})
             ax_data = ax[0, 0]
         else:
             fig, ax_data = plt.subplots()
@@ -1044,9 +1044,9 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
         cols = [None] * len(classes)
 
     if data_type is not None:
-        data_str = f' ({data_type})'
+        data_str = f" ({data_type})"
     else:
-        data_str = ''
+        data_str = ""
 
     for i, class_name in enumerate(classes):
         cl_st = np.asarray(class_stats[i])
@@ -1054,7 +1054,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
             err = cl_st[1:]
         else:
             err = None
-        leg = f'{class_name}{data_str} (n={ns[i]})'
+        leg = f"{class_name}{data_str} (n={ns[i]})"
         plot_util.plot_traces(ax_data, xran, cl_st[0], err, 
             alpha=0.8/len(classes), label=leg, color=cols[i])
         cols[i] = ax_data.lines[-1].get_color()
@@ -1063,7 +1063,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
     if plot_wei and mod_params is not None:
         plot_weights(ax, mod_params, xran, stats, error, rois_collapsed)
         # remove redundant labels
-        ax_data.set_xlabel('') 
+        ax_data.set_xlabel("") 
         ax_data.set_xticklabels([])
     
     if xlabel is not None:
@@ -1077,8 +1077,8 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
 
 
 #############################################
-def plot_scores(scores, classes, alg='sklearn', loss_name='loss', dirname='.', 
-                gen_title=''):
+def plot_scores(scores, classes, alg="sklearn", loss_name="loss", dirname=".", 
+                gen_title=""):
 
     """
     plot_scores(scores, classes)
@@ -1092,58 +1092,58 @@ def plot_scores(scores, classes, alg='sklearn', loss_name='loss', dirname='.',
     
     Optional args:
         - alg (str)      : algorithm used to run logistic regression 
-                           ('sklearn' or 'pytorch')
-                           default: 'sklearn'
+                           ("sklearn" or "pytorch")
+                           default: "sklearn"
         - loss_name (str): name of type of loss
-                           default: 'loss'
+                           default: "loss"
         - dirname (str)  : name of the directory in which to save figure
-                           default: '.'
+                           default: "."
         - gen_title (str): general plot titles
-                           default: ''
+                           default: ""
     """
 
-    if alg == 'pytorch':
-        x_vals = list(range(min(scores['epoch_n']), max(scores['epoch_n']) + 1))
-        x_lab = 'Epochs'
-    elif alg == 'sklearn':
-        x_vals = list(range(min(scores['run_n']), max(scores['run_n']) + 1))
-        x_lab = 'Runs'
+    if alg == "pytorch":
+        x_vals = list(range(min(scores["epoch_n"]), max(scores["epoch_n"]) + 1))
+        x_lab = "Epochs"
+    elif alg == "sklearn":
+        x_vals = list(range(min(scores["run_n"]), max(scores["run_n"]) + 1))
+        x_lab = "Runs"
     else:
-        gen_util.accepted_values_error('alg', alg, ['pytorch', 'sklearn'])
+        gen_util.accepted_values_error("alg", alg, ["pytorch", "sklearn"])
 
-    sc_labs = get_sc_types('label')
+    sc_labs = get_sc_types("label")
     set_labs, set_names = [], []
     for col_name in scores.keys():
         if sc_labs[0] in col_name:
-            set_labs.append(col_name.replace(f'_{sc_labs[0]}', ''))
-            set_names.append(f'{set_labs[-1]} set')
+            set_labs.append(col_name.replace(f"_{sc_labs[0]}", ""))
+            set_names.append(f"{set_labs[-1]} set")
 
     sc_titles = get_sc_names(loss_name, classes) # for title
-    dash_test = 'test_out' in sc_labs
+    dash_test = "test_out" in sc_labs
 
     for sc_title, sc_lab in zip(sc_titles, sc_labs):
-        if f'{set_labs[0]}_{sc_lab}' not in scores.keys():
+        if f"{set_labs[0]}_{sc_lab}" not in scores.keys():
             continue
         fig, ax = plt.subplots(figsize=[20, 5])
         for set_lab in set_labs:
             dashes = (None, None)
-            if set_lab == 'train':
+            if set_lab == "train":
                 dashes = [3, 2]
-            if set_lab == 'val' or (set_lab == 'test' and dash_test):
+            if set_lab == "val" or (set_lab == "test" and dash_test):
                 dashes = [6, 2]
-            sc = np.asarray(scores[f'{set_lab}_{sc_lab}'])
+            sc = np.asarray(scores[f"{set_lab}_{sc_lab}"])
             ax.plot(x_vals, sc, label=set_lab ,lw=2.5, dashes=dashes)
-            ax.set_title(u'{}\n{}'.format(gen_title, sc_title))
+            ax.set_title(u"{}\n{}".format(gen_title, sc_title))
             ax.set_xlabel(x_lab)
-        if 'acc' in sc_lab:
+        if "acc" in sc_lab:
             ax.set_ylim(-5, 105)
-        elif 'loss' in sc_lab:
+        elif "loss" in sc_lab:
             act_ylim = ax.get_ylim()
             pad = (act_ylim[1] - act_ylim[0]) * 0.05
             ax.set_ylim(act_ylim[0] - pad, act_ylim[1] + pad)
         
         ax.legend()
-        fig.savefig(os.path.join(dirname, f'{sc_lab}'))
+        fig.savefig(os.path.join(dirname, f"{sc_lab}"))
 
 
 #############################################
@@ -1171,33 +1171,33 @@ def check_scores_pt(scores_df, best_ep, hyperpars):
         # check that all epochs were recorded and correct epoch
         # was recorded as having lowest validation loss
         ep_rec = scores_df.count(axis=0)
-        if min(ep_rec) < hyperpars['logregpar']['n_epochs']:
-            logger.warning(f'Only {min(ep_rec)} epochs were fully '
-                'recorded.')
-        if max(ep_rec) > hyperpars['logregpar']['n_epochs']:
-            logger.warning(f'{max(ep_rec)} epochs were recorded.')
-        if len(scores_df.loc[(scores_df['saved'] == 1)][
-            'epoch_n'].tolist()) == 0:
-            logger.warning(f'No models were recorded in dataframe.')
+        if min(ep_rec) < hyperpars["logregpar"]["n_epochs"]:
+            logger.warning(f"Only {min(ep_rec)} epochs were fully "
+                "recorded.")
+        if max(ep_rec) > hyperpars["logregpar"]["n_epochs"]:
+            logger.warning(f"{max(ep_rec)} epochs were recorded.")
+        if len(scores_df.loc[(scores_df["saved"] == 1)][
+            "epoch_n"].tolist()) == 0:
+            logger.warning(f"No models were recorded in dataframe.")
         else:
-            ep_df = scores_df.loc[(scores_df['saved'] == 1)]['epoch_n'].tolist()
-            best_val = np.min(scores_df['val_loss'].tolist())
+            ep_df = scores_df.loc[(scores_df["saved"] == 1)]["epoch_n"].tolist()
+            best_val = np.min(scores_df["val_loss"].tolist())
             ep_best = scores_df.loc[
-                (scores_df['val_loss'] == best_val)]['epoch_n'].tolist()[0]
+                (scores_df["val_loss"] == best_val)]["epoch_n"].tolist()[0]
             if ep_best != best_ep:
-                logger.warning(f'Best recorded model is actually epoch '
-                    f'{ep_best}, but actual best model is {ep_df} based '
-                    'on dataframe. Using dataframe one.')
-            ep_info = scores_df.loc[(scores_df['epoch_n'] == ep_best)]
+                logger.warning(f"Best recorded model is actually epoch "
+                    f"{ep_best}, but actual best model is {ep_df} based "
+                    "on dataframe. Using dataframe one.")
+            ep_info = scores_df.loc[(scores_df["epoch_n"] == ep_best)]
             if len(ep_info) != 1:
-                logger.warning(f'{len(ep_info)} lines found in dataframe '
-                    f'for epoch {ep_best}.')
+                logger.warning(f"{len(ep_info)} lines found in dataframe "
+                    f"for epoch {ep_best}.")
 
     return ep_info
     
     
 #############################################
-def get_scores(dirname='.', alg='sklearn'):
+def get_scores(dirname=".", alg="sklearn"):
     """
     get_scores()
 
@@ -1208,43 +1208,43 @@ def get_scores(dirname='.', alg='sklearn'):
     the recorded model does not have a score recorded.
     
     Optional args:
-        - dirname (str): directory in which scores 'scores_df.csv' and 
+        - dirname (str): directory in which scores "scores_df.csv" and 
                          hyperparameters (hyperparameters.json) are recorded.
-                         default: '.'
+                         default: "."
         - alg (str)    : algorithm used to run logistic regression 
-                         ('sklearn' or 'pytorch')
-                         default: 'sklearn'
+                         ("sklearn" or "pytorch")
+                         default: "sklearn"
     Returns:
         - ep_info (pd DataFrame): score dataframe line for max epoch recorded.
         - hyperpars (dict)      : dictionary containing hyperparameters
     """
 
-    df_path = os.path.join(dirname, 'scores_df.csv')
+    df_path = os.path.join(dirname, "scores_df.csv")
     
     # get max epoch based on recorded model
     #### WON'T WORK FOR SKLEARN
-    if alg == 'pytorch':
-        best_ep = get_epoch_n_pt(dirname, 'best')
+    if alg == "pytorch":
+        best_ep = get_epoch_n_pt(dirname, "best")
 
     # get scores df
     if os.path.exists(df_path):
         scores_df = file_util.loadfile(df_path)
     else:
-        logger.warning('No scores were recorded.')
+        logger.warning("No scores were recorded.")
         scores_df = None
-        if alg == 'pytorch' and best_ep is not None:
-            logger.warning(f'Highest recorded model is for epoch {best_ep}, '
-                'but no score is recorded.')
+        if alg == "pytorch" and best_ep is not None:
+            logger.warning(f"Highest recorded model is for epoch {best_ep}, "
+                "but no score is recorded.")
 
-    hyperpars = file_util.loadfile('hyperparameters.json', dirname)
+    hyperpars = file_util.loadfile("hyperparameters.json", dirname)
 
-    if alg == 'pytorch':
+    if alg == "pytorch":
         # check max epoch recorded matches scores df
         ep_info = check_scores_pt(scores_df, best_ep, hyperpars)
-    elif alg == 'sklearn':
+    elif alg == "sklearn":
         ep_info = scores_df
     else:
-        gen_util.accepted_values_error('alg', alg, ['pytorch', 'sklearn'])
+        gen_util.accepted_values_error("alg", alg, ["pytorch", "sklearn"])
 
     return ep_info, hyperpars
 
@@ -1329,7 +1329,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
             n_classes = classes.shape[0]
             class_counts = np.bincount(y_indices).tolist()
             class_indices = np.split(
-                np.argsort(y_indices, kind='mergesort'), 
+                np.argsort(y_indices, kind="mergesort"), 
                 np.cumsum(class_counts)[:-1])
             samp_idx = []
             ns = gen_util.list_if_not(ns)
@@ -1337,8 +1337,8 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                 if len(ns) == 1:
                     samp_idx = [1]
                 elif len(ns) != n_classes:
-                    raise ValueError('If several sample values are provided, '
-                        'should be as many as classes.')
+                    raise ValueError("If several sample values are provided, "
+                        "should be as many as classes.")
                 else:
                     samp_idx = range(n_classes)
             if self._bal:
@@ -1347,8 +1347,8 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                 ns = [n for _ in range(n_classes)]
                 samp_idx = range(n_classes)
             if min(ns) < n_classes:
-                raise ValueError(f'The smallest set sizes = {min(ns)} should '
-                    f'be greater or equal to the number of classes = {n_classes}')
+                raise ValueError(f"The smallest set sizes = {min(ns)} should "
+                    f"be greater or equal to the number of classes = {n_classes}")
             sub_idx = []
             for i in range(n_classes):
                 if i in samp_idx:
@@ -1380,9 +1380,9 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         class_counts = np.bincount(y_indices)
         n_classes = len(classes)
         if min(class_counts)//2 < n_classes:
-            raise ValueError('Cannot split test set into 2 as smallest set '
-                f'size = {min(class_counts)//2} should be greater or equal '
-                f'to the number of classes = {n_classes}')
+            raise ValueError("Cannot split test set into 2 as smallest set "
+                f"size = {min(class_counts)//2} should be greater or equal "
+                f"to the number of classes = {n_classes}")
         test, test_out = [], []
         for counts, idx in zip(class_counts, y_indices):
             test.extend(idx[:counts//2])
@@ -1484,7 +1484,7 @@ class ModData:
             - _rst (np RandomState): numpy random state
         """
         
-        if not hasattr(self, '_rst'):
+        if not hasattr(self, "_rst"):
             self._rst = np.random.RandomState(self._seed)
         return self._rst
     
@@ -1514,7 +1514,7 @@ class ModData:
         if len(X.shape) > 1:
             self._orig_shape = X.shape[1:]
         if self._scaler is not None:
-            X = self._flatten(X, across='tr')
+            X = self._flatten(X, across="tr")
             if isinstance(self._scaler, MinMaxScaler) and self._extrem:
                 X = math_util.extrem_to_med(X, ext_p=[5.0, 95.0])
             self._scaler.fit(X, **kwargs)
@@ -1547,7 +1547,7 @@ class ModData:
         self.fit(X, y, **kwargs) # fit scaler
         if self._scaler is not None:
             X = self._get_scaled(X, **kwargs)
-        X = self._flatten(X, across='ch')
+        X = self._flatten(X, across="ch")
         if self._shuffle:
             X = self._get_shuffled(X)
         return X
@@ -1583,13 +1583,13 @@ class ModData:
         if self._scaler is not None:
             X = self._get_scaled(X)
         if flatten:
-            X = self._flatten(X, across='ch')
+            X = self._flatten(X, across="ch")
         if self._shuffle and training:
             X = self._get_shuffled(X)
         return X
 
 
-    def _flatten(self, X, across='ch'):
+    def _flatten(self, X, across="ch"):
         """
         Returns data flattened across channels and frames or trials and frames.
 
@@ -1597,29 +1597,29 @@ class ModData:
             - X (3D array): data array, structured as trials x frames x channels
 
         Optional args:
-            - across (str): how to flatten data, i.e. channels ('ch') or 
-                            across trials ('tr')
-                            default: 'ch'
+            - across (str): how to flatten data, i.e. channels ("ch") or 
+                            across trials ("tr")
+                            default: "ch"
         Returns:
             - X (2D array): data array, structured as:
-                if across == 'ch':
+                if across == "ch":
                     trials x frames/channels
-                elif across == 'tr':
+                elif across == "tr":
                      trials/frames x channels
 
         """
         # Reshape X to <= 2 dimensions
         if len(X.shape) == 3: 
-            if across == 'ch':
+            if across == "ch":
                 n_dims = np.prod(self._orig_shape)
                 X = X.reshape(-1, n_dims)
-            elif across == 'tr':
+            elif across == "tr":
                 n_dims = np.prod([X.shape[0], self._orig_shape[0]])
                 X = X.reshape(n_dims, -1)
             else:
-                gen_util.accepted_values_error('across', across, ['ch', 'tr'])
+                gen_util.accepted_values_error("across", across, ["ch", "tr"])
         elif len(X.shape) > 3:
-            raise ValueError('X should have max 3 dimensions.')
+            raise ValueError("X should have max 3 dimensions.")
         return X
 
 
@@ -1650,7 +1650,7 @@ class ModData:
             - X (3D array): data array, scaled by each channel, 
                             structured as trials x frames x channels
         """
-        X = self._flatten(X, across='tr')
+        X = self._flatten(X, across="tr")
         X = self._scaler.transform(X, **kwargs)
         X = self._reshape(X)
         return X
@@ -1677,7 +1677,7 @@ class ModData:
                                 trials x rest
         """
 
-        if not hasattr(self, '_shuff_reidx'):
+        if not hasattr(self, "_shuff_reidx"):
             idx = np.arange(len(X)) # get trial indices
             self.rst.shuffle(idx)
             # to get sort index corresponding to targets, not input
@@ -1701,7 +1701,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     Runs all runs of logistic regression using sklearn and returns 
     models, crossvalidation split object and extra parameters. Allows saves
-    the model under 'models.sav'
+    the model under "models.sav"
 
     Required args:
         - input_data (3D array) : trace array, structured as 
@@ -1709,13 +1709,13 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
         - targ_data (2D array): target classes, structured as class values x 1
         - logregpar (dict)      : dictionary with logistic regression 
                                   parameters
-            ['bal'] (bool)     : if True, classes are balanced
-            ['n_epochs'] (int) : max number of epochs
-            ['train_p'] (float): training set percentage
+            ["bal"] (bool)     : if True, classes are balanced
+            ["n_epochs"] (int) : max number of epochs
+            ["train_p"] (float): training set percentage
         - extrapar (dict)       : dictionary with extra parameters
-            ['dirname'] (str) : save directory 
-            ['n_runs'] (int)  : number of runs (split) to run
-            ['shuffle'] (bool): if True, data is shuffled
+            ["dirname"] (str) : save directory 
+            ["n_runs"] (int)  : number of runs (split) to run
+            ["shuffle"] (bool): if True, data is shuffled
     
     Optional args:
         - scale (bool)          : if True, data is scaled by ROI during training
@@ -1724,7 +1724,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
                                   to all classes, otherwise applies to class 1)
                                   default: False
         - split_test (bool)     : if True, test sets are split in half to 
-                                  create a 'test_out'
+                                  create a "test_out"
                                   default: False
         - seed (int)            : if provided, seed for sci-kit learn logistic 
                                   regression
@@ -1738,21 +1738,21 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     Returns:
         - mod_cvs (dict)   : cross-validation dictionary with keys:
-            ['estimator'] (list)     : list of fitted estimator pipelines for 
+            ["estimator"] (list)     : list of fitted estimator pipelines for 
                                        each split
-            ['fit_time'] (1D array)  : array of fit times for each split
-            ['score_time'] (1D array): array of test score times for reach split
-            for all combinations of sets ('train', 'test') and 
-                scores ('neg_log_loss', 'accuracy', 'balanced_accuracy'):
-            ['{set}_{score}'] (list) : array of scores for each split
+            ["fit_time"] (1D array)  : array of fit times for each split
+            ["score_time"] (1D array): array of test score times for reach split
+            for all combinations of sets ("train", "test") and 
+                scores ("neg_log_loss", "accuracy", "balanced_accuracy"):
+            ["{set}_{score}"] (list) : array of scores for each split
         - cv (Split object): StratifiedShuffleSplitMod object
         - extrapar (dict)  : dictionary with extra parameters
-            ['scoring'] (list)     : sklearn names of scores used
-            ['loss_name'] (str)    : name of the loss function used
-            ['shuffle'] (bool)     : if True, data is shuffled
+            ["scoring"] (list)     : sklearn names of scores used
+            ["loss_name"] (str)    : name of the loss function used
+            ["shuffle"] (bool)     : if True, data is shuffled
     """
     
-    n_jobs = gen_util.get_n_jobs(extrapar['n_runs'], parallel=parallel)
+    n_jobs = gen_util.get_n_jobs(extrapar["n_runs"], parallel=parallel)
 
     # modify n_jobs if input_data size is too big
     rat = np.prod(input_data.shape)/max_size
@@ -1762,51 +1762,51 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
             if n_jobs in [0, 1]:
                 n_jobs = None
         if n_jobs is None:
-            warnings.warn('OOM error possibly upcoming as input data '
-                  f'size is {np.prod(input_data.shape)}.', category=RuntimeWarning)
+            warnings.warn("OOM error possibly upcoming as input data "
+                  f"size is {np.prod(input_data.shape)}.", category=RuntimeWarning)
 
     extrapar = copy.deepcopy(extrapar)
-    extrapar['loss_name'] = 'Weighted BCE loss with L2 reg'
-    extrapar['scoring'] = ['neg_log_loss', 'accuracy', 'balanced_accuracy']
+    extrapar["loss_name"] = "Weighted BCE loss with L2 reg"
+    extrapar["scoring"] = ["neg_log_loss", "accuracy", "balanced_accuracy"]
 
-    mod = LogisticRegression(C=1, fit_intercept=True, class_weight='balanced', 
-        penalty='l2', solver='lbfgs', max_iter=logregpar['n_epochs'], 
-        random_state=seed) # seed only used if n_jobs is not None
-    scaler = ModData(scale=scale, extrem=True, shuffle=extrapar['shuffle'], 
+    mod = LogisticRegression(C=1, fit_intercept=True, class_weight="balanced", 
+        penalty="l2", solver="lbfgs", max_iter=logregpar["n_epochs"], 
+        random_state=seed, multi_class="auto") # seed only used if n_jobs is not None
+    scaler = ModData(scale=scale, extrem=True, shuffle=extrapar["shuffle"], 
         seed=seed)
-    cv = StratifiedShuffleSplitMod(n_splits=extrapar['n_runs'], 
-        train_p=logregpar['train_p'], sample=sample, bal=logregpar['bal'], 
+    cv = StratifiedShuffleSplitMod(n_splits=extrapar["n_runs"], 
+        train_p=logregpar["train_p"], sample=sample, bal=logregpar["bal"], 
         split_test=split_test, random_state=seed)
 
     mod_pip = make_pipeline(scaler, mod)
 
     msgs, categs = [], []
-    if extrapar['shuffle']:
-        logger.warning('Reported training scores are currently incorrect, as '
-            'the training dataset is not shuffled during final scoring step.')
+    if extrapar["shuffle"]:
+        logger.warning("Reported training scores are currently incorrect, as "
+            "the training dataset is not shuffled during final scoring step.")
         # also ignore convergence warnings (may not work if n_jobs > 1)
-        msgs = ['']
+        msgs = [""]
         categs = [ConvergenceWarning]
 
     # run cross validate while filtering specific warnings
     wrapped_cross_val = gen_util.temp_filter_warnings(cross_validate)
     mod_cvs = wrapped_cross_val(mod_pip, input_data, targ_data, cv=cv, 
         return_estimator=True, return_train_score=True, n_jobs=n_jobs, 
-        verbose=get_sklearn_verbosity(), scoring=extrapar['scoring'], 
+        verbose=get_sklearn_verbosity(), scoring=extrapar["scoring"], 
         msgs=msgs, categs=categs)
 
     # correct the training set scoring, which is incorrectly evaluated
     # (no shuffling is done automatically during predict step).
-    if extrapar['shuffle']:
+    if extrapar["shuffle"]:
         rescore_training_logreg_sk(
-            mod_cvs, cv, input_data, targ_data, extrapar['scoring'], 
+            mod_cvs, cv, input_data, targ_data, extrapar["scoring"], 
             log_scores=True)
 
-    logger.info('Training done.\n')
+    logger.info("Training done.\n")
 
     # Save models
-    fullname = os.path.join(extrapar['dirname'], 'models.sav')
-    with open(fullname, 'wb') as f:
+    fullname = os.path.join(extrapar["dirname"], "models.sav")
+    with open(fullname, "wb") as f:
         pkl.dump(mod_cvs, f)    
 
     return mod_cvs, cv, extrapar
@@ -1821,15 +1821,15 @@ def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring,
 
     Runs all runs of logistic regression using sklearn and returns 
     models, crossvalidation split object and extra parameters. Allows saves
-    the model under 'models.sav'
+    the model under "models.sav"
 
     Required args:
         - mod_cvs (dict)        : cross-validation dictionary with keys:
-            ['estimator'] (list)    : list of fitted estimator pipelines for 
+            ["estimator"] (list)    : list of fitted estimator pipelines for 
                                       each split
-            for all combinations of sets ('train', 'test') and 
-                scores ('neg_log_loss', 'accuracy', 'balanced_accuracy'):
-            ['{set}_{score}'] (list): array of scores for each split
+            for all combinations of sets ("train", "test") and 
+                scores ("neg_log_loss", "accuracy", "balanced_accuracy"):
+            ["{set}_{score}"] (list): array of scores for each split
         - cv (Split object)     : StratifiedShuffleSplitMod object
         - input_data (3D array) : trace array, structured as 
                                       trials x frames x ROIs
@@ -1843,30 +1843,30 @@ def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring,
 
     Returns:
         - mod_cvs (dict)        : cross-validation dictionary with updated :
-            ['train_{score}'] (list): array of scores for each split
+            ["train_{score}"] (list): array of scores for each split
 
     """
 
     mod_cvs = copy.deepcopy(mod_cvs)
 
-    for e, est in enumerate(mod_cvs['estimator']):
+    for e, est in enumerate(mod_cvs["estimator"]):
         train_X = input_data[cv._set_idx[e][0]]
-        train_Y = targ_data[cv._set_idx[e][0]][est['moddata']._shuff_reidx]
+        train_Y = targ_data[cv._set_idx[e][0]][est["moddata"]._shuff_reidx]
         for score_type in scoring:
             sc = get_scorer(score_type)
-            mod_cvs[f'train_{score_type}'][e] = sc(est, train_X, train_Y)
-    logger.warning('Training scores for shuffled dataset recalculated '
-        'correctly.')
+            mod_cvs[f"train_{score_type}"][e] = sc(est, train_X, train_Y)
+    logger.warning("Training scores for shuffled dataset recalculated "
+        "correctly.")
 
     if log_scores:
-        plus_minus = u'\u00B1' # +- symbol
+        plus_minus = u"\u00B1" # +- symbol
 
-        logger.info('Corrected training scores:')
+        logger.info("Corrected training scores:")
         for score_type in scoring:
-            mean = np.mean(mod_cvs[f'train_{score_type}'])
-            sem = np.std(mod_cvs[f'train_{score_type}'])
-            logger.info(f'{score_type}: {mean:.3f} ' + plus_minus + f' {sem:.3f}', 
-                extra={'spacing': TAB})
+            mean = np.mean(mod_cvs[f"train_{score_type}"])
+            sem = np.std(mod_cvs[f"train_{score_type}"])
+            logger.info(f"{score_type}: {mean:.3f} " + plus_minus + f" {sem:.3f}", 
+                extra={"spacing": TAB})
 
     return mod_cvs
 
@@ -1882,7 +1882,7 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
 
     Required args:
         - mod_cvs (dict)   : cross-validation dictionary with keys:
-            ['estimator'] (list): list of fitted estimator pipelines for 
+            ["estimator"] (list): list of fitted estimator pipelines for 
                                   each split
         - cv (Split object): StratifiedShuffleSplitMod object
         - scoring (list)   : sklearn names of scores to use
@@ -1910,11 +1910,11 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
     
     Returns:
         - mod_cvs (dict): cross-validation dictionary with keys:
-            ['estimator'] (list)         : list of fitted estimator pipelines 
+            ["estimator"] (list)         : list of fitted estimator pipelines 
                                            for each split
-            for all combinations of sets ('test_out' and extra_name) and 
-                scores (e.g., 'neg_log_loss', 'accuracy', 'balanced_accuracy'):
-            ['{set}_{score}'] (1D array): array of scores for each split
+            for all combinations of sets ("test_out" and extra_name) and 
+                scores (e.g., "neg_log_loss", "accuracy", "balanced_accuracy"):
+            ["{set}_{score}"] (1D array): array of scores for each split
     """
 
     mod_cvs = copy.deepcopy(mod_cvs)
@@ -1923,23 +1923,23 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
     all_tests, all_data = [], []
     if split_test:
         if main_data is None:
-            raise ValueError('If testing additional test set, must provide '
-                '`main_data`.')
-        all_tests.append('test_out')
+            raise ValueError("If testing additional test set, must provide "
+                "'main_data'.")
+        all_tests.append("test_out")
     
     if extra_data is not None:
         if extra_name is None or extra_cv is None:
-            raise ValueError('If providing extra data to test set, must '
-                'provide `extra_name` and extra_cv.')
+            raise ValueError("If providing extra data to test set, must "
+                "provide 'extra_name' and extra_cv.")
         all_tests.append(extra_name)
         splitter = extra_cv.split(extra_data[0], extra_data[1])
 
     for score in scoring:
         for test in all_tests:
-            mod_cvs[f'{test}_{score}'] = \
-                np.empty(len(mod_cvs['estimator'])) * np.nan
+            mod_cvs[f"{test}_{score}"] = \
+                np.empty(len(mod_cvs["estimator"])) * np.nan
 
-    for m, mod in enumerate(mod_cvs['estimator']):
+    for m, mod in enumerate(mod_cvs["estimator"]):
         all_data = []
         if split_test:
             idx = cv._set_idx[m][2] # retrieve test_out indices
@@ -1952,7 +1952,7 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
         for score in scoring:
             sc = get_scorer(score)
             for test, data in zip(all_tests, all_data):        
-                key = f'{test}_{score}'
+                key = f"{test}_{score}"
                 mod_cvs[key][m] = sc(mod, data[0], data[1])
 
     return mod_cvs
@@ -1981,7 +1981,7 @@ def get_transf_data_sk(mod, data, flatten=False, training=False):
                                     seqs x frames(/channels) (x channels)
     """
 
-    transf_data = mod['moddata'].transform(
+    transf_data = mod["moddata"].transform(
         data, flatten=flatten, training=training)
     return transf_data
 
@@ -1996,17 +1996,17 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
 
     Required args:
         - mod_cvs (dict)  : cross-validation dictionary with keys:
-            ['estimator'] (list)    : list of fitted estimator pipelines for 
+            ["estimator"] (list)    : list of fitted estimator pipelines for 
                                       each split
             for all combinations of sets (set_names) and scores (scoring):
-            ['{set}_{score}'] (list): array of scores for each split
+            ["{set}_{score}"] (list): array of scores for each split
         - saved_idx (int) : index of the best model
-        - set_names (list): set names ('train', 'test', etc.)
-        - scoring (list)  : score names ('neg_log_loss', 'accuracy', etc.)
+        - set_names (list): set names ("train", "test", etc.)
+        - scoring (list)  : score names ("neg_log_loss", "accuracy", etc.)
 
     Returns:
         - scores (pd DataFrame): scores dataframe with columns 
-                                 ('run_n', 'n_epochs', and abbreviated 
+                                 ("run_n", "n_epochs", and abbreviated 
                                  combinations of set_names and scores) 
     """
 
@@ -2014,45 +2014,45 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
     sc_sign = []
     for sc_name in scoring:
         sign = 1
-        if 'neg_log_loss' in sc_name:
-            sc_name = 'loss'
+        if "neg_log_loss" in sc_name:
+            sc_name = "loss"
             sign = -1
         else:
             sc_name = sc_name.replace(
-                'accuracy', 'acc').replace('balanced', 'bal')
-            if 'acc' in sc_name:
+                "accuracy", "acc").replace("balanced", "bal")
+            if "acc" in sc_name:
                 sign = 100
-            if sc_name == 'bal_acc':
-                sc_name = 'acc_bal'
+            if sc_name == "bal_acc":
+                sc_name = "acc_bal"
         sc_modif.append(sc_name)
         sc_sign.append(sign)
 
-    set_sc = [f'{st_name}_{sc_name}' for st_name in set_names 
+    set_sc = [f"{st_name}_{sc_name}" for st_name in set_names 
         for sc_name in sc_modif]
-    scores = pd.DataFrame(columns=['run_n', 'epoch_n'] + set_sc)
+    scores = pd.DataFrame(columns=["run_n", "epoch_n"] + set_sc)
 
-    scores['run_n'] = range(len(mod_cvs['estimator']))
-    scores['saved'] = 0
-    scores.loc[saved_idx, 'saved'] = 1
+    scores["run_n"] = range(len(mod_cvs["estimator"]))
+    scores["saved"] = 0
+    scores.loc[saved_idx, "saved"] = 1
     for set_name in set_names:
         for score, sc_mod, sign in zip(scoring, sc_modif, sc_sign):
-            key = f'{set_name}_{score}'
+            key = f"{set_name}_{score}"
             if key in mod_cvs.keys():
                 sc = mod_cvs[key]
-                scores[f'{set_name}_{sc_mod}'] = sc * sign
+                scores[f"{set_name}_{sc_mod}"] = sc * sign
             else:
-                logger.warning(f'{key} score missing.')
+                logger.warning(f"{key} score missing.")
 
-    for r in range(len(mod_cvs['estimator'])):
-        epoch_n = mod_cvs['estimator'][r]['logisticregression'].n_iter_[0]
-        scores.loc[r, 'epoch_n'] = epoch_n
+    for r in range(len(mod_cvs["estimator"])):
+        epoch_n = mod_cvs["estimator"][r]["logisticregression"].n_iter_[0]
+        scores.loc[r, "epoch_n"] = epoch_n
 
     return scores
 
 
 #############################################
-def run_cv_clf(inp, target, cv=5, shuffle=False, stats='mean', error='std', 
-               class_weight='balanced', n_jobs=None, model='logreg', 
+def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std", 
+               class_weight="balanced", n_jobs=None, model="logreg", 
                scaler=None, seed=None):
                
     """
@@ -2073,27 +2073,27 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats='mean', error='std',
         - shuffle (bool)    : if True, target is shuffled
                               default: False
         - stats (str)       : statistic to return across fold scores 
-                              ('mean' or 'median')  If None, all scores are 
+                              ("mean" or "median")  If None, all scores are 
                               returned
-                              default: 'mean'
+                              default: "mean"
         - error (str)       : error statistic to return across fold scores. If 
-                              None or if `stats` is None, no error statistic is 
-                              returned.('std' for std or q1-3 and 'sem' for 
-                              SEM or MAD, depending on the value or `stats`)
-                              default: 'std'
+                              None or if 'stats' is None, no error statistic is 
+                              returned.("std" for std or q1-3 and "sem" for 
+                              SEM or MAD, depending on the value or 'stats')
+                              default: "std"
         - class_weight (str): sklearn class_weight attribute
-                              default: 'balanced'
+                              default: "balanced"
         - n_jobs (int)      : number of CPUs to use (see sklearn)
                               default: None
-        - model (str)       : model to use ('logreg' or 'svm')
-                              default: 'logreg'
+        - model (str)       : model to use ("logreg" or "svm")
+                              default: "logreg"
         - seed (int)        : seed or random state to pass to models
                               default: None 
 
     Returns:
         if stats is None and error is None:
         - sc (1D array): scores for each fold (accuracy or balanced accuracy if 
-                         class_weight is 'balanced')
+                         class_weight is "balanced")
         elif only error is None:
         - me (float)   : mean/median statistic across fold scores
         else:
@@ -2101,15 +2101,15 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats='mean', error='std',
         - err (float)  : std/SEM/q1-3/MAD across fold scores
     """
 
-    if model == 'logreg':
+    if model == "logreg":
         clf = LogisticRegression(C=1, fit_intercept=True, 
-            class_weight=class_weight, penalty='l2', solver='lbfgs',
-            max_iter=1000, random_state=seed)
-    elif model == 'svm':
-        clf = SVC(C=1, kernel='linear', gamma='auto', 
+            class_weight=class_weight, penalty="l2", solver="lbfgs",
+            max_iter=1000, random_state=seed, multi_class="auto")
+    elif model == "svm":
+        clf = SVC(C=1, kernel="linear", gamma="auto", 
             class_weight=class_weight, random_state=seed)                    
     else:
-        gen_util.accepted_values_error('model', model, ['logreg', 'svm'])
+        gen_util.accepted_values_error("model", model, ["logreg", "svm"])
 
     if scaler is not None:
         clf = make_pipeline(scaler, clf)
@@ -2119,17 +2119,17 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats='mean', error='std',
         np.random.shuffle(target)
     
     if cv < 3:
-        raise ValueError('`cv` must be at least 3.')
+        raise ValueError("'cv' must be at least 3.")
     cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=seed)
 
     scoring = None
-    if class_weight == 'balanced':
-        scoring = 'balanced_accuracy'
+    if class_weight == "balanced":
+        scoring = "balanced_accuracy"
 
     msgs, categs = [], []
     if shuffle:
         # may not work if n_jobs > 1
-        msgs = ['']
+        msgs = [""]
         categs = [ConvergenceWarning]
 
     # run cross_val_score while filtering specific warnings

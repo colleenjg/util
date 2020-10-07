@@ -37,7 +37,7 @@ def checkexists(pathname):
     """
 
     if not os.path.exists(pathname):
-        raise OSError(f'{pathname} does not exist.')
+        raise OSError(f"{pathname} does not exist.")
 
 
 #############################################
@@ -52,11 +52,11 @@ def checkfile(filename):
     """
 
     if not os.path.isfile(filename):
-        raise OSError(f'{filename} does not exist.')
+        raise OSError(f"{filename} does not exist.")
 
 
 #############################################
-def add_ext(filename, filetype='pickle'):
+def add_ext(filename, filetype="pickle"):
     """
     add_ext(filename)
 
@@ -70,31 +70,31 @@ def add_ext(filename, filetype='pickle'):
     Optional args:
         - filetype (str): type of file (pickle, pkl, json, png, csv, svg, jpg).
                           Overridden if extension already in filename.
-                          Can include ''
-                          default: 'pickle'
+                          Can include ""
+                          default: "pickle"
 
     Returns:
         - filename (str): file name, including extension
-        - ext (str)     : extension, including ''
+        - ext (str)     : extension, including ""
     """
 
     _, ext = os.path.splitext(filename)
 
-    filetype = filetype.replace('', '')
+    filetype = filetype.replace("", "")
 
-    if ext == '':
-        filetypes = ['pkl', 'pickle', 'json', 'csv', 'png', 'svg', 'jpg']
-        file_exts  = ['.pkl', '.pkl', '.json', '.csv', '.png', '.svg', '.jpg']
+    if ext == "":
+        filetypes = ["pkl", "pickle", "json", "csv", "png", "svg", "jpg"]
+        file_exts  = [".pkl", ".pkl", ".json", ".csv", ".png", ".svg", ".jpg"]
         if filetype not in filetypes:
-            gen_util.accepted_values_error('filetype', filetype, filetypes)
+            gen_util.accepted_values_error("filetype", filetype, filetypes)
         ext = file_exts[filetypes.index(filetype)]
-        filename = f'{filename}{ext}'
+        filename = f"{filename}{ext}"
     
     return filename, ext
 
 
 #############################################
-def loadfile(filename, fulldir='', filetype='pickle', dtype=None):
+def loadfile(filename, fulldir="", filetype="pickle", dtype=None):
     """
     loadfile(filename)
 
@@ -107,9 +107,9 @@ def loadfile(filename, fulldir='', filetype='pickle', dtype=None):
     
     Optional args:
         - fulldir (str) : directory in which file is saed
-                          default: ''
+                          default: ""
         - filetype (str): type of file (pickle, pkl, json, csv)
-                          default: 'pickle'
+                          default: "pickle"
         - dtype (str)   : datatype for csv
                           default: None
 
@@ -121,23 +121,23 @@ def loadfile(filename, fulldir='', filetype='pickle', dtype=None):
     fullname = os.path.join(fulldir, filename)
     
     if os.path.exists(fullname):
-        if ext == '.pkl':
+        if ext == ".pkl":
             try:
-                with open(fullname, 'rb') as f:
+                with open(fullname, "rb") as f:
                     datafile = pickle.load(f)
             except:
                 # load a python 2 pkl in python 3 (works in python 3.6)
-                with open(fullname, 'rb') as f: 
-                    datafile = pickle.load(f, encoding='latin1')
-        elif ext == '.json':
-            with open(fullname, 'rb') as f:
+                with open(fullname, "rb") as f: 
+                    datafile = pickle.load(f, encoding="latin1")
+        elif ext == ".json":
+            with open(fullname, "rb") as f:
                 datafile = json.load(f)
-        elif ext == '.csv':
+        elif ext == ".csv":
             datafile = pd.read_csv(fullname, dtype=dtype)
         else:
-            raise ValueError('`ext` must be in `.pkl`, `.json`, `.csv`.')
+            raise ValueError("'ext' must be in '.pkl', '.json', '.csv'.")
     else:
-        raise ValueError(f'{fullname} does not exist.')
+        raise ValueError(f"{fullname} does not exist.")
 
     return datafile
 
@@ -163,14 +163,14 @@ def glob_depth(direc, pattern, depth=0):
                               specified depth
     """
 
-    direc_path = os.path.join(os.path.normpath(direc), *(['*'] * depth))
-    match_paths = glob.glob(f'{direc_path}*{pattern}*')
+    direc_path = os.path.join(os.path.normpath(direc), *(["*"] * depth))
+    match_paths = glob.glob(f"{direc_path}*{pattern}*")
 
     return match_paths
 
 
 #############################################
-def rename_files(direc, pattern, replace='', depth=0, log=True, 
+def rename_files(direc, pattern, replace="", depth=0, log=True, 
                  dry_run=False):
     """
     rename_files(direc, pattern)
@@ -184,7 +184,7 @@ def rename_files(direc, pattern, replace='', depth=0, log=True,
     
     Optional args:
         - replace (str) : string with which to replace pattern
-                          default: ''
+                          default: ""
         - depth (int)   : depth at which to search for pattern
                           default: 0
         - log (bool)    : if True, logs old and new names of each renamed file 
@@ -196,16 +196,16 @@ def rename_files(direc, pattern, replace='', depth=0, log=True,
     change_paths = glob_depth(direc, pattern, depth=depth)
 
     if len(change_paths) == 0:
-        logger.info('No pattern matches found.')
+        logger.info("No pattern matches found.")
         return
 
     if dry_run:
-        logger.info('DRY RUN ONLY')
+        logger.info("DRY RUN ONLY")
 
     for change_path in change_paths:
         new_path_name = change_path.replace(pattern, replace)
         if log or dry_run:
-            logger.info(f'{change_path} -> {new_path_name}', extra={'spacing': '\n'})
+            logger.info(f"{change_path} -> {new_path_name}", extra={"spacing": "\n"})
         if not dry_run:
             os.rename(change_path, new_path_name)
 
@@ -213,7 +213,7 @@ def rename_files(direc, pattern, replace='', depth=0, log=True,
 
 
 #############################################
-def get_unique_path(savename, fulldir='', ext=None):
+def get_unique_path(savename, fulldir="", ext=None):
     """
     get_unique_path(savename)
 
@@ -226,7 +226,7 @@ def get_unique_path(savename, fulldir='', ext=None):
    
     Optional args:
         - fulldir (str): directory to append savename to
-                         default: ''
+                         default: ""
         - ext (str)    : extension to use which, if provided, overrides any
                          extension in savename
                          default: None
@@ -238,22 +238,22 @@ def get_unique_path(savename, fulldir='', ext=None):
 
     if ext is None:
         savename, ext = os.path.splitext(savename)
-    elif '.' not in ext:
-        ext = f'.{ext}'
+    elif "." not in ext:
+        ext = f".{ext}"
 
-    fullname = os.path.join(fulldir, f'{savename}{ext}')
+    fullname = os.path.join(fulldir, f"{savename}{ext}")
     if os.path.exists(fullname):
         savename, _ = os.path.splitext(fullname) # get only savename
         count = 1
-        fullname = f'{savename}_{count}{ext}' 
+        fullname = f"{savename}_{count}{ext}" 
         while os.path.exists(os.path.join(fulldir, fullname)):
             count += 1 
-            fullname = f'{savename}_{count}{ext}'
+            fullname = f"{savename}_{count}{ext}"
 
     return fullname
 
 #############################################
-def saveinfo(saveobj, savename='info', fulldir='', save_as='pickle', 
+def saveinfo(saveobj, savename="info", fulldir="", save_as="pickle", 
              sort=True, overwrite=False):
     """
     saveinfo(saveobj)
@@ -267,13 +267,13 @@ def saveinfo(saveobj, savename='info', fulldir='', save_as='pickle',
     
     Optional args:
         - fulldir (str)   : directory in which to save file
-                            default: ''
+                            default: ""
         - savename (str)  : name under which to save info, can include the 
                             whole directory name and extension
-                            default: 'info'
+                            default: "info"
         - save_as (str)   : type of file to save as (pickle, pkl, json, csv).
                             Overridden if extension included in savename.
-                            default: 'pickle'
+                            default: "pickle"
         - sort (bool)     : whether to sort keys alphabetically, if saving a 
                             dictionary as .json
                             default: True
@@ -293,13 +293,13 @@ def saveinfo(saveobj, savename='info', fulldir='', save_as='pickle',
     if not overwrite:
         fullname = get_unique_path(fullname)
 
-    if ext == '.pkl':
-        with open(fullname, 'wb') as f:
+    if ext == ".pkl":
+        with open(fullname, "wb") as f:
             pickle.dump(saveobj, f)
-    elif ext == '.json':
-        with open(fullname, 'w') as f:
+    elif ext == ".json":
+        with open(fullname, "w") as f:
             json.dump(saveobj, f, sort_keys=sort)
-    elif ext == '.csv':
+    elif ext == ".csv":
         saveobj.to_csv(fullname)
     
     return fullname
@@ -319,8 +319,8 @@ def checkdir(dirname):
 
     # check that the directory exists
     if not os.path.isdir(dirname):
-        raise OSError(f'{dirname} either does not exist or is not a '
-            'directory')
+        raise OSError(f"{dirname} either does not exist or is not a "
+            "directory")
 
 
 #############################################
@@ -333,11 +333,11 @@ def createdir(dirname, unique=False, log_dir=True):
  
     Required args:
         - dirname (str or list): path or hierarchical list of directories, 
-                                 e.g. ['dir', 'subdir', 'subsubdir']
+                                 e.g. ["dir", "subdir", "subsubdir"]
 
     Optional args:
         - unique (bool) : if True, ensures that a new directory is created by  
-                          adding a suffix, e.g. '_1' if necessary
+                          adding a suffix, e.g. "_1" if necessary
                           default: False
         - log_dir (bool): if True, the name of the created directory is 
                           logged
@@ -352,9 +352,9 @@ def createdir(dirname, unique=False, log_dir=True):
 
     if unique and os.path.exists(dirname):
         i=1
-        while os.path.exists(f'{dirname}_{i}'):
+        while os.path.exists(f"{dirname}_{i}"):
             i += 1
-        dirname = f'{dirname}_{i}'
+        dirname = f"{dirname}_{i}"
         os.makedirs(dirname)
     else:
         # included due to problems when running parallel scripts 
@@ -364,13 +364,13 @@ def createdir(dirname, unique=False, log_dir=True):
             pass
 
     if log_dir:
-        logger.info(f'Directory: {dirname}')
+        logger.info(f"Directory: {dirname}")
 
     return dirname
 
 
 #############################################
-def getfiles(dirname='', filetype='all', criteria=None):
+def getfiles(dirname="", filetype="all", criteria=None):
     """
     getfiles()
 
@@ -378,10 +378,10 @@ def getfiles(dirname='', filetype='all', criteria=None):
 
     Optional args:
         - dirname (str)         : directory
-                                  default: ''
-        - filetype (str)        : type of file to return: 'all', 'subdirs' or 
-                                  'files'
-                                  default: 'all'
+                                  default: ""
+        - filetype (str)        : type of file to return: "all", "subdirs" or 
+                                  "files"
+                                  default: "all"
         - criteria (list or str): criteria for including files, i.e., contains 
                                   specified strings
                                   default: None
@@ -399,15 +399,15 @@ def getfiles(dirname='', filetype='all', criteria=None):
     
     allfiles = [os.path.join(dirname, x) for x in allfiles]
 
-    if filetype == 'subdirs':
+    if filetype == "subdirs":
         allfiles = [x for x in allfiles if os.path.isdir(x)]
 
-    elif filetype == 'files':
+    elif filetype == "files":
         allfiles = [x for x in allfiles if not os.path.isdir(x)]
 
-    elif filetype != 'all':
+    elif filetype != "all":
         gen_util.accepted_values_error(
-            'filetype', filetype, ['all', 'subdirs', 'files'])
+            "filetype", filetype, ["all", "subdirs", "files"])
     
     return allfiles
 

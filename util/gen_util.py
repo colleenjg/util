@@ -49,12 +49,12 @@ def temp_filter_warnings(function):
         categs = list_if_not(categs)
 
         if len(msgs) != len(categs):
-            raise ValueError('Must provide as many `msgs` as `categs`.')
+            raise ValueError("Must provide as many 'msgs' as 'categs'.")
 
         orig_warnings = warnings.filters
 
         for msg, categ in zip(msgs, categs):
-            warnings.filterwarnings('ignore', message=msg, category=categ)
+            warnings.filterwarnings("ignore", message=msg, category=categ)
 
         returns = function(*args, **kwargs)
 
@@ -81,10 +81,51 @@ def accepted_values_error(varname, wrong_val, accept_vals):
         - accept_vals (list): list of accepted values for the variable
     """
 
-    val_str = ', '.join([f'`{x}`' for x in accept_vals])
-    error_message = (f'`{varname}` value `{wrong_val}` unsupported. Must be in '
-        f'{val_str}.')
+    val_str = ", ".join([f"'{x}'" for x in accept_vals])
+    error_message = (f"'{varname}' value '{wrong_val}' unsupported. Must be in "
+        f"{val_str}.")
     raise ValueError(error_message)
+
+
+#############################################
+def CC_config_cache():
+    """
+    CC_config_cache()
+
+    Checks whether python appears to be running on a Compute Canada cluster. 
+    Specifically, looks for a scratch directory under the "SCRATCH" key in the 
+    os environment variables. 
+    
+    If scratch is found, sets the following keys, if they don't already exist, 
+    to a writable location on scratch:
+        - "MPLCONFIGDIR": the matplotlib config directory
+        - "XDG_CONFIG_HOME": the default user config directory
+        - "XDG_CACHE_HOME" : the default user config directory
+
+    Doing this addresses a warning from packages like matplotlib, astropy about 
+    the default config/cache directories not being writable.
+
+    Tested on niagara Compute Canada cluster (2020).
+    """
+
+    existing_keys = os.environ.keys()
+
+    if "SCRATCH" in existing_keys:
+        gen_config_dir = os.path.join(os.environ["SCRATCH"], ".config")
+        gen_cache_dir = os.path.join(os.environ["SCRATCH"], ".cache")
+
+        if "MPLCONFIGDIR" not in existing_keys:
+            os.environ["MPLCONFIGDIR"] = os.path.join(
+                gen_config_dir, "matplotlib")
+
+        # for astropy... create writable cache and config directory
+        for key, gen_dir in zip(
+            ["CONFIG", "CACHE"], [gen_config_dir, gen_cache_dir]):
+            if f"XDG_{key}_HOME" not in existing_keys:
+                os.environ[f"XDG_{key}_HOME"] = gen_dir
+                astropy_dir = os.path.join(gen_dir, "astropy")
+                if not os.path.exists(astropy_dir):
+                    os.makedirs(astropy_dir)
 
 
 #############################################
@@ -102,8 +143,8 @@ def create_time_str():
     """
 
     now = datetime.datetime.now()
-    dirname = (f'{now.year:02d}{now.month:02d}{now.day:02d}_'
-        f'{now.hour:02d}{now.minute:02d}{now.second:02d}')
+    dirname = (f"{now.year:02d}{now.month:02d}{now.day:02d}_"
+        f"{now.hour:02d}{now.minute:02d}{now.second:02d}")
     return dirname
     
     
@@ -191,15 +232,15 @@ def remove_lett(lett_str, rem):
     """
 
     if not isinstance(lett_str, str):
-        raise ValueError('lett_str must be a string.')
+        raise ValueError("lett_str must be a string.")
     
     if not isinstance(rem, str):
-        raise ValueError('rem must be a string.')
+        raise ValueError("rem must be a string.")
 
-    removed = ''
+    removed = ""
     for lett in rem:
         if lett in lett_str:
-            lett_str = lett_str.replace(lett, '')
+            lett_str = lett_str.replace(lett, "")
             removed += lett
 
     return lett_str, removed
@@ -225,8 +266,8 @@ def slice_idx(axis, pos):
         sl_idx = tuple([slice(None)])
 
     elif axis < 0:
-        raise ValueError('Do not pass -1 axis value as this will always '
-            'be equivalent to axis 0.')
+        raise ValueError("Do not pass -1 axis value as this will always "
+            "be equivalent to axis 0.")
 
     else:
         sl_idx = tuple([slice(None)] * axis + [pos])
@@ -390,11 +431,11 @@ def intlist_to_str(intlist):
     if isinstance(intlist, list):
         extr = [min(intlist), max(intlist) + 1]
         if set(intlist) == set(range(*extr)):
-            intstr = f'{extr[0]}-{extr[1]-1}'
+            intstr = f"{extr[0]}-{extr[1]-1}"
         else:
-            intstr = '-'.join([str(i) for i in sorted(intlist)])
+            intstr = "-".join([str(i) for i in sorted(intlist)])
     else:
-        raise ValueError('`intlist` must be a list.')
+        raise ValueError("'intlist' must be a list.")
 
     return intstr
 
@@ -423,13 +464,13 @@ def str_to_list(item_str, only_int=False):
     else:
         item_list = item_str.split()
         if only_int:
-            item_list = [int(re.findall('\d+', it)[0]) for it in item_list]
+            item_list = [int(re.findall("\d+", it)[0]) for it in item_list]
         
     return item_list
 
 
 #############################################
-def seed_all(seed=None, device='cpu', log_seed=True, seed_now=True, 
+def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True, 
              no_torch=False):
     """
     seed_all()
@@ -443,9 +484,9 @@ def seed_all(seed=None, device='cpu', log_seed=True, seed_now=True,
     Optional args:
         - seed (int or None): seed value to use. (-1 treated as None)
                               default: None
-        - device (str)      : if 'cuda', torch.cuda, else if 'cpu', cuda is not
+        - device (str)      : if "cuda", torch.cuda, else if "cpu", cuda is not
                               seeded
-                              default: 'cpu'
+                              default: "cpu"
         - log_seed (bool)   : if True, seed value is logged
                               default: True
         - seed_now (bool)   : if True, random number generators are seeded now
@@ -459,10 +500,10 @@ def seed_all(seed=None, device='cpu', log_seed=True, seed_now=True,
     if seed in [None, -1]:
         seed = random.randint(1, 10000)
         if log_seed:
-            logger.info(f'Random seed: {seed}')
+            logger.info(f"Random seed: {seed}")
     else:
         if log_seed:
-            logger.info(f'Preset seed: {seed}')
+            logger.info(f"Preset seed: {seed}")
     
     if seed_now:
         random.seed(seed)
@@ -470,7 +511,7 @@ def seed_all(seed=None, device='cpu', log_seed=True, seed_now=True,
         if not no_torch:
             import torch
             torch.manual_seed(seed)
-            if device == 'cuda':
+            if device == "cuda":
                 torch.cuda.manual_seed_all(seed)
     
     return seed
@@ -494,14 +535,14 @@ def conv_type(item, dtype=int):
         - item (item): converted value
     """
 
-    if dtype in [int, 'int']:
+    if dtype in [int, "int"]:
         item = int(item)
-    elif dtype in [float, 'float']:
+    elif dtype in [float, "float"]:
         item = float(item)
-    elif dtype in [str, 'str']:
+    elif dtype in [str, "str"]:
         item = str(item)
     else:
-        accepted_values_error('dtype', dtype, ['int', 'float', 'str'])
+        accepted_values_error("dtype", dtype, ["int", "float", "str"])
 
     return item
 
@@ -538,8 +579,8 @@ def get_df_label_vals(df, label, vals=None):
     """
     get_df_label_vals(df, label)
 
-    Returns values for a specific label in a dataframe. If the vals is 'any', 
-    'all' or None, returns all different values for that label.
+    Returns values for a specific label in a dataframe. If the vals is "any", 
+    "all" or None, returns all different values for that label.
     Otherwise, vals are returned as a list.
 
     Required args:
@@ -547,14 +588,14 @@ def get_df_label_vals(df, label, vals=None):
         - label (str)   : label of the dataframe column of interest
 
     Optional args:
-        - val (str or list): values to return. If val is None, 'any' or 'all', 
+        - val (str or list): values to return. If val is None, "any" or "all", 
                              all values are returned.
                              default=None
     Return:
         - vals (list): values
     """
 
-    if vals in [None, 'any', 'all']:
+    if vals in [None, "any", "all"]:
         vals = df[label].unique().tolist()
     else:
         vals = list_if_not(vals)
@@ -610,7 +651,7 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
         criteria = [criteria]
 
     if len(cols) != len(criteria):
-        raise ValueError('Must pass the same number of columns and criteria.')
+        raise ValueError("Must pass the same number of columns and criteria.")
 
     for att, cri in zip(cols, criteria):
         df = df.loc[(df[att] == cri)]
@@ -623,15 +664,15 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
             vals = conv_types(vals, dtype)
         if single:
             if len(vals) != 1:
-                raise ValueError('Expected to find 1 value, but '
-                    f'found {len(vals)}.')
+                raise ValueError("Expected to find 1 value, but "
+                    f"found {len(vals)}.")
             else:
                 vals = vals[0]
         return vals
     else: 
         if single and len(df) != 1:
-            raise ValueError('Expected to find 1 dataframe line, but '
-                f'found {len(df)}.')
+            raise ValueError("Expected to find 1 dataframe line, but "
+                f"found {len(df)}.")
         return df
 
 
@@ -658,7 +699,7 @@ def set_df_vals(df, idx, cols, vals):
     vals = list_if_not(vals)
 
     if len(cols) != len(vals):
-        raise ValueError('Must pass the same number of columns and values.')
+        raise ValueError("Must pass the same number of columns and values.")
 
     for col, val in zip(cols, vals):
         df.loc[idx, col] = val
@@ -725,14 +766,14 @@ def get_device(cuda=False, device=None):
     get_device()
 
     Returns name of device to use based on cuda availability and whether cuda  
-    is requested, either via the 'cuda' or 'device' variable, with 'device' 
+    is requested, either via the "cuda" or "device" variable, with "device" 
     taking precedence.
 
     Optional args:
         - cuda (bool) : if True, cuda is used (if available), but will be 
                         overridden by device.
                         default: False
-        - device (str): indicates device to use, either 'cpu' or 'cuda', and 
+        - device (str): indicates device to use, either "cpu" or "cuda", and 
                         will override cuda variable if not None
                         default: None 
         
@@ -742,19 +783,19 @@ def get_device(cuda=False, device=None):
 
     if device is None:
         if cuda:
-            device = 'cuda'
+            device = "cuda"
         else:
-            device = 'cpu'
-    if device == 'cuda':
+            device = "cpu"
+    if device == "cuda":
         import torch
         if not(torch.cuda.is_available()):
-            device = 'cpu'
+            device = "cpu"
 
     return device
 
 
 #############################################
-def hierarch_argsort(data, sorter='fwd', axis=0, dtypes=None):
+def hierarch_argsort(data, sorter="fwd", axis=0, dtypes=None):
     """
     hierarch_argsort(data)
 
@@ -766,9 +807,9 @@ def hierarch_argsort(data, sorter='fwd', axis=0, dtypes=None):
 
     Optional args:
         - sorter (str or list): order to use for the sorting hierarchy, from
-                                top to bottom (list of indices or 'fwd' or 
-                                'rev')
-                                default: 'fwd'
+                                top to bottom (list of indices or "fwd" or 
+                                "rev")
+                                default: "fwd"
         - axis (int)          : axis number
                                 default: 0
         - dtypes (list)       : datatypes to which to convert each data sorting
@@ -781,16 +822,16 @@ def hierarch_argsort(data, sorter='fwd', axis=0, dtypes=None):
     """
 
     if len(data.shape) != 2:
-        raise ValueError('Only implemented for 2D arrays.')
+        raise ValueError("Only implemented for 2D arrays.")
 
     axis, rem_axis = pos_idx([axis, 1-axis], len(data.shape))
     axis_len = data.shape[axis]
 
     data = copy.deepcopy(data)
 
-    if sorter in ['fwd', 'rev']:
+    if sorter in ["fwd", "rev"]:
         sorter = range(axis_len)
-        if sorter == 'rev':
+        if sorter == "rev":
             sorter = reversed(sorter)
     else:
         sorter = list_if_not(sorter)
@@ -799,8 +840,8 @@ def hierarch_argsort(data, sorter='fwd', axis=0, dtypes=None):
     if dtypes is None:
         dtypes = [None] * len(sorter)
     elif len(dtypes) != len(sorter):
-        raise ValueError('If `dtypes` are provided, must pass one per '
-            'sorting position.')
+        raise ValueError("If 'dtypes' are provided, must pass one per "
+            "sorting position.")
 
     overall_sort = np.asarray(range(data.shape[rem_axis]))
 
@@ -848,7 +889,7 @@ def compile_dict_list(dict_list):
 
 
 #############################################
-def num_to_str(num, n_dec=2, dec_sep='-'):
+def num_to_str(num, n_dec=2, dec_sep="-"):
     """
     num_to_str(num)
 
@@ -862,7 +903,7 @@ def num_to_str(num, n_dec=2, dec_sep='-'):
         - n_dec (int)  : number of decimals to retain
                          default: 2
         - dec_sep (str): string to use as a separator
-                         default: '-'
+                         default: "-"
     
     Returns:
         - num_str (str): number as a string
@@ -872,7 +913,7 @@ def num_to_str(num, n_dec=2, dec_sep='-'):
 
     num_res = np.round(num % 1, n_dec)
     if num_res != 0:
-        num_str = f'{num_str}{dec_sep}{str(num_res)[2:]}'
+        num_str = f"{num_str}{dec_sep}{str(num_res)[2:]}"
 
     return num_str
 
@@ -902,7 +943,7 @@ def keep_dict_keys(in_dict, keep_if):
 
 
 #############################################
-def get_n_jobs(n_tasks, parallel=True, max_cores='all'):
+def get_n_jobs(n_tasks, parallel=True, max_cores="all"):
     """
     get_n_jobs(n_tasks)
 
@@ -915,8 +956,8 @@ def get_n_jobs(n_tasks, parallel=True, max_cores='all'):
         - parallel (bool)       : if False, n_jobs of None is returned
                                   default: True
         - max_cores (str or num): max number or proportion of cores to use 
-                                  ('all', proportion or int)
-                                  default: 'all'
+                                  ("all", proportion or int)
+                                  default: "all"
 
     Returns:
         - n_jobs (int): number of jobs to use (None if not parallel or fewer 
@@ -928,7 +969,7 @@ def get_n_jobs(n_tasks, parallel=True, max_cores='all'):
 
     else:
         n_cores = multiprocessing.cpu_count()
-        if max_cores != 'all':
+        if max_cores != "all":
             max_cores = float(max_cores)
             if max_cores >= 0.0 and max_cores <= 1.0:
                 n_cores = int(n_cores * max_cores)
@@ -944,7 +985,7 @@ def get_n_jobs(n_tasks, parallel=True, max_cores='all'):
 
 #############################################
 def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True, 
-                  max_cores='all', zip_output=False, mult_loop=False):
+                  max_cores="all", zip_output=False, mult_loop=False):
     """
     parallel_wrap(fct, loop_arg)
 
@@ -964,8 +1005,8 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
         - parallel (bool)       : if False, n_jobs of None is returned
                                   default: True
         - max_cores (str or num): max number or proportion of cores to use 
-                                  ('all', proportion or int)
-                                  default: 'all'
+                                  ("all", proportion or int)
+                                  default: "all"
         - zip_output (bool)     : if True, outputs are zipped, and tuples are
                                   converted to lists
                                   default: False
@@ -1011,7 +1052,7 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
 
 
 #############################################
-def get_df_unique_vals(df, axis='index', info='length'):
+def get_df_unique_vals(df, axis="index", info="length"):
     """
     get_df_unique_vals(df)
 
@@ -1022,21 +1063,21 @@ def get_df_unique_vals(df, axis='index', info='length'):
         - df (pd DataFrame): hierarchical dataframe
     
     Optional args:
-        - axis (str): Axis for which to return unique values ('index' or 
-                      'columns')
-                      default: 'index'
+        - axis (str): Axis for which to return unique values ("index" or 
+                      "columns")
+                      default: "index"
 
     Returns:
         - unique_vals (list): unique values for each index or column level, in 
                               hierarchical order
     """
 
-    if axis in ['ind', 'idx', 'index']:
+    if axis in ["ind", "idx", "index"]:
         unique_vals = [df.index.unique(row) for row in df.index.names]
-    elif axis in ['col', 'cols', 'columns']:
+    elif axis in ["col", "cols", "columns"]:
         unique_vals = [df.columns.unique(col) for col in df.columns.names]
     else:
-        accepted_values_error('axis', axis, ['index', 'columns'])
+        accepted_values_error("axis", axis, ["index", "columns"])
 
 
     return unique_vals
@@ -1074,8 +1115,8 @@ def reshape_df_data(df, squeeze_rows=False, squeeze_cols=False):
     new_dims = [*row_dims, *col_dims]
 
     if np.prod(new_dims) != df.size:
-        raise ValueError('Cannot automatically reshape dataframe data, as '
-            'levels are not shared across all labels.')
+        raise ValueError("Cannot automatically reshape dataframe data, as "
+            "levels are not shared across all labels.")
 
     df_data = df.to_numpy().reshape(new_dims)
 

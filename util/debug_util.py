@@ -68,11 +68,11 @@ def check_match(data1, data2, ret_diff=False):
     """
 
     if data1.shape != data2.shape:
-        raise ValueError('Both data arrays must have same shape.')
+        raise ValueError("Both data arrays must have same shape.")
 
     match = ((data1 == data2) | (np.isnan(data1) & np.isnan(data2)))
     if ~(np.isnan(data1) == np.isnan(data2)).all():
-        logger.debug('Different NaN patterns.')
+        logger.debug("Different NaN patterns.")
     match_all = match.all()
     if ret_diff:
         diff_idx = np.where(~match)
@@ -103,7 +103,7 @@ def calculate_data_diffs(data1, data2):
     """
 
     if data1.shape != data2.shape:
-        raise ValueError('Both data arrays must have same shape.')
+        raise ValueError("Both data arrays must have same shape.")
     # calculate some information
     nan_mask = np.where(np.isfinite(np.multiply(data1, data2))) # remove NaNs
     diff_data = data1[nan_mask] - data2[nan_mask]
@@ -130,20 +130,20 @@ def match_log(match, names=None):
     """
 
     if names is None:
-        names = ['Data array 2', 'Data array 1']
+        names = ["Data array 2", "Data array 1"]
     elif len(names) != 2:
-        raise ValueError('If passing `names`, must pass 2 names.')
+        raise ValueError("If passing 'names', must pass 2 names.")
 
     if match:
-        logger.debug(f'{names[1].capitalize()} matches {names[0].lower()}.')
+        logger.debug(f"{names[1].capitalize()} matches {names[0].lower()}.")
     else:
-        logger.debug(f'{names[1].capitalize()} does not exactly match '
-            f'{names[0].lower()}.')
+        logger.debug(f"{names[1].capitalize()} does not exactly match "
+            f"{names[0].lower()}.")
 
 
 #############################################
 @set_debug_mode
-def log_max_diff(data1, data2, axis=0, axis_label='IDs'):
+def log_max_diff(data1, data2, axis=0, axis_label="IDs"):
     """
     log_max_diff(data1, data2)
 
@@ -160,15 +160,15 @@ def log_max_diff(data1, data2, axis=0, axis_label='IDs'):
                              differences between data arrays
                              default: 0
         - axis_labels (str): label of axis
-                             default: 'IDs'
+                             default: "IDs"
     """
     
     _, diff_idx = check_match(data1, data2, ret_diff=True)
     diff_items = [str(roi_n) for roi_n in sorted(set(diff_idx[axis]))]
-    diff_items_str = ', '.join(diff_items)
-    logger.debug(f'Diff {axis_label}: {diff_items_str}')
+    diff_items_str = ", ".join(diff_items)
+    logger.debug(f"Diff {axis_label}: {diff_items_str}")
     act_diff = (data2[diff_idx] - data1[diff_idx])
-    logger.debug(f'Max absolute diff: {np.nanmax(np.absolute(act_diff))}')
+    logger.debug(f"Max absolute diff: {np.nanmax(np.absolute(act_diff))}")
 
 
 #############################################
@@ -190,7 +190,7 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
                            default: 10
         - title (str)    : subplot title
                            default: None
-        - labels (list)  : data array labels ('None' for no legend)
+        - labels (list)  : data array labels ("None" for no legend)
                            default: None
         - xlabel (str)   : x axis label
                            default: None
@@ -200,18 +200,18 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
 
 
     if data1.shape != data2.shape:
-        raise ValueError('Both data arrays must have same shape.')
+        raise ValueError("Both data arrays must have same shape.")
 
     data = [data1, data2]
-    cols = ['blue', 'red']
+    cols = ["blue", "red"]
     use_legend = True
     if labels is None:
-        labels = ['1', '2']
-    elif labels in ['None', 'none']:
+        labels = ["1", "2"]
+    elif labels in ["None", "none"]:
         labels = [None, None]
         use_legend = False
     elif len(labels) != 2:
-        raise ValueError('If passing `labels`, must pass 2 labels.')
+        raise ValueError("If passing 'labels', must pass 2 labels.")
     
     one_dim = False
     if len(data[0].shape) == 1:
@@ -226,9 +226,9 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
     if n_not_zero == 0:
         n_nan = np.isnan(items_max_diffs).sum()
         if n_nan:
-            logger.debug(f'Differences in all {n_nan} {datatype} due to NaNs.')
+            logger.debug(f"Differences in all {n_nan} {datatype} due to NaNs.")
         else:
-            logger.debug(f'No {datatype} show differences.')
+            logger.debug(f"No {datatype} show differences.")
         return
 
     n_plot = np.min([max, n_not_zero])
@@ -240,21 +240,21 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
         len(item_max_diff_idx), figsize=figsize, squeeze=False, sharex=True)
 
     if not one_dim:
-        logger.debug(f'{n_plot}/{n_not_zero} {datatype} with greatest cumulative '
-            'absolute differences shown')
+        logger.debug(f"{n_plot}/{n_not_zero} {datatype} with greatest cumulative "
+            "absolute differences shown.")
 
-    subtitle = ''
+    subtitle = ""
     if title is not None:
-        subtitle = f'{title}: '
-    title = (f'{subtitle}{len(item_max_diff_idx)}/{n_not_zero} {datatype} '
-        f'with greatest cumul. abs. diffs ({len(data[0])} ROIs total)')
+        subtitle = f"{title}: "
+    title = (f"{subtitle}{len(item_max_diff_idx)}/{n_not_zero} {datatype} "
+        f"with greatest cumul. abs. diffs ({len(data[0])} ROIs total)")
     
     for s, item_idx in enumerate(item_max_diff_idx):
         subax = ax.reshape(-1)[s]
         for sub_data, col, label in zip(data, cols, labels):
             subax.plot(sub_data[item_idx], c=col, alpha=0.3, label=label)
         subax.set_ylabel(item_idx)
-        subax.yaxis.set_label_position('right')
+        subax.yaxis.set_label_position("right")
         if s == 0:
             if use_legend:
                 subax.legend()
@@ -291,20 +291,20 @@ def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None,
     """
 
 
-    cols = ['blue', 'red']
+    cols = ["blue", "red"]
     if labels is None:
-        labels = ['1', '2']
+        labels = ["1", "2"]
     elif len(labels) != 2:
-        raise ValueError('If passing `labels`, must pass 2 labels.')
+        raise ValueError("If passing 'labels', must pass 2 labels.")
 
     non_zero_diffs, perc_diff, nan_mask = calculate_data_diffs(data1, data2)
 
     if len(non_zero_diffs) == 0:
         n_nan = np.isnan(non_zero_diffs).sum()
         if n_nan:
-            logger.debug(f'Differences in all {n_nan} {datatype} due to NaNs.')
+            logger.debug(f"Differences in all {n_nan} {datatype} due to NaNs.")
         else:
-            logger.debug(f'No {datatype} show differences.')
+            logger.debug(f"No {datatype} show differences.")
         return
 
     # set plotting parameters
@@ -313,7 +313,7 @@ def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None,
     while bins > data1.size//2:
         bins = bins//2
     bins = np.max([2, bins])
-    label_diffs = f'diff {perc_diff:.2f}%\nof values'
+    label_diffs = f"diff {perc_diff:.2f}%\nof values"
     
     # ROI trace histogram
     for sub_data, col, label in zip([data1, data2], cols, labels):
@@ -324,18 +324,18 @@ def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None,
         ax[0].set_title(title)
     if datatype is not None:
         ax[0].set_xlabel(datatype)
-    ax[0].set_ylabel(f'Density ({bins} bins)')
+    ax[0].set_ylabel(f"Density ({bins} bins)")
     ax[0].legend()
 
     # Difference histogram
     ax[1].hist(
-        non_zero_diffs, bins, color='green', alpha=0.6, label=label_diffs, 
+        non_zero_diffs, bins, color="green", alpha=0.6, label=label_diffs, 
         density=True)
     for fct in [np.min, np.max]:
-        ax[1].axvline(fct(non_zero_diffs), c='red', ls='dashed')
+        ax[1].axvline(fct(non_zero_diffs), c="red", ls="dashed")
     if title is not None:
         ax[1].set_title(title)
-    ax[1].legend(loc='upper right')
+    ax[1].legend(loc="upper right")
     if datatype is not None:
-        ax[1].set_xlabel(f'Non zero diffs in {datatype} values')
+        ax[1].set_xlabel(f"Non zero diffs in {datatype} values.")
 
