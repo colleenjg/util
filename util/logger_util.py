@@ -15,7 +15,7 @@ import logging
 import os
 import sys
 
-from util import gen_util, logreg_util
+from util import gen_util
 
 
 #############################################
