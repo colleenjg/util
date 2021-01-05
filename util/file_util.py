@@ -17,6 +17,7 @@ import logging
 import os
 import pickle
 import sys
+import warnings
 
 import pandas as pd
 
@@ -30,13 +31,17 @@ def checkexists(pathname):
     """
     checkexists(pathname)
 
-    Checks whether a path exists and raises an error if not.
+    Checks whether a path exists and raises an error if not. 
+    If path is an empty string, does not raise a warning.
 
     Required args:
         - pathname (str): path
     """
 
-    if not os.path.exists(pathname):
+    if len(pathname) == 0:
+        warnings.warn("'pathname' is an empty string, so path cannot be "
+            "evaluated as existing or not.")
+    elif not os.path.exists(pathname):
         raise OSError(f"{pathname} does not exist.")
 
 
@@ -53,6 +58,67 @@ def checkfile(filename):
 
     if not os.path.isfile(filename):
         raise OSError(f"{filename} does not exist.")
+
+
+#############################################
+def split_path(full_path):
+    """
+    split_path(full_path)
+
+    Returns a path fully split.
+ 
+    Required args:
+        - full_path (str): full path
+    
+    Returns:
+        - all_parts (list): list of path parts
+    """
+
+    all_parts = []
+
+    while 1:
+        parts = os.path.split(full_path)
+        if parts[0] == full_path:  # sentinel for absolute paths
+            all_parts.insert(0, parts[0])
+            break
+        elif parts[1] == full_path: # sentinel for relative paths
+            all_parts.insert(0, parts[1])
+            break
+        else:
+            full_path = parts[0]
+            all_parts.insert(0, parts[1])
+    
+    return all_parts
+
+
+#############################################
+def get_up_path(full_path, n_levels=1):
+    """
+    get_up_path(full_path)
+
+    Returns a path up from the full path (a certain number of levels up).
+ 
+    Required args:
+        - full_path (str): full path
+    
+    Optional args:
+        - n_levels (int): number of path levels to go up
+    
+    Returns:
+        - up_path (str): path up from full_path
+    """
+
+    for path_type in ["relative", "absolute"]:
+        use_path = full_path
+        if path_type == "absolute":
+            use_path = os.path.abspath(use_path)
+        path_parts = split_path(use_path)
+        if len(path_parts) > n_levels:
+            up_path = os.path.join(*path_parts[: -n_levels])
+        elif os.path.isabs(use_path):
+            raise ValueError(f"It is not possible to go {n_levels} levels up.")
+
+    return up_path
 
 
 #############################################
@@ -80,7 +146,7 @@ def add_ext(filename, filetype="pickle"):
 
     _, ext = os.path.splitext(filename)
 
-    filetype = filetype.replace("", "")
+    filetype = filetype.replace(".", "")
 
     if ext == "":
         filetypes = ["pkl", "pickle", "json", "csv", "png", "svg", "jpg"]
@@ -94,7 +160,7 @@ def add_ext(filename, filetype="pickle"):
 
 
 #############################################
-def loadfile(filename, fulldir="", filetype="pickle", dtype=None):
+def loadfile(filename, fulldir=".", filetype="pickle", dtype=None):
     """
     loadfile(filename)
 
@@ -107,7 +173,7 @@ def loadfile(filename, fulldir="", filetype="pickle", dtype=None):
     
     Optional args:
         - fulldir (str) : directory in which file is saed
-                          default: ""
+                          default: "."
         - filetype (str): type of file (pickle, pkl, json, csv)
                           default: "pickle"
         - dtype (str)   : datatype for csv
@@ -205,7 +271,8 @@ def rename_files(direc, pattern, replace="", depth=0, log=True,
     for change_path in change_paths:
         new_path_name = change_path.replace(pattern, replace)
         if log or dry_run:
-            logger.info(f"{change_path} -> {new_path_name}", extra={"spacing": "\n"})
+            logger.info(f"{change_path} -> {new_path_name}", 
+                extra={"spacing": "\n"})
         if not dry_run:
             os.rename(change_path, new_path_name)
 
@@ -213,7 +280,7 @@ def rename_files(direc, pattern, replace="", depth=0, log=True,
 
 
 #############################################
-def get_unique_path(savename, fulldir="", ext=None):
+def get_unique_path(savename, fulldir=".", ext=None):
     """
     get_unique_path(savename)
 
@@ -226,7 +293,7 @@ def get_unique_path(savename, fulldir="", ext=None):
    
     Optional args:
         - fulldir (str): directory to append savename to
-                         default: ""
+                         default: "."
         - ext (str)    : extension to use which, if provided, overrides any
                          extension in savename
                          default: None
@@ -253,7 +320,7 @@ def get_unique_path(savename, fulldir="", ext=None):
     return fullname
 
 #############################################
-def saveinfo(saveobj, savename="info", fulldir="", save_as="pickle", 
+def saveinfo(saveobj, savename="info", fulldir=".", save_as="pickle", 
              sort=True, overwrite=False):
     """
     saveinfo(saveobj)
@@ -267,7 +334,7 @@ def saveinfo(saveobj, savename="info", fulldir="", save_as="pickle",
     
     Optional args:
         - fulldir (str)   : directory in which to save file
-                            default: ""
+                            default: "."
         - savename (str)  : name under which to save info, can include the 
                             whole directory name and extension
                             default: "info"
@@ -318,9 +385,12 @@ def checkdir(dirname):
     """
 
     # check that the directory exists
+    if len(dirname) == 0: # i.e., ""
+        return
+
     if not os.path.isdir(dirname):
         raise OSError(f"{dirname} either does not exist or is not a "
-            "directory")
+            "directory.")
 
 
 #############################################
@@ -350,17 +420,22 @@ def createdir(dirname, unique=False, log_dir=True):
     # convert directory list to full path
     dirname = os.path.join(*gen_util.list_if_not(dirname))
 
-    if unique and os.path.exists(dirname):
+    if len(dirname) == 0:
+        exists = True
+    else:
+        exists = os.path.exists(dirname)
+
+    if unique and exists:
         i=1
         while os.path.exists(f"{dirname}_{i}"):
             i += 1
         dirname = f"{dirname}_{i}"
         os.makedirs(dirname)
-    else:
-        # included due to problems when running parallel scripts 
+    elif not exists:
         try:
             os.makedirs(dirname)
-        except OSError:
+        # included due to problems when running parallel scripts
+        except FileExistsError:
             pass
 
     if log_dir:
@@ -370,7 +445,7 @@ def createdir(dirname, unique=False, log_dir=True):
 
 
 #############################################
-def getfiles(dirname="", filetype="all", criteria=None):
+def getfiles(dirname=".", filetype="all", criteria=None):
     """
     getfiles()
 
@@ -378,7 +453,7 @@ def getfiles(dirname="", filetype="all", criteria=None):
 
     Optional args:
         - dirname (str)         : directory
-                                  default: ""
+                                  default: "."
         - filetype (str)        : type of file to return: "all", "subdirs" or 
                                   "files"
                                   default: "all"
@@ -389,6 +464,9 @@ def getfiles(dirname="", filetype="all", criteria=None):
     Returns:
         - files (list): list of files in directory
     """
+
+    if len(dirname) == 0:
+        dirname = "."
 
     allfiles = os.listdir(dirname)
 

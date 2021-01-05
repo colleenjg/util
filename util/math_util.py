@@ -380,9 +380,9 @@ def integ(data, dx, axis=None, nanpol=None):
 
     # sum * freq
     if nanpol == "omit":
-        integ_data = np.nansum(data, axis)*dx
+        integ_data = np.nansum(data, axis) * dx
     elif nanpol is None:
-        integ_data = np.sum(data, axis)*dx
+        integ_data = np.sum(data, axis) * dx
     else:
         gen_util.accepted_values_error("nanpol", nanpol, ["None", "omit"])
 
@@ -1128,7 +1128,7 @@ def lin_interp_nan(data_arr):
 
 #############################################    
 def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100, 
-            log_elems=False, ret_th=False, nanpol="omit"):
+            log_elems=False, ret_th=False, nanpol="omit", ret_pval=False):
     """
     id_elem(rand_vals, act_vals)
 
@@ -1161,6 +1161,9 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
                               prevented from leading to positive significance
                               evaluation
                               default: False
+        - ret_pval (bool)   : if True, p-values are returned for each element
+                              default: False
+
     Returns:
         - elems (list): list of elements showing significant differences, or 
                         list of lists if 2-tailed analysis [lo, up].
@@ -1168,6 +1171,8 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
         - threshs (list): list of threshold(s) for each element, either one 
                           value per element if 1-tailed analysis, or list of 2 
                           thresholds if 2-tailed [lo, up].
+        if ret_pval, also:
+        - act_pvals (list): list of p-values for each element.
     """
 
     act_vals  = np.asarray(act_vals)
@@ -1227,6 +1232,13 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
     else:
         gen_util.accepted_values_error("tails", tails, ["up", "lo", "2"])
     
+    if ret_pval:
+        act_percs = [scist.percentileofscore(sub_rand_vals, val) 
+            for (sub_rand_vals, val) in zip(rand_vals, act_vals)]
+        act_pvals = [1 - perc/100 if perc > 50 else perc/100 
+            for perc in act_percs]
+
+    returns = [elems]
     if ret_th:
         if tails in ["lo", "up"]:
             if single:
@@ -1238,9 +1250,14 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
                 threshs = [[lo_threshs, up_threshs]]
             else:
                 threshs = [[lo, up] for lo, up in zip(lo_threshs, up_threshs)]
-        return elems, threshs
+        returns = returns + [threshs]
+    if ret_pval:
+        returns = returns + [act_pvals]
+    
+    if not ret_pval and not ret_th:
+        returns = elems
 
-    return elems
+    return returns
 
 
 #############################################

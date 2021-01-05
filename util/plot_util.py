@@ -43,7 +43,7 @@ LINCLAB_COLS = {"blue"  : "#50a2d5", # Linclab blue
 
 #############################################
 def linclab_plt_defaults(font="Liberation Sans", fontdir=None, 
-                         log_fonts=False, example=False, dirname="", 
+                         log_fonts=False, example=False, dirname=".", 
                          **cyc_args):
     """
     linclab_plt_defaults()
@@ -51,7 +51,8 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
     Sets pyplot defaults to Linclab style.
 
     Optional args:
-        - font (str or list): font to use, or list in order of preference
+        - font (str or list): font (or font family) to use, or list in order of 
+                              preference
                               default: "Liberation Sans"
         - fontdir (str)     : directory to where extra fonts (.ttf) are stored
                               default: None
@@ -62,7 +63,7 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
                               default: False
         - dirname (str)     : directory in which to save example if example is 
                               True 
-                              default: ""
+                              default: "."
 
     Kewyord args:
         - cyc_args (dict): keyword arguments for plt.cycler()
@@ -71,7 +72,7 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
     col_order = ["blue", "red", "grey", "green", "purple", "orange", "pink", 
                  "yellow", "brown"]
     colors = [get_color(key) for key in col_order] 
-    col_cyc = plt.cycler(color=colors)
+    col_cyc = plt.cycler(color=colors, **cyc_args)
 
     # set pyplot params
     params = {"axes.labelsize"       : "xx-large", # xx-large axis labels
@@ -102,61 +103,38 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
               }
 
 
-    # add new fonts to list if a font directory is provided
-    if fontdir and os.path.exists(fontdir):
-        fontdirs = [fontdir, ]
-        # prevent a long stream of debug messages
-        logging.getLogger("matplotlib.font_manager").disabled = True
-        font_files = fm.findSystemFonts(fontpaths=fontdirs)
-        for font_file in font_files:
-            fm.fontManager.addfont(font_file)
-    
-    # list of available fonts
-    all_fonts = list(set([f.name for f in fm.fontManager.ttflist]))
-
-    # log list of fonts, if requested
-    if log_fonts:
-        font_log = "Available fonts:"
-        sorted_fonts = sorted(all_fonts)
-        for font in sorted_fonts:
-            font_log = f"{font_log}\n{TAB}{font}"
-        logger.info(font_log)
-    
-    # check whether requested font is available, otherwise warn that
-    # default will be used.
-    font = gen_util.list_if_not(font)
-    set_font = True
-    f = 0
-    while set_font and f < len(font):
-        if font[f] in all_fonts:
-            params["font.family"] = font[f]
-            set_font = False
-        elif f == len(font) - 1:
-            font_fam = plt.rcParams["font.family"][0]
-            def_font = plt.rcParams[f"font.{font_fam}"][0]
-            warnings.warn(f"Desired font ({font}) not found, so "
-                f"default ({def_font}) will be used instead.")
-        f = f + 1
+    set_font(font, fontdir, log_fonts)
 
     # update pyplot parameters
     plt.rcParams.update(params)
 
     # create and save an example plot, if requested
     if example:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=[8, 8])
         
         n_col = len(colors)
         x = np.asarray(list(range(10)))[:, np.newaxis]
         y = np.repeat(x/2., n_col, axis=1) - \
             np.asarray(list(range(-n_col, 0)))[np.newaxis, :]
         ax.plot(x, y)
-        ax.legend(colors)
+
+        # label plot
+        legend_labels = [f"{name}: {code}" 
+            for name, code in zip(col_order, colors)]
+        ax.legend(legend_labels)
         ax.set_xlabel("X axis")
         ax.set_ylabel("Y axis")
         ax.set_title("Example plot")
         ax.axvline(x=1, ls="dashed", c="k")
+    
+        if len(dirname) and not os.path.exists(dirname):
+            os.makedirs(dirname)
         
-        fig.savefig(os.path.join(dirname, "example_plot"))
+        ext = plt.rcParams["savefig.format"]
+        savepath = os.path.join(dirname, f"example_plot.{ext}")
+        fig.savefig(savepath)
+
+        logger.info(f"Example saved under {savepath}")
 
 
 #############################################
@@ -164,7 +142,7 @@ def linclab_colormap(nbins=100, gamma=1.0):
     """
     linclab_colormap()
 
-    Returns a matplotlib colorplot using the linclab blue, white and linclab 
+    Returns a matplotlib colormap using the linclab blue, white and linclab 
     red.
 
     Optional args:
@@ -187,9 +165,143 @@ def linclab_colormap(nbins=100, gamma=1.0):
             rgb_col[c].append(ch_val)
 
     cmap = mpl.colors.LinearSegmentedColormap.from_list(
-        "linclab_byr", rgb_col, N=nbins, gamma=gamma)
+        "linclab_bwr", rgb_col, N=nbins, gamma=gamma)
 
     return cmap
+
+
+#############################################
+def adjusted_nipy_spectral_cmap(nbins=100, gamma=1.0):
+    """
+    adjusted_nipy_spectral_cmap()
+
+    Returns the nipy_spectral matplotlib colormap adjusted to not have the 
+    white end.
+
+    Optional args:
+        - nbins (int): number of bins to use to create colormap
+                       default: 100
+        - gamma (num): non-linearity
+                       default: 1.0
+
+    Returns:
+        - cmap (colormap): a matplotlib colormap
+    """
+
+    colors = mpl.cm.nipy_spectral(np.linspace(0, 1, 11))
+
+    cmap = mpl.colors.LinearSegmentedColormap.from_list(
+        "nipy_spectral_adjusted", colors[:-1], N=nbins, gamma=gamma)
+
+    return cmap
+
+#############################################
+def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
+    """
+    set_font()
+
+    Sets pyplot font to preferred values.
+    
+    NOTE: This function is particular convoluted to enable to clearest warnings 
+    when preferred fonts/font families are not found.
+
+    Optional args:
+        - font (str or list): font or font family to use, or list in order of 
+                              preference
+                              default: "Liberation Sans"
+        - fontdir (str)     : directory to where extra fonts (.ttf) are stored
+                              default: None
+        - log_fonts (bool)  : if True, an alphabetical list of available fonts 
+                              is logged
+                              default: False
+    """
+
+    if fontdir is not None and len(fontdir) and not os.path.exists(fontdir):
+        raise OSError(f"{fontdir} font directory does not exist.")
+
+    # keep in lower case
+    font_families = ["cursive", "family", "fantasy", "monospace", 
+        "sans-serif", "serif"]
+
+    # add new fonts to list of available fonts if a font directory is provided
+    if fontdir and os.path.exists(fontdir):
+        fontdirs = [fontdir, ]
+        # prevent a long stream of debug messages
+        logging.getLogger("matplotlib.font_manager").disabled = True
+        font_files = fm.findSystemFonts(fontpaths=fontdirs)
+        for font_file in font_files:
+            fm.fontManager.addfont(font_file)
+    
+    # compile list of available fonts/font families 
+    # (includes checking each font family to see if any of its fonts are available)
+    all_fonts = list(set([f.name for f in fm.fontManager.ttflist]))
+    all_fonts_lower = [font.lower() for font in all_fonts]
+    font_families_found = []
+    none_found_str = " (no family fonts found)"
+    for f, font_family in enumerate(font_families):
+        available_fonts = list(filter(lambda x: x.lower() in all_fonts_lower, 
+            plt.rcParams[f"font.{font_family}"]))
+        if len(available_fonts) == 0:
+            font_families_found.append(
+                f"{font_family}{none_found_str}")
+        else:
+            font_families_found.append(font_family)
+
+    # log list of font families and fonts, if requested
+    if log_fonts:
+        font_log = ""
+        for i, (font_type, font_list) in enumerate(zip(
+            ["Font families", "Available fonts"], [font_families, all_fonts])):
+            sep = "" if i == 0 else "\n\n"
+            sorted_fonts_str = f"\n{TAB}".join(sorted(font_list))
+            font_log = (f"{font_log}{sep}{font_type}:"
+                f"\n{TAB}{sorted_fonts_str}")
+        logger.info(font_log)
+    
+    # compile ordered list of available fonts/font families, in the preferred 
+    # order to use in setting the mpl font choice parameter.
+    fonts = gen_util.list_if_not(font)
+    params = {
+        "font.family": plt.rcParams["font.family"]
+    }
+    fonts_idx_added = []
+    for f, font in enumerate(fonts):
+        if font.lower() in all_fonts_lower:
+            font_name = all_fonts[all_fonts_lower.index(font.lower())]
+        elif (font.lower() in font_families_found and 
+            none_found_str not in font.lower()):
+            font_name = font.lower()
+        else:
+            if font.lower() in font_families:
+                fonts[f] = f"{font} family fonts"
+            continue
+
+        # if found, add/move to correct position in list
+        if font_name in params["font.family"]:
+            params["font.family"].remove(font_name)
+
+        params["font.family"].insert(len(fonts_idx_added), font_name)
+        fonts_idx_added.append(f)
+
+    #  warn if the first (set of) requested fonts/font families were not found.
+    if len(fonts_idx_added) == 0:
+        first_font_added = None
+    else: 
+        first_font_added = min(fonts_idx_added)
+    if first_font_added != 0:
+        omitted_str = ", ".join(fonts[: first_font_added])
+        selected_str = ""
+        if len(plt.rcParams["font.family"]) != 0:
+            selected = plt.rcParams["font.family"][0]
+            selected_str = f"\nFont set to {selected}."
+            if selected in font_families:
+                selected_str = selected_str.replace(".", " family.")
+        warnings.warn(f"Requested font(s) not found: {omitted_str}."
+            f"{selected_str}")
+    
+    plt.rcParams.update(params)
+
+    return
 
 
 #############################################
@@ -345,6 +457,36 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
 
 
 #############################################
+def set_ticks_safe(sub_ax, ticks, axis="x"):
+    """
+    set_ticks_safe(sub_ax, ticks)
+
+    Sets specified ticks on specified axis, allowing ticks to be a single value. 
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+        - ticks (num or array-like): tick values
+
+    Optional args:
+        - axis (str)    : axis for which to set ticks, i.e., x, y or both
+                          default: "x"
+    """
+
+    if isinstance(ticks, np.ndarray):
+        if len(ticks.shape) == 0:
+            ticks = ticks.reshape(1)
+    else:
+        ticks = gen_util.list_if_not(ticks)
+
+    if axis == "x":
+        sub_ax.set_xticks(ticks)
+    elif axis == "y":
+        sub_ax.set_yticks(ticks)
+    else:
+        gen_util.accepted_values_error("axis", axis, ["x", "y"])
+        
+    
+#############################################
 def set_ticks(sub_ax, axis="x", min_tick=0, max_tick=1.5, n=6, pad_p=0.05, 
               minor=False):
     """
@@ -409,7 +551,7 @@ def set_ticks_from_vals(sub_ax, vals, axis="x", n=6, pad_p=0.05):
         - vals (array-like)        : axis values in the data
 
     Optional args:
-        - axis (str  )    : axis for which to set ticks, i.e., x, y or both
+        - axis (str )     : axis for which to set ticks, i.e., x, y or both
                             default: "x"
         - n (int)         : number of ticks
                             default: 6
@@ -663,7 +805,7 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
 
 
 #############################################
-def savefig(fig, savename, fulldir="", datetime=True, use_dt=None, 
+def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None, 
             fig_ext="svg", overwrite=False, log_dir=True, **savefig_kw):
     """
     savefig(fig, savename)
@@ -678,7 +820,7 @@ def savefig(fig, savename, fulldir="", datetime=True, use_dt=None,
     
     Optional args:
         - fulldir (str)   : directory in which to save figure
-                            default: ""
+                            default: "."
         - datetime (bool) : if True, figures are saved in a subfolder named 
                             based on the date and time.
                             default: True
@@ -1273,7 +1415,7 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
     if isinstance(xticks, str) and xticks in ["None", "none"]:
         sub_ax.tick_params(axis="x", which="both", bottom=False) 
     elif xticks is None:
-        sub_ax.set_xticks(x)
+        set_ticks_safe(sub_ax, x, axis="x")
     else:
         sub_ax.set_xticks(xticks)
 
@@ -1284,8 +1426,8 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
 
     if err is not None:
         err = np.asarray(err).squeeze()
-        # If err is 1D, provide errorbar length, if err is 2D, provide errorbar 
-        # endpoints
+        # If err is 1D, errorbar length is provided, if err is 2D, errorbar 
+        # endpoints are provided
         if len(err.shape) == 2: 
             err = np.asarray([y - err[0], err[1] - y])
     
@@ -1353,38 +1495,40 @@ def get_barplot_xpos(n_grps, n_bars_per, barw, in_grp=1.5, btw_grps=4.0):
 #############################################
 def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color="k", 
                     fig_coord=False, fontsize="xx-large", fontweight="bold", 
-                    ha="center", va="top", **text_kw):
+                    ha="center", va="top", mark="*", **text_kw):
     """
     add_signif_mark(sub_ax, xpos, yval)
 
-    Plots significance markers (star) on subplot.
+    Plots significance markers (mark) on subplot.
 
     Best to ensure that y axis limits are set before calling this function as
-    star position are set relative to these limits.
+    mark position are set relative to these limits.
 
     Required args:
         - sub_ax (plt Axis subplot): subplot
-        - xpos (num)               : x positions for star
+        - xpos (num)               : x positions for mark
         - yval (num)               : y value above which to place line
     
     Optional args:
-        - yerr (num)      : errors to add to ypos when placing star
+        - yerr (num)      : errors to add to ypos when placing mark
                             default: None
-        - rel_y (num)     : relative position above ypos at which to place star.
+        - rel_y (num)     : relative position above ypos at which to place mark.
                             default: 0.01
-        - color (str)     : color for stars
+        - color (str)     : color for marks
                              default: "k"
         - fig_coord (bool): if True, coordinates are first converted from data 
                             to figure coordinates
                             default: False
-        - fontsize (str)  : text (star) fontsize
+        - fontsize (str)  : text (mark) fontsize
                             default: "xx-large"
-        - fontweight (str): text (star) fontweight
+        - fontweight (str): text (mark) fontweight
                             default: "bold"
-        - ha (str)        : text (star) horizontal alignment
+        - ha (str)        : text (mark) horizontal alignment
                             default: "center" 
-        - va (str)        : text (star) vertical alignment
+        - va (str)        : text (mark) vertical alignment
                             default: "top"
+        - mark (str)      : mark to use to mark significance
+                            default: "*"
 
     Kewyord args:
         - text_kw (dict): keyword arguments for plt.text()
@@ -1407,18 +1551,20 @@ def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color="k",
         xpos, ytext = obj.transFigure.inverted().transform(
             sub_ax.transData.transform([xpos, ytext]))
 
-    obj.text(xpos, ytext, "*", color=color, fontsize=fontsize, 
+    obj.text(xpos, ytext, mark, color=color, fontsize=fontsize, 
         fontweight=fontweight, ha=ha, va=va, **text_kw)
 
 
 #############################################
 def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k", 
-                        lw=2, star_rel_y=0.05, **text_kw):
+                        lw=2, mark_rel_y=0.05, mark="*", **text_kw):
     """
-    Plots significance markers (line and star) above bars showing a significant
+    plot_barplot_signif(sub_ax, xpos, yval)
+
+    Plots significance markers (line and mark) above bars showing a significant
     difference. 
     Best to ensure that y axis limits are set before calling this function as
-    line and star position are set relative to these limits.
+    line and mark position are set relative to these limits.
 
     Required args:
         - sub_ax (plt Axis subplot): subplot
@@ -1431,12 +1577,14 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k",
         - rel_y (num)      : relative position above ypos at which to place
                              line.
                              default: 0.02
-        - color (str)      : line and star colour
+        - color (str)      : line and mark colour
                              default: "k"
         - lw (int)         : line width
                              default: 2
-        - star_rel_y (num) : relative position above bar at which to place star
+        - mark_rel_y (num) : relative position above bar at which to place mark
                              default: 0.02
+        - mark (str)       : significance marker
+                             default: "*"
 
     Kewyord args:
         - text_kw (dict): keyword arguments for plt.text()
@@ -1474,8 +1622,8 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k",
     yline = ymax + rel_y * (ylims[1] - ylims[0])
     
     # place y text slightly higher
-    add_signif_mark(sub_ax, xmid, ymax, rel_y=star_rel_y, color=color, 
-                    **text_kw)
+    add_signif_mark(sub_ax, xmid, ymax, rel_y=mark_rel_y, color=color, 
+        mark=mark, **text_kw)
 
     sub_ax.plot(xpos, [yline, yline], lw=lw, color=color)
 
@@ -1532,16 +1680,14 @@ def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5,
 
     # add errorbars
     if err is not None and np.sum(np.isfinite(err)):
-
-        sub_ax.errorbar(
-            x, y, np.squeeze(err), fmt="None", elinewidth=lw, 
+        plot_errorbars(sub_ax, y, err=err, x=x, fmt="None", elinewidth=lw, 
             capsize=capsize, capthick=lw, ecolor=fc)
 
     # set edge color to match patch face color
     [patch.set_ec(fc) for patch in patches]
 
     # set face color to transparency
-    [patch.set_fc(list(fc[0:3])+[alpha]) for patch in patches]
+    [patch.set_fc(list(fc[0:3]) + [alpha]) for patch in patches]
 
     if label is not None:
         sub_ax.legend()
@@ -1554,7 +1700,7 @@ def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5,
     
     if isinstance(xticks, str) and xticks in ["None", "none"]:
         sub_ax.tick_params(axis="x", which="both", bottom=False) 
-    elif xticks is None:
+    elif xticks is not None:
         sub_ax.set_xticks(xticks)
 
     if yticks is not None:
@@ -1584,15 +1730,20 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
     
     Kewyord args:
         - cbar_kw (dict): keyword arguments for plt.colorbar()
+
+    Returns:
+        - cbar (plt Colorbar): pyplot colorbar
     """
 
     cm_w = cm_prop/n_cols
     fig.subplots_adjust(right=1-cm_w*2)
     cbar_ax = fig.add_axes([1, 0.15, cm_w, 0.7])
-    fig.colorbar(im, cax=cbar_ax, **cbar_kw)
+    cbar = fig.colorbar(im, cax=cbar_ax, **cbar_kw)
 
     if label is not None:
         fig.set_label(label)
+
+    return cbar
 
 
 #############################################
@@ -1923,7 +2074,7 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
 #############################################
 def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
     """
-    set_interm_ticks(ax)
+    set_interm_ticks(ax, n_ticks)
 
     Sets axis tick values based on number of ticks, with the following 
     pattern: major ticks, with unlabelled minor ticks in between, and 0 and 
@@ -1946,9 +2097,6 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
     if not isinstance(ax, np.ndarray):
         raise ValueError("Must pass an axis array.")
 
-    sub_ax = ax.reshape(-1)[0]
-
-
     for s, sub_ax in enumerate(ax.reshape(-1)):
         if s == 0 or not share:
             if dim == "x":
@@ -1959,9 +2107,12 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
                 gen_util.accepted_values_error("dim", dim, ["x", "y"])
 
             diff = np.mean(np.diff(ticks)) # get original tick steps
-            ratio = np.ceil(len(ticks)/n_ticks)
-            step = diff * ratio / 2 # minor step
-
+            if len(ticks) >= n_ticks:
+                ratio = np.ceil(len(ticks)/n_ticks)
+            else:
+                ratio = 1 / np.ceil(n_ticks/len(ticks))
+    
+            step = diff * ratio / 2
             min_tick_idx = np.round(np.min(ticks)/step).astype(int)
             max_tick_idx = np.round(np.max(ticks)/step).astype(int)
             tick_vals = np.linspace(min_tick_idx * step, max_tick_idx * step, 
@@ -1976,9 +2127,15 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
             idx = np.where(tick_vals == 0)[0]
             if 0 not in tick_vals:
                 idx = 0
-            labels = ["{:.{prec}f}".format(val, prec=o)
-                if (v % 2 == idx % 2) else "" 
-                for v, val in enumerate(tick_vals)]
+            
+            labels = []
+            for v, val in enumerate(tick_vals):
+                if (v % 2 == idx % 2):
+                    if str(val)[-1] == "5":
+                        val += 0.000000001 # to avoid .5 rounding asymmetry
+                    labels.append("{:.{prec}f}".format(val, prec=o))
+                else:
+                    labels.append("")
 
         if dim == "x":
             sub_ax.set_xticks(tick_vals)
@@ -1996,7 +2153,7 @@ def get_shared_axes(ax, axis="x"):
     get_shared_axes(ax)
 
     Returns lists of subplots that share an axis, compensating for what appears 
-    to be a bug in matplotlib where subplots from different figure accumulate 
+    to be a bug in matplotlib where subplots from different figures accumulate 
     at each call.
 
     Required args:
@@ -2030,3 +2187,41 @@ def get_shared_axes(ax, axis="x"):
 
     return fixed_grps
 
+
+#############################################
+def set_shared_axes(axis_set, axis="x"):
+    """
+    set_shared_axes(ax)
+
+    Sets axis set passed to be shared. 
+    
+    Not sure how this interacts with the matplotlib bug described in 
+    get_shared_axes() above. Alternative methods didn't work though. Bugs may 
+    arise in the future when multiple figures are opened consecutively.
+
+    Relevant matplotlib source code:
+        - matplotlib.axes._base: where get_shared_x_axes() is defined
+        - matplotlib.cbook.Grouper: where the grouper class is defined
+
+    Required args:
+        - ax (plt Axis): axis
+
+    Optional args:
+        - axis (str): axis for which to get grouping
+
+    Returns:
+        - fixed_grps (list): subplots, organized by group that share the axis
+    """
+
+    if axis == "x":
+        grper = axis_set[0].get_shared_x_axes()
+    elif axis == "y":
+        grper = axis_set[0].get_shared_y_axes()
+    else:
+        gen_util.accepted_values_error("axis", axis, ["x", "y"])
+
+    # this did not work as a work-around to using get_shared_x_axes()
+    # grper = mpl.cbook.Grouper(init=axis_set)
+
+    grper.join(*axis_set)
+    

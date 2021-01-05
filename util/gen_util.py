@@ -21,6 +21,7 @@ import re
 import sys
 import warnings
 
+import numexpr
 import numpy as np
 import pandas as pd
 
@@ -943,6 +944,44 @@ def keep_dict_keys(in_dict, keep_if):
 
 
 #############################################
+def get_n_cores(n_tasks, parallel=True, max_cores="all"):
+    """
+    get_n_cores(n_tasks)
+
+    Returns number of cores available.
+
+    Required args:
+        - n_tasks (int): number of tasks to run
+    
+    Optional args:
+        - parallel (bool)       : if False, n_jobs of None is returned
+                                  default: True
+        - max_cores (str or num): max number or proportion of cores to use 
+                                  ("all", proportion or int)
+                                  default: "all"
+
+    Returns:
+        - n_cores (int): number of cores that are usable (None if not 
+                         parallel)
+    """
+
+    if not parallel:
+        n_cores = None
+
+    else:
+        n_cores = multiprocessing.cpu_count()
+        if max_cores != "all":
+            max_cores = float(max_cores)
+            if max_cores >= 0.0 and max_cores <= 1.0:
+                n_cores = int(n_cores * max_cores)
+            else:
+                n_cores = np.min(n_cores, max_cores)
+        n_cores = int(n_cores)
+
+    return n_cores
+
+
+#############################################
 def get_n_jobs(n_tasks, parallel=True, max_cores="all"):
     """
     get_n_jobs(n_tasks)
@@ -968,19 +1007,69 @@ def get_n_jobs(n_tasks, parallel=True, max_cores="all"):
         n_jobs = None
 
     else:
-        n_cores = multiprocessing.cpu_count()
-        if max_cores != "all":
-            max_cores = float(max_cores)
-            if max_cores >= 0.0 and max_cores <= 1.0:
-                n_cores = int(n_cores * max_cores)
-            else:
-                n_cores = np.min(n_cores, max_cores)
-        n_cores = int(n_cores)
+        n_cores = get_n_cores(n_tasks, parallel, max_cores)
         n_jobs = min(int(n_tasks), n_cores)
         if n_jobs < 2:
             n_jobs = None
 
     return n_jobs
+
+
+#############################################
+def n_cores_numba(n_tasks, parallel=True, max_cores="all", allow="around", 
+                  set_now=False):
+    """
+    n_cores_numba(n_tasks)
+
+    If parallel, returns the number of cores available for numba for each thread 
+    within a parallel script. Optionally also sets NUMEXPR_MAX_THREADS environment 
+    variable.
+
+    Required args:
+        - n_tasks (int): number of tasks to run
+    
+    Optional args:
+        - parallel (bool)       : if False, n_jobs of None is returned
+                                  default: True
+        - max_cores (str or num): max number or proportion of cores to use 
+                                  ("all", proportion or int)
+                                  default: "all"
+        - allow (str)           : how to round the estimated number of cores 
+                                  to allocated to each thread, 
+                                  e.g. "around", "ceil", "floor"
+                                  default: "around"
+        - set_now (bool)        : if True, NUMEXPR_MAX_THREADS is set
+                                  default: False
+
+    Returns:
+        - split_cores (int): number of cores to allocate to each thread (None, 
+                             if not parallel)
+    """
+
+    n_cores = get_n_cores(n_tasks, parallel, max_cores)
+    
+    if n_cores is None:
+        return
+
+    remaining_cores = n_cores - n_tasks
+
+    # calculate split for the cores (minimum 1)
+    split_cores = np.max([0, remaining_cores / n_tasks]) + 1 # include current core
+    
+    if allow == "around":
+        split_cores = int(np.around(split_cores))
+    elif allow == "ceil":
+        split_cores = int(np.ceil(split_cores))
+    elif allow == "floor":
+        split_cores = int(np.floor(split_cores))
+    else:
+        accepted_values_error(
+            "split_cores", split_cores, ["around", "ceil", "floor"])
+
+    if set_now:
+        numexpr.set_num_threads(split_cores)
+
+    return split_cores
 
 
 #############################################
@@ -1161,4 +1250,34 @@ def get_alternating_consec(vals, first=True):
 
     return ret_vals
 
+
+#############################################
+def jit_function(function):
+    """
+    jit_function(function)
+
+    Returns a function wrapped by numba to run faster. Obtained from 
+    https://ilovesymposia.com/2017/03/15/prettier-lowlevelcallables-with-numba-jit-and-decorators/
+
+    Required args:
+        - function (function): Function to wrap
+
+    Returns:
+        - (LowLevelCallable): Wrapped function
+    """
+
+
+    import numba
+    from numba import cfunc, carray
+    from numba.types import intc, CPointer, float64, intp, voidptr
+    from scipy import LowLevelCallable
+
+    jitted_function = numba.jit(function, nopython=True)
+    @cfunc(intc(CPointer(float64), intp, CPointer(float64), voidptr))
+    def wrapped(values_ptr, len_values, result, data):
+        values = carray(values_ptr, (len_values,), dtype=float64)
+        result[0] = jitted_function(values)
+        return 1
     
+    return LowLevelCallable(wrapped.ctypes)
+

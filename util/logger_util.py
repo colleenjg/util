@@ -142,7 +142,7 @@ def set_level(level="info", logger=None):
 
 #############################################
 def get_logger(logtype="stream", name=None, filename="logs.log", 
-               fulldir="", level="info", fmt=None, set_root=True, 
+               fulldir=".", level="info", fmt=None, set_root=True, 
                skip_exists=True):
     """
     get_logger()
@@ -160,7 +160,7 @@ def get_logger(logtype="stream", name=None, filename="logs.log",
                               default: "logs.log"
         - fulldir (str)     : path under which to save file handler, if it is
                               included
-                              default: ""
+                              default: "."
         - level (str)       : level of the logger ("info", "error", "warning", 
                                "debug", "critical")
                               default: "info"
