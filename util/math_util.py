@@ -1034,8 +1034,13 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
             if op != "discr":
                 axis = None
                 rand = np.stack([
-                    mean_med(permed_data[:, 0:div], stats, axis=1, nanpol=nanpol), 
-                    mean_med(permed_data[:, div:], stats, axis=1, nanpol=nanpol)])
+                    mean_med(
+                        permed_data[:, 0:div], stats, axis=1, nanpol=nanpol
+                        ), 
+                    mean_med(
+                        permed_data[:, div:], stats, axis=1, nanpol=nanpol
+                        )
+                    ])
             else:
                 # don't take mean yet
                 axis = 1
@@ -1091,7 +1096,8 @@ def log_elem_list(elems, tail="up", act_vals=None):
         logger.info(f"Signif {tail}: None", extra={"spacing": f"{TAB}{TAB}"})
     else:
         elems_pr = ", ".join(f"{x}" for x in elems)
-        logger.info(f"Signif {tail}: {elems_pr}", extra={"spacing": f"{TAB}{TAB}"})
+        logger.info(
+            f"Signif {tail}: {elems_pr}", extra={"spacing": f"{TAB}{TAB}"})
         if act_vals is not None:
             if len(act_vals) != len(elems):
                 raise ValueError("'elems' and 'act_vals' should be the "
@@ -1484,4 +1490,111 @@ def autocorr_stats(data, lag, spu=None, byitem=True, stats="mean", error="std",
 
     return xran, autocorr_stats
 
+
+#############################################
+def calculate_snr(data, return_stats=False):
+    """
+    calculate_snr(data)
+    
+    Returns SNR for data (std of estimated noise / mean of signal).
+
+    Required args:
+        - data (1D array): data for which to calculate SNR (flattened if not 1D)
+
+    Optional args:
+        - return_stats (bool): if True, additional stats are returned
+                               default: False
+
+    Returns:
+        - snr (float): SNR of data
+        if return_stats:
+        - data_median (float)  : median of full data
+        - noise_data (1D array): noisy data
+        - noise_mean (float)   : mean of the noise 
+        - noise_std (float)    : standard deviation of the noise
+        - noise_thr (float)    : noise threshold
+        - signal_mean (float)  : mean of the signal
+    """
+    
+    data = np.asarray(data).reshape(-1)
+    data_median = np.median(data)
+
+    lower_vals = np.where(data <= data_median)[0]
+    noise_data = np.concatenate(
+        [data[lower_vals], 2 * data_median - data[lower_vals]]
+        )
+
+    noise_mean = np.mean(noise_data)
+    noise_std = np.std(noise_data)
+    noise_thr = scist.norm.ppf(0.95, noise_mean, noise_std)
+    signal_mean = np.mean(data[np.where(data > noise_thr)])
+
+    snr = signal_mean / noise_std
+    
+    if return_stats:
+        return [snr, data_median, noise_data, noise_mean, noise_std, 
+            noise_thr, signal_mean]
+    else:
+        return snr
+
+
+#############################################
+def get_order_of_mag(val):
+    """
+    get_order_of_mag(val)
+    
+    Returns order of magnitude for a value.
+
+    Required args:
+        - val (float): value to round
+    
+    Returns:
+        - order (int): order of magnitude for rounding value
+    """
+
+    order = np.floor(np.log10(val))
+
+    return order
+
+
+#############################################
+def round_by_order_of_mag(val, n_sig=1, direc="any", decimal_only=False):
+    """
+    round_by_order_of_mag(val)
+    
+    Returns value, rounded by the order of magnitude.
+
+    Required args:
+        - val (float): value to round
+    
+    Optional args:
+        - n_sig (int)        : number of significant digits
+                               default: 1
+        - direc (str)        : direction in which to round value
+                               default: "any"
+        - decimal_only (bool): if True, only decimals are rounded
+                               default: False
+
+    Returns:
+        - rounded_val (float): rounded value
+    """
+    
+    if n_sig < 1:
+        raise ValueError("'n_sig' must be at least 1.")
+
+    o = int(-get_order_of_mag(val) + n_sig - 1)
+
+    if decimal_only and o < 0:
+        o = 0
+
+    if direc == "any":
+        rounded_val = np.around(val, o)
+    elif direc == "up":
+        rounded_val = np.ceil(val * 10**o) / 10**o
+    elif direc == "down":
+        rounded_val = np.floor(val * 10**o) / 10**o
+    else:
+        gen_util.accepted_values_error("direc", direc, ["any", "up", "down"])
+
+    return rounded_val
 

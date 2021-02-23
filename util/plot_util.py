@@ -31,7 +31,7 @@ TAB = "    "
 
 LINCLAB_COLS = {"blue"  : "#50a2d5", # Linclab blue
                 "red"   : "#eb3920", # Linclab red
-                "grey"  : "#969696", # Linclab grey
+                "gray"  : "#969696", # Linclab gray
                 "green" : "#76bb4b", # Linclab green
                 "purple": "#9370db",
                 "orange": "#ff8c00",
@@ -69,7 +69,7 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         - cyc_args (dict): keyword arguments for plt.cycler()
     """
 
-    col_order = ["blue", "red", "grey", "green", "purple", "orange", "pink", 
+    col_order = ["blue", "red", "gray", "green", "purple", "orange", "pink", 
                  "yellow", "brown"]
     colors = [get_color(key) for key in col_order] 
     col_cyc = plt.cycler(color=colors, **cyc_args)
@@ -326,7 +326,7 @@ def get_color(col="red", ret="single"):
     """
     
     # list of defined colors
-    curr_cols = ["blue", "red", "grey", "green", "purple", "orange", "pink", 
+    curr_cols = ["blue", "red", "gray", "green", "purple", "orange", "pink", 
         "yellow", "brown"]
     
     if col == "blue":
@@ -337,9 +337,9 @@ def get_color(col="red", ret="single"):
         # cols = ["#f36d58", "#eb3920", "#c12a12", "#971a07"]
         col_ends = ["#EF6F5C", "#7D1606"]
         single   = LINCLAB_COLS["red"]
-    elif col == "grey":
+    elif col in ["gray", "grey"]:
         col_ends = ["#969696", "#060707"]
-        single   = LINCLAB_COLS["grey"]
+        single   = LINCLAB_COLS["gray"]
     elif col == "green":
         col_ends = ["#B3F38E", "#2D7006"]
         single   = LINCLAB_COLS["green"]
@@ -1898,7 +1898,7 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color="black", width=0.4,
 
 #############################################
 def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None, 
-            color="lightgrey", med_col="grey", med_rat=0.015, zorder=None):
+            color="lightgray", med_col="gray", med_rat=0.015, zorder=None):
     """
     plot_CI(sub_ax, extr)
 
@@ -1919,9 +1919,9 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
         - label (str)     : label for the bars
                             default: None
         - color (str)     : bar color
-                            default: "lightgrey"
+                            default: "lightgray"
         - med_col (str)   : med line color, if med is provided
-                            default: "grey"
+                            default: "gray"
         - med_rat (float) : med line thickness, relative to subplot height
                             default: 0.015
         - zorder (int)    : plt zorder variable controlling fore-background 
@@ -2122,7 +2122,8 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
             if step == 0:
                 o = 0
             else:
-                o = np.max([-np.floor(np.log10(step * 2)), 0]).astype(int)
+                order = math_util.get_order_of_mag(step * 2)
+                o = np.max([-order, 0]).astype(int)
 
             idx = np.where(tick_vals == 0)[0]
             if 0 not in tick_vals:
