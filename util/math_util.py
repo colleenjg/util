@@ -468,8 +468,8 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
         - op (str)    : "diff": index 1 - 0
                         "ratio": index 1/0, or 
                         "rel_diff": (index 1 - 0)/(index 1 + 0)
-                        "discr": (mean(index 1) - mean(index 0)) / 
-                                 (sqrt(
+                        "d-prime": (mean(index 1) - mean(index 0)) / 
+                                   (sqrt(
                                      1/2 * (std(index 1)**2 + std(index 0)**2))
                         default: "diff"
         - dim (int)   : dimension along which to do operation
@@ -478,7 +478,7 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
                         default: False
         - nanpol (str): policy for NaNs, "omit" or None
                         default: None
-        - axis (int)  : axis along which to take stats, e.g. std for "discr"
+        - axis (int)  : axis along which to take stats, e.g. std for "d-prime"
                         default: -1
     
     Returns:
@@ -512,7 +512,7 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
         elif op == "rel_diff":
             data = (data[fir_idx] - data[sec_idx])/ \
                 (data[fir_idx] + data[sec_idx])
-        elif op == "discr":
+        elif op == "d-prime":
             mean_diff = (np.mean(data[fir_idx], axis=axis) 
                         - np.mean(data[sec_idx], axis=axis))
             stds = (np.std(data[fir_idx], axis=axis),
@@ -521,7 +521,7 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
             data = mean_diff/div
         else:
             gen_util.accepted_values_error(
-                "op", op, ["diff", "ratio", "rel_diff", "discr"])
+                "op", op, ["diff", "ratio", "rel_diff", "d-prime"])
     
     return data
 
@@ -1002,7 +1002,10 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                               "diff": grp2-grp1
                               "ratio": grp2/grp1
                               "rel_diff": (grp2-grp1)/(grp2+grp1)
-                              "discr": 2 * (grp2-grp1)/(std(grp2) + std(grp1))
+                              "d-prime": (mean(index 1) - mean(index 0)) / 
+                                         (sqrt(1/2 * 
+                                             (std(index 1)**2 + std(index 0)**2)
+                                         )
                               "none"
                               default: "diff"
 
@@ -1031,7 +1034,7 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                 n_perms = perms_rem
             permed_data = run_permute(all_data, n_perms=n_perms)
 
-            if op != "discr":
+            if op != "d-prime":
                 axis = None
                 rand = np.stack([
                     mean_med(
