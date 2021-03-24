@@ -1601,3 +1601,56 @@ def round_by_order_of_mag(val, n_sig=1, direc="any", decimal_only=False):
 
     return rounded_val
 
+
+#############################################
+def bootstrapped_std(data, n=None, n_samples=1000, proportion=False):
+    """
+    bootstrapped_std(data)
+    
+    Returns bootstrapped standard deviation of the mean or proportion.
+
+    Required args:
+        - data (float or 1D array): value to round
+    
+    Optional args:
+        - n (int)          : number of datapoints in dataset. Required if 
+                             proportion is True.
+                             default: None
+        - n_samples (int)  : number of samplings to take for bootstrapping
+                             default: 1000
+        - proportion (bool): if True, data is a proportion (0-1)
+                             default: False
+
+    Returns:
+        - bootstrapped_std (float): bootstrapped standard deviation of mean or percentage
+    """
+
+    # random values
+    if proportion:
+        if data < 0 or data > 1:
+            raise ValueError("'data' must lie between 0 and 1 if it is a "
+                "proportion.")
+        if n is None:
+            raise ValueError("Must provide n if data is a proportion.")
+        
+        # random proportions
+        rand_data = np.mean(
+            np.random.rand(n * n_samples).reshape(n, n_samples) < data, 
+            axis=0)
+        
+    else:
+        if n is not None and n != len(data):
+            raise ValueError("If n is provided, it must be the length of data.")
+        n = len(data)
+
+        choices = np.arange(n)
+   
+        # random means
+        rand_data = np.mean(
+            data[np.random.choice(choices, (n, n_samples), replace=True)], 
+            axis=0)
+
+    bootstrapped_std = np.std(rand_data)
+    
+    return bootstrapped_std
+
