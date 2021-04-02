@@ -806,7 +806,8 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
 
 #############################################
 def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None, 
-            fig_ext="svg", overwrite=False, log_dir=True, **savefig_kw):
+            fig_ext="svg", overwrite=False, save_fig=True, log_dir=True, 
+            **savefig_kw):
     """
     savefig(fig, savename)
 
@@ -831,6 +832,9 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
         - overwrite (bool): if False, overwriting existing figures is prevented 
                             by adding suffix numbers.
                             default: False        
+        - save_fig (bool) : if False, the figure saving step is skipped. If 
+                            log_dir, figure directory will still be logged. 
+                            default: True
         - log_dir (bool)  : if True, the save directory is logged 
                             default: True
 
@@ -861,11 +865,14 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
         else:
             fullname = file_util.get_unique_path(savename, ext=fig_ext)
 
-        fig.savefig(os.path.join(fulldir, fullname), **savefig_kw)
-        
+        if save_fig:
+            fig.savefig(os.path.join(fulldir, fullname), **savefig_kw)
+            log_text = "Figures saved under"
+        else:
+            log_text = "Figure directory (figure not saved):"
+
         if log_dir:
-            logger.info(f"Figures saved under {fulldir}.", 
-                extra={"spacing": "\n"})
+            logger.info(f"{log_text} {fulldir}.", extra={"spacing": "\n"})
             
     return fulldir
 

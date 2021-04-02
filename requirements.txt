@@ -1,5 +1,11 @@
+h5py
+jit
 matplotlib
+numba
 numpy
 pandas
-sklearn
+pillow
+pyyaml
+opencv-python
+scikit-learn
 scipy
