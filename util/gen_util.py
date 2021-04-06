@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 #############################################
-def temp_filter_warnings(function):
+class TempWarningFilter():
     """
-    Wrapper for temporarily filtering specific warnings.
+    Context manager for temporarily filtering specific warnings.
 
-    Optional args:
+    Optional init args:
         - msgs (list)  : Beginning of message in the warning to filter. 
                          Must be the same length as categs.
                          default: []
@@ -44,27 +44,23 @@ def temp_filter_warnings(function):
                          default: []    
     """
 
-    def wrapper(*args, msgs=[], categs=[], **kwargs):
-        
-        msgs = list_if_not(msgs)
-        categs = list_if_not(categs)
+    def __init__(self, msgs=[], categs=[]):
+        self.orig_warnings = warnings.filters
 
-        if len(msgs) != len(categs):
+        self.msgs = list_if_not(msgs)
+        self.categs = list_if_not(categs)
+
+        if len(self.msgs) != len(self.categs):
             raise ValueError("Must provide as many 'msgs' as 'categs'.")
 
-        orig_warnings = warnings.filters
 
-        for msg, categ in zip(msgs, categs):
+    def __enter__(self):
+        for msg, categ in zip(self.msgs, self.categs):
             warnings.filterwarnings("ignore", message=msg, category=categ)
 
-        returns = function(*args, **kwargs)
 
-        warnings.filters = orig_warnings
-
-        return returns
-
-
-    return wrapper
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        warnings.filters = self.orig_warnings
 
 
 #############################################
@@ -472,15 +468,12 @@ def str_to_list(item_str, only_int=False):
 
 #############################################
 def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True, 
-             no_torch=False):
+             seed_torch=False):
     """
     seed_all()
 
     Seeds different random number generators using the seed provided or a
     randomly generated seed if no seed is given.
-
-    Required args:
-        
 
     Optional args:
         - seed (int or None): seed value to use. (-1 treated as None)
@@ -492,7 +485,7 @@ def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True,
                               default: True
         - seed_now (bool)   : if True, random number generators are seeded now
                               default: True
-        - no_torch (bool)   : if True, torch is not seeded
+        - seed_torch (bool) : if True, torch is seeded
                               default: False
     Returns:
         - seed (int): seed value
@@ -509,7 +502,7 @@ def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True,
     if seed_now:
         random.seed(seed)
         np.random.seed(seed)
-        if not no_torch:
+        if seed_torch:
             import torch
             torch.manual_seed(seed)
             if device == "cuda":

@@ -31,7 +31,21 @@ from sklearn.model_selection import cross_val_score, cross_validate, \
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.svm import SVC
-import torch
+
+# Allows this module to be loadded without torch. Potential problems are dealt 
+# with later
+try:
+    import torch
+    TORCH_ERR = None
+    TORCH_NN_MODULE = torch.nn.Module
+except ModuleNotFoundError as err:
+    warnings.warn(
+        "Module named 'torch' was not found, and thus was not loaded. "
+        "This is only a problem if you try to use a torch-dependent "
+        f"{__name__} function, in which case an error will be triggered.")
+    TORCH_ERR = str(err)
+    TORCH_NN_MODULE = object
+    pass
 
 from util import file_util, gen_util, logger_util, math_util, plot_util
 
@@ -78,11 +92,33 @@ def catch_set_problem(function):
 
 
 #############################################
+def check_torch_imported():
+    """
+    check_torch_imported()
+
+    Checks whether torch was successfully imported when the module was loaded, 
+    and raises an error if the import failed. 
+
+    This function should be called anywhere in this script where the torch 
+    module is needed, to deal with cases where the original attempt to import 
+    torch failed, but torch is in fact needed.
+    """
+
+    if TORCH_ERR:
+        raise ModuleNotFoundError(TORCH_ERR)
+
+    return
+
+
 #############################################
-class LogReg(torch.nn.Module):
+#############################################
+class LogReg(TORCH_NN_MODULE):
     """
     The LogReg object is a pytorch Neural Network module object that 
     implements a logistic regression.
+    
+    Note: Base class torch.nn.Module is hidden to enable this module to be 
+    loaded even if torch is not installed.  
     """
     
     def __init__(self, num_units, num_fr):
@@ -101,6 +137,8 @@ class LogReg(torch.nn.Module):
             - num_units (int): nbr of units.
             - num_fr (int)   : nbr of frames per unit.
         """
+
+        check_torch_imported()
 
         super(LogReg, self).__init__()
         self.num_units = num_units
@@ -154,6 +192,8 @@ class weighted_BCE():
         Returns:
             - BCE (torch Tensor): single BCE value
         """
+
+        check_torch_imported()
 
         if self.weights is not None:
             weights = act_class*(
@@ -479,6 +519,8 @@ def run_dl(mod, dl, device, train=True):
                         acc_class1)
     """
 
+    check_torch_imported()
+
     if train:
         mod.train()
     else:
@@ -542,6 +584,8 @@ def save_model(info, ep, mod, scores, dirname=".", rectype=None):
                          "best" is included in the name of the recorded model.
                          default: None
     """
+
+    check_torch_imported()
 
     if rectype == "best":
         # delete previous model
@@ -753,6 +797,8 @@ def load_params(dirname, model="best", alg="sklearn"):
             return None
 
     elif alg == "pytorch":
+        check_torch_imported()
+
         ep = get_epoch_n_pt(dirname, model)
         ext_str = ""
         if model == "best":
@@ -788,6 +834,8 @@ def load_checkpoint_pt(mod, filename):
         - mod (torch.nn.Module): Neural network module with model parameters 
                                  and optimizer updated.
     """
+
+    check_torch_imported()
 
     # Note: Input model & optimizer should be pre-defined.  This routine only 
     # updates their states.
@@ -1789,11 +1837,10 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
         categs = [ConvergenceWarning]
 
     # run cross validate while filtering specific warnings
-    wrapped_cross_val = gen_util.temp_filter_warnings(cross_validate)
-    mod_cvs = wrapped_cross_val(mod_pip, input_data, targ_data, cv=cv, 
-        return_estimator=True, return_train_score=True, n_jobs=n_jobs, 
-        verbose=get_sklearn_verbosity(), scoring=extrapar["scoring"], 
-        msgs=msgs, categs=categs)
+    with gen_util.TempWarningFilter(msgs, categs):
+        mod_cvs = cross_validate(mod_pip, input_data, targ_data, cv=cv, 
+            return_estimator=True, return_train_score=True, n_jobs=n_jobs, 
+            verbose=get_sklearn_verbosity(), scoring=extrapar["scoring"])
 
     # correct the training set scoring, which is incorrectly evaluated
     # (no shuffling is done automatically during predict step).
@@ -2133,9 +2180,9 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
         categs = [ConvergenceWarning]
 
     # run cross_val_score while filtering specific warnings
-    sc = gen_util.temp_filter_warnings(cross_val_score)(
-        clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs, 
-        msgs=msgs, categs=categs)
+    with gen_util.TempWarningFilter(msgs, categs):
+        sc = cross_val_score(clf, inp, target, cv=cv, scoring=scoring, 
+            n_jobs=n_jobs)
     
     if stats is None:
         return sc
