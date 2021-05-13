@@ -1,5 +1,5 @@
 """
-data_util.py
+nn_util.py
 
 This module contains basic pytorch neural network tools.
 

@@ -16,7 +16,7 @@ import logging
 from matplotlib import pyplot as plt
 import numpy as np
 
-from util import gen_util, logger_util, plot_util
+from util import logger_util
 
 logger = logging.getLogger(__name__)
 

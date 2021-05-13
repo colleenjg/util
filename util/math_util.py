@@ -1302,6 +1302,8 @@ def get_diff_p_val(act_data, n_perms=10000, stats="mean", op="diff"):
     rand_diffs = np.squeeze(
         permute_diff_ratio(concat, div=len(grp1), n_perms=n_perms, 
         stats=stats, op=op))
+    rand_diffs = \
+        rand_diffs.reshape(1) if len(rand_diffs.shape) == 0 else rand_diffs
     
     loc = np.where(np.sort(rand_diffs) > real_diff)[0]
     if len(loc) == 0:

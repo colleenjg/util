@@ -22,7 +22,6 @@ import warnings
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.base import TransformerMixin
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import get_scorer
@@ -40,9 +39,9 @@ try:
     TORCH_NN_MODULE = torch.nn.Module
 except ModuleNotFoundError as err:
     warnings.warn(
-        "Module named 'torch' was not found, and thus was not loaded. "
-        "This is only a problem if you try to use a torch-dependent "
-        f"{__name__} function, in which case an error will be triggered.")
+        "Module named 'torch' was not found, and thus not loaded. If a "
+        f"If a torch-dependent {__name__} function is called, an error will "
+        "be triggered.", category=ImportWarning)
     TORCH_ERR = str(err)
     TORCH_NN_MODULE = object
     pass
@@ -901,14 +900,15 @@ def plot_weights(ax, mod_params, xran, stats="mean", error="sem",
             fr_stats = math_util.get_stats(weights, stats, error, axes=1)
             plot_util.plot_traces(
                 by_fr, xran, fr_stats[0], fr_stats[1:], fr_title, 
-                color="dimgrey", alpha=0.4)
+                color="dimgrey", alpha=0.4, xticks="auto")
         else:
             # plot each set of weights separately
             fr_stats = weights.T
             cols = ["dimgrey", "grey"]
             for f, fr_stat in enumerate(fr_stats):
                 plot_util.plot_traces(
-                    by_fr, xran, fr_stat, title=fr_title, color=cols[f])
+                    by_fr, xran, fr_stat, title=fr_title, color=cols[f], 
+                    xticks="auto")
 
         by_fr.axhline(y=0, ls="dashed", c="k", lw=1, alpha=0.5)
         orig_tick_max = np.max(np.absolute(by_fr.get_yticks()))
@@ -1566,6 +1566,7 @@ class ModData:
             if isinstance(self._scaler, MinMaxScaler) and self._extrem:
                 X = math_util.extrem_to_med(X, ext_p=[5.0, 95.0])
             self._scaler.fit(X, **kwargs)
+
         return self
 
 
@@ -2100,7 +2101,7 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
 #############################################
 def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std", 
                class_weight="balanced", n_jobs=None, model="logreg", 
-               scaler=None, seed=None):
+               scaler=None, randst=None):
                
     """
     run_cv_clf(inp, target)
@@ -2134,7 +2135,7 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
                               default: None
         - model (str)       : model to use ("logreg" or "svm")
                               default: "logreg"
-        - seed (int)        : seed or random state to pass to models
+        - randst (int)      : seed or random state to pass to models
                               default: None 
 
     Returns:
@@ -2151,10 +2152,10 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
     if model == "logreg":
         clf = LogisticRegression(C=1, fit_intercept=True, 
             class_weight=class_weight, penalty="l2", solver="lbfgs",
-            max_iter=1000, random_state=seed, multi_class="auto")
+            max_iter=1000, random_state=randst, multi_class="auto")
     elif model == "svm":
         clf = SVC(C=1, kernel="linear", gamma="auto", 
-            class_weight=class_weight, random_state=seed)                    
+            class_weight=class_weight, random_state=randst)                    
     else:
         gen_util.accepted_values_error("model", model, ["logreg", "svm"])
 
@@ -2163,11 +2164,11 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
 
     # first dim must be trials
     if shuffle:
-        np.random.shuffle(target)
+        randst.shuffle(target)
     
     if cv < 3:
         raise ValueError("'cv' must be at least 3.")
-    cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=seed)
+    cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=randst)
 
     scoring = None
     if class_weight == "balanced":

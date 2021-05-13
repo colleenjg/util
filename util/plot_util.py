@@ -11,7 +11,6 @@ Note: this code uses python 3.7.
 
 """
 
-import copy
 import logging
 import os
 import warnings
@@ -1251,9 +1250,11 @@ def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None,
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
-        - n_xticks (int)     : number of xticks
+        - n_xticks (int)     : number of xticks (used if xticks is "auto")
                                default: 6
         - xticks (str)       : xtick labels (overrides xticks_ev)
+                               ("None" to remove ticks entirely, 
+                               "auto" to set xticks automatically from n_xticks)
                                default: None
         - yticks (str)       : ytick labels
                                default: None
@@ -1276,12 +1277,10 @@ def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None,
         x = range(len(y))
 
     x = np.asarray(x).squeeze()
-    y = np.asarray(y).squeeze()
+    x = x.reshape(1) if len(x.shape) == 0 else x
 
-    if len(x.shape) == 0:
-        x = x.reshape(1)
-    if len(y.shape) == 0:
-        y = y.reshape(1)
+    y = np.asarray(y).squeeze()
+    y = y.reshape(1) if len(y.shape) == 0 else y
 
     sub_ax.plot(
         x, y, lw=lw, color=color, label=label, alpha=alpha_line, zorder=zorder, 
@@ -1290,6 +1289,7 @@ def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None,
     
     if err is not None:
         err = np.asarray(err).squeeze()
+        err = err.reshape(1) if len(err.shape) == 0 else err
         if not errx:
             # only condition where pos and neg error are different
             if len(err.shape) == 2: 
@@ -1311,11 +1311,12 @@ def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None,
                     y, x - err, x + err, facecolor=color, alpha=alpha, 
                     zorder=zorder)
 
-    if xticks is None:
-        set_ticks_from_vals(sub_ax, x, axis="x", n=n_xticks)
-    elif isinstance(xticks, str) and xticks in ["none", "None"]:
-        sub_ax.tick_params(axis="x", which="both", bottom=False) 
-    else:
+    if isinstance(xticks, str): 
+        if xticks in ["none", "None"]:
+            sub_ax.tick_params(axis="x", which="both", bottom=False) 
+        elif xticks == "auto":
+            set_ticks_from_vals(sub_ax, x, axis="x", n=n_xticks)
+    elif xticks is not None:
         sub_ax.set_xticks(xticks)
 
     if yticks is not None:
@@ -1324,7 +1325,8 @@ def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None,
     if label is not None:
         sub_ax.legend()
 
-    sub_ax.set_title(title)
+    if title is not None:
+        sub_ax.set_title(title)
 
 
 #############################################
@@ -1337,7 +1339,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color="k", alpha=0.5, **fillbtw_kw):
     Required args:
         - sub_ax (plt Axis subplot): subplot
         - y1 (array-like)          : first array of y values
-        - y2 (array-like)          : first array of y values
+        - y2 (array-like)          : second array of y values
         
     Optional args:
         - x (array-like)     : array of x values. If None, a range is used.
@@ -1354,12 +1356,16 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color="k", alpha=0.5, **fillbtw_kw):
     """
 
     y1 = np.asarray(y1).squeeze()
+    y1 = y1.reshape(1) if len(y1.shape) == 0 else y1
+
     y2 = np.asarray(y2).squeeze()
+    y2 = y2.reshape(1) if len(y2.shape) == 0 else y2
 
     if x is None:
         x = list(range(len(y1)))
     else:
         x = np.asarray(x).squeeze()
+        x = x.reshape(1) if len(x.shape) == 0 else x
 
     if len(y1) != len(y2) or len(x) != len(y1):
         raise ValueError("y1 and y2, and x if provided, must have the same "
@@ -1381,7 +1387,7 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
                    xticks=None, yticks=None, label=None, fmt="-o", 
                    **errorbar_kw):
     """
-    plot_errorbars(sub_ax, y, err)
+    plot_errorbars(sub_ax, y)
 
     Plots points with errorbars on subplot (ax).
 
@@ -1400,7 +1406,8 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
-        - xticks (str)       : xtick labels ("None" to omit ticks entirely)
+        - xticks (str)       : xtick labels ("None" to remove ticks entirely, 
+                               "auto" to set xticks automatically)
                                default: None
         - yticks (str)       : ytick labels
                                default: None
@@ -1415,24 +1422,28 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
     """
     
     y = np.asarray(y).squeeze()
+    y = y.reshape(1) if len(y.shape) == 0 else y
     
     if x is None:
         x = np.arange(1, len(y) + 1)
     
-    if isinstance(xticks, str) and xticks in ["None", "none"]:
-        sub_ax.tick_params(axis="x", which="both", bottom=False) 
-    elif xticks is None:
-        set_ticks_safe(sub_ax, x, axis="x")
-    else:
+    if isinstance(xticks, str):
+        if xticks in ["None", "none"]:
+            sub_ax.tick_params(axis="x", which="both", bottom=False) 
+        elif xticks == "auto":
+            set_ticks_safe(sub_ax, x, axis="x")
+    elif xticks is not None:
         sub_ax.set_xticks(xticks)
 
     if yticks is not None:
         sub_ax.set_yticks(yticks)
 
     x = np.asarray(x).squeeze()
+    x = x.reshape(1) if len(x.shape) == 0 else x
 
     if err is not None:
         err = np.asarray(err).squeeze()
+        err = err.reshape(1) if len(err.shape) == 0 else err
         # If err is 1D, errorbar length is provided, if err is 2D, errorbar 
         # endpoints are provided
         if len(err.shape) == 2: 
@@ -1447,9 +1458,131 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
     if label is not None:
         sub_ax.legend()
 
-    sub_ax.set_title(title)
+    if title is not None:
+        sub_ax.set_title(title)
 
 
+#############################################
+def plot_two_color_errorbars(sub_ax, y, mask, colors, err=None, x=None, 
+                             link_left=True, title="", alphas=0.8, xticks=None, 
+                             yticks=None, labels=None, fmt="-o", **errorbar_kw):
+    """
+    plot_two_color_errorbars(sub_ax, y, mask, colors)
+
+    Plots points with errorbars on subplot (ax) in two sets of colors.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+        - y (array-like)           : array of y values
+        - mask (array-like)        : mask for first color values
+        - colors (list)            : colors for [True, False] values of mask
+
+    Optional args:
+        - err (1 or 2D array) : either std, SEM or MAD, or quintiles. If 
+                                quintiles, 2D array structured as stat x vals
+                                default: None
+        - x (array-like)      : array of x values. 
+                                default: None
+        - link_left (bool)    : if True, markers share a color with the line 
+                                leaving them to the left. If False, it is to 
+                                the right.
+                                default: True
+        - title (str)         : subplot title
+                                default: ""
+        - alphas (num or list): plt alpha variable controlling shading 
+                                transparency (from 0 to 1)
+                                default: 0.5
+        - xticks (str)        : xtick labels ("None" to remove ticks entirely, 
+                                "auto" to set xticks automatically)
+                                default: None
+        - yticks (str)        : ytick labels
+                                default: None
+        - labels (list)       : labels for each color
+                                default: None
+        - fmt (str)           : data point/lines format.
+                                default: "-o"
+
+    Kewyord args:
+        - errorbar_kw (dict): keyword arguments for plt.errorbar(), 
+                              e.g. linewidth, color, markersize, capsize
+    """
+
+    y = np.asarray(y).squeeze()
+    y = y.reshape(1) if len(y.shape) == 0 else y
+    
+    if x is None:
+        x = np.arange(1, len(y) + 1)
+
+    x = np.asarray(x).squeeze()
+    x = x.reshape(1) if len(x.shape) == 0 else x
+
+    mask = np.asarray(mask).squeeze()
+    mask = mask.reshape(1) if len(mask.shape) == 0 else mask
+
+    if len(mask) != len(x) or len(x) != len(y):
+        raise ValueError("y, mask and x must have the same length.")
+
+    if labels is None:
+        labels = [None, None]
+    if len(colors) != 2 or len(labels) != 2:
+        raise ValueError("Must provide 2 colors, and 2 labels, if any.")
+    if isinstance(alphas, list):
+        if len(alphas) != 2:
+            raise ValueError("Must provide 2 alphas, if providing more than 1.")
+    else:
+        alphas = [alphas] * 2
+
+    # reverse if needed
+    if link_left:
+        x = x[::-1]
+        y = y[::-1]
+        mask = mask[::-1]
+
+    # add linked lines
+    for mask_targ, color, alpha in zip([True, False], colors, alphas):
+        # implemented to link right
+        col_x, col_y = [], []
+        for m, mask_val in enumerate(mask == mask_targ):
+            if mask_val or m == len(mask) - 1:
+                col_x.append(x[m])
+                col_y.append(y[m])
+            else:
+                col_x.extend([x[m], np.mean(x[m : m+1])])
+                col_y.extend([y[m], np.nan])
+        
+        if link_left:
+            col_x = col_x[::-1]
+            col_y = col_y[::-1]
+
+        plot_errorbars(sub_ax, col_y, err=None, x=col_x, alpha=alpha, 
+            fmt=fmt, ms=0, color=color)
+
+    # unreverse
+    if link_left:
+        x = x[::-1]
+        y = y[::-1]
+        mask = mask[::-1]
+
+    # add lone markers (with errorbars)
+    if err is not None:
+        err = np.asarray(err).squeeze()
+        err = err.reshape(1) if len(err.shape) == 0 else err
+        if not np.sum(np.isfinite(err)):
+            err = None
+        elif err.shape[-1] != len(mask):
+            raise ValueError("err must have the same length as the mask.")
+    
+    fmt_marker = fmt.replace("-", "")
+    for mask_targ, color, label, alpha in zip(
+        [True, False], colors, labels, alphas
+        ):
+        use_mask = (mask == mask_targ)
+        use_err = err[..., use_mask] if err is not None else None
+        plot_errorbars(sub_ax, y[use_mask], err=use_err, x=x[use_mask], 
+            title=title, alpha=alpha, xticks=xticks, yticks=yticks, 
+            fmt=fmt_marker, color=color, label=label, **errorbar_kw)
+            
+            
 #############################################
 def get_barplot_xpos(n_grps, n_bars_per, barw, in_grp=1.5, btw_grps=4.0):
     """
@@ -1659,7 +1792,8 @@ def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5,
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
-        - xticks (str)       : xtick labels ("None" to omit ticks entirely) 
+        - xticks (str)       : xtick labels ("None" to remove ticks entirely, 
+                               "auto" to set xticks automatically)
                                default: None
         - yticks (str)       : ytick labels
                                default: None
@@ -1678,7 +1812,10 @@ def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5,
     """
     
     x = np.asarray(x).squeeze()
+    x = x.reshape(1) if len(x.shape) == 0 else x
+
     y = y.squeeze()
+    y = y.reshape(1) if len(y.shape) == 0 else y
 
     patches = sub_ax.bar(x, y, width=width, lw=lw, label=label, **bar_kw)
     
@@ -1705,15 +1842,19 @@ def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5,
     if hline is not None:
         sub_ax.axhline(y=hline, c="k", lw=1.5)
     
-    if isinstance(xticks, str) and xticks in ["None", "none"]:
-        sub_ax.tick_params(axis="x", which="both", bottom=False) 
+    if isinstance(xticks, str):
+        if xticks in ["None", "none"]:
+            sub_ax.tick_params(axis="x", which="both", bottom=False) 
+        elif xticks == "auto":
+            set_ticks_safe(sub_ax, x, axis="x")
     elif xticks is not None:
         sub_ax.set_xticks(xticks)
 
     if yticks is not None:
         sub_ax.set_yticks(yticks)
     
-    sub_ax.set_title(title)
+    if title is not None:
+        sub_ax.set_title(title)
 
 
 #############################################
@@ -1777,9 +1918,10 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title="", cmap=None,
                            default: ""
         - cmap (colormap): a matplotlib colormap
                            default: None
-        - n_xticks (int) : number of xtick labels
+        - n_xticks (int) : number of xtick labels (used if xticks is "auto")
                            default: 6
         - xticks (str)   : xtick labels (overrides n_xticks)
+                           ("auto" to set xticks automatically with n_xticks)
                            default: None
         - yticks_ev (str): frequency at which to set ytick labels
                            default: None
@@ -1809,9 +1951,10 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title="", cmap=None,
         yticks = list(range(0, data.shape[1], yticks_ev))
         sub_ax.set_yticks(yticks)
     
-    if xticks is None:
+    if isinstance(xticks, str) and xticks == "auto":
         xticks = np.linspace(np.min(xran), np.max(xran), n_xticks)
-    sub_ax.set_xticks(xticks)
+    if xticks is not None:
+        sub_ax.set_xticks(xticks)
 
     im = sub_ax.pcolormesh(xran, yran, data.T, cmap=cmap, **cmesh_kw)
     
@@ -1821,7 +1964,8 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title="", cmap=None,
     if ylims is not None:
         sub_ax.set_ylim(ylims)
 
-    sub_ax.set_title(title)
+    if title is not None:
+        sub_ax.set_title(title)
 
     return im
 
@@ -2156,6 +2300,44 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
 
 
 #############################################
+def adjust_tick_labels_for_sharing(axis_set, axes="x"):
+    """
+    adjust_tick_labels_for_sharing(axis_set)
+
+    Adjust presence of axis ticks labels for sharing. 
+
+    Required args:
+        - axis_set (list): axes to group
+
+    Optional args:
+        - axes (str or list): axes ("x", "y") to group
+    """
+    
+    axes = gen_util.list_if_not(axes)
+    for axis in axes:
+        if axis == "x":
+            row_ns = [subax.get_subplotspec().rowspan.start 
+                for subax in axis_set]
+            last_row_n = np.max(row_ns)
+
+            for subax in axis_set:
+                if subax.get_subplotspec().rowspan.start != last_row_n:
+                    subax.tick_params(axis="x", labelbottom=False)
+
+        elif axis == "y":
+            col_ns = [subax.get_subplotspec().colspan.start 
+                for subax in axis_set]
+            first_col_n = np.min(col_ns)
+
+            for subax in axis_set:
+                if subax.get_subplotspec().colspan.start != first_col_n:
+                    subax.tick_params(axis="y", labelleft=False)
+        
+        else:
+            gen_util.accepted_values_error("axis", axis, ["x", "y"])
+
+
+#############################################
 def get_shared_axes(ax, axis="x"):
     """
     get_shared_axes(ax)
@@ -2197,7 +2379,7 @@ def get_shared_axes(ax, axis="x"):
 
 
 #############################################
-def set_shared_axes(axis_set, axis="x"):
+def set_shared_axes(axis_set, axes="x", adjust_tick_labels=False):
     """
     set_shared_axes(ax)
 
@@ -2212,24 +2394,31 @@ def set_shared_axes(axis_set, axis="x"):
         - matplotlib.cbook.Grouper: where the grouper class is defined
 
     Required args:
-        - ax (plt Axis): axis
+        - axis_set (list): axes to group
 
     Optional args:
-        - axis (str): axis for which to get grouping
-
-    Returns:
-        - fixed_grps (list): subplots, organized by group that share the axis
+        - axes (str or list)       : axes ("x", "y") to group
+                                     default: "x"
+        - adjust_tick_labels (bool): if True, tick labels are adjusted for axis 
+                                     sharing. (Otherwise, only the limits are 
+                                     shared, but tick labels are repeated.)
+                                     default: False
     """
 
-    if axis == "x":
-        grper = axis_set[0].get_shared_x_axes()
-    elif axis == "y":
-        grper = axis_set[0].get_shared_y_axes()
-    else:
-        gen_util.accepted_values_error("axis", axis, ["x", "y"])
+    axes = gen_util.list_if_not(axes)
+    for axis in axes:
+        if axis == "x":
+            grper = axis_set[0].get_shared_x_axes()
+        elif axis == "y":
+            grper = axis_set[0].get_shared_y_axes()
+        else:
+            gen_util.accepted_values_error("axis", axis, ["x", "y"])
 
-    # this did not work as a work-around to using get_shared_x_axes()
-    # grper = mpl.cbook.Grouper(init=axis_set)
+        # this did not work as a work-around to using get_shared_x_axes()
+        # grper = mpl.cbook.Grouper(init=axis_set)
 
-    grper.join(*axis_set)
-    
+        grper.join(*axis_set)
+
+    if adjust_tick_labels:
+        adjust_tick_labels_for_sharing(axis_set, axes)
+

@@ -18,12 +18,10 @@ import multiprocessing
 import os
 import random
 import re
-import sys
 import warnings
 
 import numexpr
 import numpy as np
-import pandas as pd
 
 from util import logger_util
 
@@ -492,7 +490,8 @@ def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True,
     """
 
     if seed in [None, -1]:
-        seed = random.randint(1, 10000)
+        MAX_INT32 = 2**32
+        seed = np.random.randint(1, MAX_INT32)
         if log_seed:
             logger.info(f"Random seed: {seed}")
     else:
@@ -509,6 +508,34 @@ def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True,
                 torch.cuda.manual_seed_all(seed)
     
     return seed
+
+
+#############################################
+def split_random_state(randst, n=10):
+    """
+    split_random_state(randst)
+
+    Returns as many new random states as requested, generated from the input 
+    random state.
+
+    Required args:
+        - randst (np.random.RandomState): random state
+    
+    Optional args:
+        - n (int): number of new random state to generate
+
+    Returns
+        - randsts (list): new random states
+    """
+
+    MAX_INT32 = 2**32
+
+    randsts = []
+    for _ in range(n):
+        new_seed = randst.randint(MAX_INT32)
+        randsts.append(np.random.RandomState(new_seed))
+
+    return randsts
 
 
 #############################################
@@ -1067,17 +1094,21 @@ def n_cores_numba(n_tasks, parallel=True, max_cores="all", allow="around",
 
 #############################################
 def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True, 
-                  max_cores="all", zip_output=False, mult_loop=False):
+                  max_cores="all", zip_output=False, mult_loop=False, 
+                  pass_parallel=False):
     """
     parallel_wrap(fct, loop_arg)
 
-    Wraps functions to run them in parallel if parallel is True.
+    Wraps functions to run them in parallel if parallel is True (not 
+    implemented as a python wrapper, to enable additional flexibility).
 
     Required args:
         - fct (function) : python function
         - loop_arg (list): argument(s) over which to loop (must be first 
-                           arguments) (set mult_loop to True if multiple 
-                           arguments are included in loop_arg)
+                           arguments of fct)
+                           if multiple arguments, they must already be zipped 
+                           (where the length is the number of items to loop 
+                           over), and mult_loop must be set to True
     
     Optional args:
         - args_list (list)      : function input argument list    
@@ -1094,10 +1125,23 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                                   default: False
         - mult_loop (bool)      : if True, the loop argument contains multiple 
                                   consecutive first arguments
+        - pass_parallel (bool)  : if True, 'parallel' argument is passed to the 
+                                  function to ensure that 
+                                  (1) if this function does run in parallel, 
+                                  subfunctions will not sprout parallel joblib 
+                                  processes.
+                                  (2) is this function does not run in 
+                                  parallel, the value of 'parallel' is still 
+                                  passed on.
+                                  default: False
 
     Returns:
-        - outputs (nested list): outputs, structured as arg x output, or
-                                 if zip_output, structured as output x arg
+        - outputs (list of tuples): outputs, structured as 
+                                        (loop_arg length) x 
+                                        (number of output values), 
+                                    or if zip_output, structured as 
+                                        (number of output values) x 
+                                        (loop_arg length)
     """
 
     from joblib import Parallel, delayed
@@ -1107,11 +1151,19 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
     if args_list is None: args_list = []
     args_list = list_if_not(args_list)
 
-    # to allow multiple arguments to be looped over (pre-zipped)
+    # to allow multiple arguments to be looped over (mimicks zipping)
     if not mult_loop:
-        loop_arg = [[arg] for arg in loop_arg]
+        loop_arg = [(arg, ) for arg in loop_arg]
+
+    # enable information to be passed to the function as to whether it can 
+    # sprout parallel processes
+    if pass_parallel and args_dict is None:
+        args_dict = dict()
 
     if n_jobs is not None and n_jobs > 1:
+        if pass_parallel: 
+            # prevent subfunctions from also sprouting parallel processes
+            args_dict["parallel"] = False 
         if args_dict is None:
             outputs = Parallel(n_jobs=n_jobs)(
                 delayed(fct)(*arg, *args_list) for arg in loop_arg)
@@ -1119,6 +1171,8 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
             outputs = Parallel(n_jobs=n_jobs)(
                 delayed(fct)(*arg, *args_list, **args_dict) for arg in loop_arg)
     else:
+        if pass_parallel: # pass parallel on
+            args_dict["parallel"] = parallel
         outputs = []
         if args_dict is None:
             for arg in loop_arg:
@@ -1128,7 +1182,7 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                 outputs.append(fct(*arg, *args_list, **args_dict))
 
     if zip_output:
-        outputs = [list(output) for output in zip(*outputs)]
+        outputs = [*zip(*outputs)]
 
     return outputs
 
@@ -1249,7 +1303,7 @@ def jit_function(function):
     """
     jit_function(function)
 
-    Returns a function wrapped by numba to run faster. Obtained from 
+    Returns a function wrapped by numba to run faster. Code source: 
     https://ilovesymposia.com/2017/03/15/prettier-lowlevelcallables-with-numba-jit-and-decorators/
 
     Required args:

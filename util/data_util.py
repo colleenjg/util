@@ -11,7 +11,6 @@ Note: this code uses python 3.7.
 
 """
 
-import os
 import logging
 
 import numpy as np

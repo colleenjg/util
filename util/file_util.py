@@ -16,7 +16,6 @@ import json
 import logging
 import os
 import pickle
-import sys
 import warnings
 
 import pandas as pd
