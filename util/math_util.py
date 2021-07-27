@@ -709,10 +709,10 @@ def scale_facts(data, axis=None, pos=None, sc_type="min_max", extrem="reg",
 
 
 #############################################
-def extrem_to_med(data, ext_p=[5, 95]):
+def shift_extrem(data, ext_p=[5, 95]):
     """
     Returns data array with values above and below the threshold percentiles 
-    replaced with the median, for each channel.
+    replaced with the nearest threshold, for each channel.
 
     Required args:
         - data (2D array): data array, structured as vals x channels
@@ -722,18 +722,24 @@ def extrem_to_med(data, ext_p=[5, 95]):
                         default: [5, 95]
     
     Returns:
-        - data (2D array): data array with extreme values replaced by median, 
-                           structured as vals x channels
+        - data (2D array): data array with extreme values replaced by nearest 
+                           threshold, structured as vals x channels
     """
+
+    data = copy.deepcopy(data)
 
     p_lo, p_hi = ext_p
 
     if p_hi < p_lo:
         raise ValueError("p_lo must be smaller than p_hi.")
-    meds, lo, hi = [np.nanpercentile(data, p, axis=0).reshape([1, -1]) 
-        for p in [50, p_lo, p_hi]]
-    modif = np.where(np.add(data < lo, data > hi))
-    data[modif] = meds[:, modif[1]]
+    lo, hi = [np.nanpercentile(data, p, axis=0).reshape([1, -1]) 
+        for p in ext_p]
+
+    above = np.where(data > hi)
+    data[above] = hi[np.arange(len(hi)), above[1]]
+
+    below = np.where(data < lo)
+    data[below] = lo[np.arange(len(lo)), below[1]]
 
     return data
 

@@ -1224,7 +1224,7 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color="k", lw=0,
 
 
 #############################################
-def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None, 
+def plot_traces(sub_ax, x, y, err=None, title=None, lw=None, color=None, 
                 alpha=0.5, n_xticks=6, xticks=None, yticks=None, label=None, 
                 alpha_line=1.0, zorder=None, errx=False, **plot_kw):
     """
@@ -1242,7 +1242,7 @@ def plot_traces(sub_ax, x, y, err=None, title="", lw=None, color=None,
                                quintiles, 2D array structured as stat x vals
                                default: None
         - title (str)        : subplot title
-                               default: ""
+                               default: None
         - lw (num)           : plt line weight variable
                                default: None
         - color (str)        : color to use
@@ -1383,7 +1383,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color="k", alpha=0.5, **fillbtw_kw):
 
 
 #############################################
-def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8, 
+def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8, 
                    xticks=None, yticks=None, label=None, fmt="-o", 
                    **errorbar_kw):
     """
@@ -1402,7 +1402,7 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
         - x (array-like)     : array of x values. 
                                default: None
         - title (str)        : subplot title
-                               default: ""
+                               default: None
         - alpha (num)        : plt alpha variable controlling shading 
                                transparency (from 0 to 1)
                                default: 0.5
@@ -1464,8 +1464,9 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title="", alpha=0.8,
 
 #############################################
 def plot_two_color_errorbars(sub_ax, y, mask, colors, err=None, x=None, 
-                             link_left=True, title="", alphas=0.8, xticks=None, 
-                             yticks=None, labels=None, fmt="-o", **errorbar_kw):
+                             link_left=True, title=None, alphas=0.8, 
+                             xticks=None, yticks=None, labels=None, fmt="-o", 
+                             **errorbar_kw):
     """
     plot_two_color_errorbars(sub_ax, y, mask, colors)
 
@@ -1488,7 +1489,7 @@ def plot_two_color_errorbars(sub_ax, y, mask, colors, err=None, x=None,
                                 the right.
                                 default: True
         - title (str)         : subplot title
-                                default: ""
+                                default: None
         - alphas (num or list): plt alpha variable controlling shading 
                                 transparency (from 0 to 1)
                                 default: 0.5
@@ -1769,9 +1770,9 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k",
 
 
 #############################################
-def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5, 
-              xticks=None, yticks=None, xlims=None, label=None, hline=None, 
-              capsize=8, **bar_kw):
+def plot_bars(sub_ax, x, y, err=None, title=None, width=0.75, lw=None, 
+              alpha=0.5, xticks=None, yticks=None, xlims=None, label=None, 
+              hline=None, capsize=8, **bar_kw):
     """
     plot_bars(sub_ax, chunk_val)
 
@@ -1786,7 +1787,7 @@ def plot_bars(sub_ax, x, y, err=None, title="", width=0.75, lw=None, alpha=0.5,
                                quintiles, 2D array structured as stat x vals
                                default: None
         - title (str)        : subplot title
-                               default: ""
+                               default: None
         - lw (num)           : plt line weight variable
                                default: None
         - alpha (num)        : plt alpha variable controlling shading 
@@ -1895,7 +1896,7 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
 
 
 #############################################
-def plot_colormap(sub_ax, data, xran=None, yran=None, title="", cmap=None, 
+def plot_colormap(sub_ax, data, xran=None, yran=None, title=None, cmap=None, 
                   n_xticks=6, xticks=None, yticks_ev=10, xlims=None, 
                   ylims=None, **cmesh_kw):
     """
@@ -1915,7 +1916,7 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title="", cmap=None,
                            will be inferred from the data.
                            default: None
         - title (str)    : subplot title
-                           default: ""
+                           default: None
         - cmap (colormap): a matplotlib colormap
                            default: None
         - n_xticks (int) : number of xtick labels (used if xticks is "auto")
