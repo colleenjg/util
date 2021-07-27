@@ -1473,8 +1473,8 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
 
 #############################################
 class ModData:
-    def __init__(self, scale=True, extrem=False, shuffle=False, 
-                 seed=None, **kwargs):
+    def __init__(self, scale=True, extrem=False, shuffle=False, seed=None, 
+                 **kwargs):
         """
         Initializes a data modification tool to flatten, optionally scales
         using RobustScaler/MinMaxScaler and optionally shuffle input data.
@@ -1563,8 +1563,9 @@ class ModData:
             self._orig_shape = X.shape[1:]
         if self._scaler is not None:
             X = self._flatten(X, across="tr")
+            # shift extrema before fitting MinMaxScaler  
             if isinstance(self._scaler, MinMaxScaler) and self._extrem:
-                X = math_util.extrem_to_med(X, ext_p=[5.0, 95.0])
+                X = math_util.shift_extrem(X, ext_p=[5.0, 95.0])
             self._scaler.fit(X, **kwargs)
 
         return self
@@ -1594,6 +1595,7 @@ class ModData:
         X = np.array(X)
     
         self.fit(X, y, **kwargs) # fit scaler
+
         if self._scaler is not None:
             X = self._get_scaled(X, **kwargs)
         X = self._flatten(X, across="ch")
@@ -1635,6 +1637,7 @@ class ModData:
             X = self._flatten(X, across="ch")
         if self._shuffle and training:
             X = self._get_shuffled(X)
+
         return X
 
 
@@ -2101,7 +2104,7 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
 #############################################
 def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std", 
                class_weight="balanced", n_jobs=None, model="logreg", 
-               scaler=None, randst=None):
+               scaler=None, randst=None, max_iter=100):
                
     """
     run_cv_clf(inp, target)
@@ -2137,6 +2140,8 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
                               default: "logreg"
         - randst (int)      : seed or random state to pass to models
                               default: None 
+        - max_iter (int)    : max number of iterations for logistic regression
+                              default: 100
 
     Returns:
         if stats is None and error is None:
@@ -2152,7 +2157,7 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
     if model == "logreg":
         clf = LogisticRegression(C=1, fit_intercept=True, 
             class_weight=class_weight, penalty="l2", solver="lbfgs",
-            max_iter=1000, random_state=randst, multi_class="auto")
+            max_iter=100, random_state=randst, multi_class="auto")
     elif model == "svm":
         clf = SVC(C=1, kernel="linear", gamma="auto", 
             class_weight=class_weight, random_state=randst)                    
@@ -2184,7 +2189,7 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
     with gen_util.TempWarningFilter(msgs, categs):
         sc = cross_val_score(clf, inp, target, cv=cv, scoring=scoring, 
             n_jobs=n_jobs)
-    
+
     if stats is None:
         return sc
     else:
