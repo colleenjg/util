@@ -253,7 +253,7 @@ def checkprop(train_p, val_p=0, test_p=0):
     # raise error if proportions sum to > 1 or if a proportion is < 0.
     if sum_p != 1.0 or min_p < 0.0:
         props = [f"\n{y}: {x}" for x, y in set_p]
-        prop_str = "{}\nsum_p: {}".format("".join(props), sum_p)
+        prop_str = f"{''.join(props)}\nsum_p: {sum_p}"
         
         if min_p < 0.0:
             raise ValueError(f"Proportions must not be < 0. {prop_str}")
