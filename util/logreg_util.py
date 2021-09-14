@@ -14,10 +14,10 @@ Note: this code uses python 3.7.
 import copy
 import glob
 import logging
-import os
 import pickle as pkl
 import re
 import warnings
+from pathlib import Path
 
 from matplotlib import pyplot as plt
 import numpy as np
@@ -41,7 +41,7 @@ except ModuleNotFoundError as err:
     warnings.warn(
         "Module named 'torch' was not found, and thus not loaded. If a "
         f"If a torch-dependent {__name__} function is called, an error will "
-        "be triggered.", category=ImportWarning)
+        "be triggered.", category=ImportWarning, stacklevel=1)
     TORCH_ERR = str(err)
     TORCH_NN_MODULE = object
     pass
@@ -78,7 +78,7 @@ def catch_set_problem(function):
         catch_phr = ["threshold", "true labels", "size", "populated class"]
         try:
             return function(*args, **kwargs)
-        except ValueError as err:
+        except Exception as err:
             catch_phr = ["threshold", "true labels", "size", "populated class"]
             caught = sum(phr in str(err) for phr in catch_phr)
             if catch_set_prob and caught:
@@ -488,7 +488,7 @@ def run_batches(mod, dl, device, train=True):
         if len(cl_accs) > 0:
             ep_sc["acc_bal"] = np.mean(cl_accs) 
         else:
-            raise ValueError("No class accuracies. Cannot calculate "
+            raise RuntimeError("No class accuracies. Cannot calculate "
                 "balanced accuracy.")
     
     return ep_sc
@@ -576,30 +576,30 @@ def save_model(info, ep, mod, scores, dirname=".", rectype=None):
                                     loss, acc, acc_class0, acc_class1
 
     Optional args:
-        - dirname (str): directory in which to save
-                         default: "."
-        - rectype (str): type of model being recorded, i.e., "best" or "max"
-                         If "best", the previous best models are removed and
-                         "best" is included in the name of the recorded model.
-                         default: None
+        - dirname (Path): directory in which to save
+                          default: "."
+        - rectype (str) : type of model being recorded, i.e., "best" or "max"
+                          If "best", the previous best models are removed and
+                          "best" is included in the name of the recorded model.
+                          default: None
     """
 
     check_torch_imported()
 
     if rectype == "best":
         # delete previous model
-        prev_model = glob.glob(os.path.join(dirname, "ep*_best.pth"))
-        prev_json = glob.glob(os.path.join(dirname, "ep*_best.json"))
+        prev_model = glob.glob(str(Path(dirname, "ep*_best.pth")))
+        prev_json = glob.glob(str(Path(dirname, "ep*_best.json")))
         
         if len(prev_model) == 1 and len(prev_json) == 1:
-            os.remove(prev_model[0])
-            os.remove(prev_json[0])
+            Path(prev_model[0]).unlink() # deletes
+            Path(prev_json[0]).unlink()
         savename = f"ep{ep}_best"
 
     else:
         savename = f"ep{ep}"
 
-    savefile = os.path.join(dirname, savename)
+    savefile = Path(dirname, savename)
     
     torch.save({"net": mod.state_dict(), "opt": mod.opt.state_dict()},
         f"{savefile}.pth")
@@ -630,7 +630,8 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname=".", ep_freq=50,
         - device (str)         : device to use ("cuda" or "cpu") 
 
     Optional args:
-        - dirname (str)      : directory in which to save models and dictionaries
+        - dirname (Path)     : directory in which to save models and 
+                               dictionaries
                                default: "."
         - ep_freq (int)      : frequency at which to log loss to console
                                default: 50
@@ -718,7 +719,7 @@ def get_epoch_n_pt(dirname, model="best"):
     number.
     
     Required args:
-        - dirname (str): directory path
+        - dirname (Path): directory path
 
     Optional args:
         - model (str): model to return ("best", "min" or "max")
@@ -731,10 +732,10 @@ def get_epoch_n_pt(dirname, model="best"):
     ext_str = ""
     if model == "best":
         ext_str = "_best"
-    models = glob.glob(os.path.join(dirname, f"ep*{ext_str}.pth"))
+    models = glob.glob(str(Path(dirname, f"ep*{ext_str}.pth")))
     
     if len(models) > 0:
-        ep_ns = [int(re.findall(r"\d+", os.path.split(mod)[-1])[0]) 
+        ep_ns = [int(re.findall(r"\d+", Path(mod).name)[0]) 
             for mod in models]
     else:
         logger.warning("No models were recorded.")
@@ -763,7 +764,7 @@ def load_params(dirname, model="best", alg="sklearn"):
     specify the epoch number. 
     
     Required args:
-        - dirname (str): directory path
+        - dirname (Path): directory path
 
     Optional args:
         - model (str or idx): model to return ("best", "first" or "last")
@@ -784,8 +785,8 @@ def load_params(dirname, model="best", alg="sklearn"):
     """
 
     if alg == "sklearn":
-        filename = os.path.join(dirname, "models.sav")
-        if os.path.exists(filename) and not isinstance(model, str):
+        filename = Path(dirname, "models.sav")
+        if filename.exists() and not isinstance(model, (str, Path)):
             with open(filename, "rb") as f:
                 mod = pkl.load(f)["estimator"][model]["logisticregression"]
             weights = mod.coef_
@@ -806,8 +807,7 @@ def load_params(dirname, model="best", alg="sklearn"):
         if ep is None:
             return None
         else:
-            models = glob.glob(os.path.join(
-                dirname, f"ep{ep}*{ext_str}.pth"))[0]
+            models = glob.glob(str(Path(dirname, f"ep{ep}*{ext_str}.pth")))[0]
             checkpoint = torch.load(models)
             weights = checkpoint["net"]["lin.weight"].numpy()
             biases = checkpoint["net"]["lin.bias"].numpy()
@@ -827,7 +827,7 @@ def load_checkpoint_pt(mod, filename):
     Required args:
         - mod (torch.nn.Module): Neural network module with optimizer as 
                                  attribute
-        - filename (str)       : name of the file (should be ".pth")
+        - filename (Path)      : path of the file (should be ".pth")
 
     Returns:
         - mod (torch.nn.Module): Neural network module with model parameters 
@@ -836,10 +836,12 @@ def load_checkpoint_pt(mod, filename):
 
     check_torch_imported()
 
+    filename = Path(filename)
+
     # Note: Input model & optimizer should be pre-defined.  This routine only 
     # updates their states.
-    checkpt_name = os.path.split(filename)[-1]
-    if os.path.isfile(filename):
+    checkpt_name = filename.name
+    if filename.is_file():
         logger.info(f"Loading checkpoint found at '{checkpt_name}'.", 
             extra={"spacing": "\n"})
         checkpoint = torch.load(filename)
@@ -1046,7 +1048,7 @@ def plot_tr_data(xran, class_stats, classes, ns, fig=None, ax_data=None,
         - error (str)           : error to take, i.e., "std" (for std or 
                                   quintiles) or "sem" (for SEM or MAD)
                                   default: "std
-        - dirname (str)         : name of the directory from which to load
+        - modeldir (Path)       : path of the directory from which to load
                                   model parameters
                                   default: "."
         - cols (list)           : colors to use
@@ -1144,7 +1146,7 @@ def plot_scores(scores, classes, alg="sklearn", loss_name="loss", dirname=".",
                            default: "sklearn"
         - loss_name (str): name of type of loss
                            default: "loss"
-        - dirname (str)  : name of the directory in which to save figure
+        - dirname (Path) : name of the directory in which to save figure
                            default: "."
         - gen_title (str): general plot titles
                            default: ""
@@ -1191,7 +1193,7 @@ def plot_scores(scores, classes, alg="sklearn", loss_name="loss", dirname=".",
             ax.set_ylim(act_ylim[0] - pad, act_ylim[1] + pad)
         
         ax.legend()
-        fig.savefig(os.path.join(dirname, f"{sc_lab}"))
+        fig.savefig(Path(dirname, f"{sc_lab}"))
 
 
 #############################################
@@ -1256,18 +1258,18 @@ def get_scores(dirname=".", alg="sklearn"):
     the recorded model does not have a score recorded.
     
     Optional args:
-        - dirname (str): directory in which scores "scores_df.csv" and 
-                         hyperparameters (hyperparameters.json) are recorded.
-                         default: "."
-        - alg (str)    : algorithm used to run logistic regression 
-                         ("sklearn" or "pytorch")
-                         default: "sklearn"
+        - dirname (Path): directory in which scores "scores_df.csv" and 
+                          hyperparameters (hyperparameters.json) are recorded.
+                          default: "."
+        - alg (str)     : algorithm used to run logistic regression 
+                          ("sklearn" or "pytorch")
+                          default: "sklearn"
     Returns:
         - ep_info (pd DataFrame): score dataframe line for max epoch recorded.
         - hyperpars (dict)      : dictionary containing hyperparameters
     """
 
-    df_path = os.path.join(dirname, "scores_df.csv")
+    df_path = Path(dirname, "scores_df.csv")
     
     # get max epoch based on recorded model
     #### WON'T WORK FOR SKLEARN
@@ -1275,7 +1277,7 @@ def get_scores(dirname=".", alg="sklearn"):
         best_ep = get_epoch_n_pt(dirname, "best")
 
     # get scores df
-    if os.path.exists(df_path):
+    if df_path.exists():
         scores_df = file_util.loadfile(df_path)
     else:
         logger.warning("No scores were recorded.")
@@ -1395,7 +1397,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                 ns = [n for _ in range(n_classes)]
                 samp_idx = range(n_classes)
             if min(ns) < n_classes:
-                raise ValueError(f"The smallest set sizes = {min(ns)} should "
+                raise RuntimeError(f"The smallest set sizes = {min(ns)} should "
                     f"be greater or equal to the number of classes = {n_classes}")
             sub_idx = []
             for i in range(n_classes):
@@ -1428,7 +1430,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         class_counts = np.bincount(y_indices)
         n_classes = len(classes)
         if min(class_counts)//2 < n_classes:
-            raise ValueError("Cannot split test set into 2 as smallest set "
+            raise RuntimeError("Cannot split test set into 2 as smallest set "
                 f"size = {min(class_counts)//2} should be greater or equal "
                 f"to the number of classes = {n_classes}")
         test, test_out = [], []
@@ -1747,7 +1749,7 @@ class ModData:
 @catch_set_problem
 def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar, 
                      scale=True, sample=False, split_test=False, seed=None,
-                     parallel=False, max_size=9e7):
+                     parallel=False, max_size=9e7, save_models=True):
     """
     run_logreg_cv_sk(roi_seqs, seq_classes, logregpar, extrapar)
 
@@ -1765,7 +1767,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
             ["n_epochs"] (int) : max number of epochs
             ["train_p"] (float): training set percentage
         - extrapar (dict)       : dictionary with extra parameters
-            ["dirname"] (str) : save directory 
+            ["dirname"] (str) : save directory (if save_models is True)
             ["n_runs"] (int)  : number of runs (split) to run
             ["shuffle"] (bool): if True, data is shuffled
     
@@ -1787,6 +1789,8 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
                                   number of parallel jobs or raise a warning 
                                   if necessary
                                   default: 9e7
+        - save_models (bool)    : if True, models are saved
+                                  default: True
 
     Returns:
         - mod_cvs (dict)   : cross-validation dictionary with keys:
@@ -1815,7 +1819,8 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
                 n_jobs = None
         if n_jobs is None:
             warnings.warn("OOM error possibly upcoming as input data "
-                  f"size is {np.prod(input_data.shape)}.", category=RuntimeWarning)
+                  f"size is {np.prod(input_data.shape)}.", 
+                  category=ResourceWarning, stacklevel=1)
 
     extrapar = copy.deepcopy(extrapar)
     extrapar["loss_name"] = "Weighted BCE loss with L2 reg"
@@ -1834,8 +1839,10 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     msgs, categs = [], []
     if extrapar["shuffle"]:
-        logger.warning("Reported training scores are currently incorrect, as "
-            "the training dataset is not shuffled during final scoring step.")
+        # only log at level where scores get logged to the console
+        logger.info("Upcoming batch of training scores is initially "
+            "incorrectly reported, as the training dataset is not shuffled "
+            "during final scoring step.")
         # also ignore convergence warnings (may not work if n_jobs > 1)
         msgs = [""]
         categs = [ConvergenceWarning]
@@ -1848,24 +1855,43 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     # correct the training set scoring, which is incorrectly evaluated
     # (no shuffling is done automatically during predict step).
+    log_scores = logger_util.level_at_least(level="info")
     if extrapar["shuffle"]:
         rescore_training_logreg_sk(
             mod_cvs, cv, input_data, targ_data, extrapar["scoring"], 
-            log_scores=True)
+            log_scores=log_scores, parallel=parallel)
 
     logger.info("Training done.\n")
 
     # Save models
-    fullname = os.path.join(extrapar["dirname"], "models.sav")
-    with open(fullname, "wb") as f:
-        pkl.dump(mod_cvs, f)    
+    if save_models:
+        fullname = Path(extrapar["dirname"], "models.sav")
+        with open(fullname, "wb") as f:
+            pkl.dump(mod_cvs, f)    
 
     return mod_cvs, cv, extrapar
 
 
 ############################################
+def rescore_training_logreg_sk_single(mod_cv_est, est_set_idx, input_data, 
+                                      targ_data, scoring, train_set_idx=0):
+
+    new_train_scores = dict()
+    train_X = input_data[est_set_idx[train_set_idx]]
+    train_Y = targ_data[est_set_idx[train_set_idx]][
+        mod_cv_est["moddata"]._shuff_reidx
+        ]
+    for score_type in scoring:
+        sc = get_scorer(score_type)
+        new_train_scores[f"train_{score_type}"] = \
+            sc(mod_cv_est, train_X, train_Y)
+
+    return new_train_scores
+
+
+############################################
 def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring, 
-                               log_scores=False):
+                               log_scores=False, parallel=False):
     """
     rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring)
 
@@ -1900,13 +1926,24 @@ def rescore_training_logreg_sk(mod_cvs, cv, input_data, targ_data, scoring,
 
     mod_cvs = copy.deepcopy(mod_cvs)
 
-    for e, est in enumerate(mod_cvs["estimator"]):
-        train_X = input_data[cv._set_idx[e][0]]
-        train_Y = targ_data[cv._set_idx[e][0]][est["moddata"]._shuff_reidx]
+    args_dict = {
+        "input_data": input_data,
+        "targ_data": targ_data,
+        "scoring": scoring,
+    }
+    loop_args = list(zip(mod_cvs["estimator"], cv._set_idx))
+
+    new_train_scores = gen_util.parallel_wrap(
+        rescore_training_logreg_sk_single, loop_args, args_dict=args_dict, 
+        parallel=parallel, mult_loop=True
+        )
+    
+    for e, train_scores in enumerate(new_train_scores):
         for score_type in scoring:
-            sc = get_scorer(score_type)
-            mod_cvs[f"train_{score_type}"][e] = sc(est, train_X, train_Y)
-    logger.warning("Training scores for shuffled dataset recalculated "
+            key = f"train_{score_type}"
+            mod_cvs[key][e] = train_scores[key]
+    
+    logger.info("Training scores for shuffled dataset recalculated "
         "correctly.")
 
     if log_scores:

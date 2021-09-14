@@ -11,11 +11,12 @@ Note: this code uses python 3.7.
 
 """
 
+from pathlib import Path
 import logging
-import os
 import warnings
 
 import matplotlib as mpl
+import matplotlib.cm as mpl_cm
 from matplotlib import font_manager as fm
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
@@ -53,14 +54,14 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         - font (str or list): font (or font family) to use, or list in order of 
                               preference
                               default: "Liberation Sans"
-        - fontdir (str)     : directory to where extra fonts (.ttf) are stored
+        - fontdir (Path)    : directory to where extra fonts (.ttf) are stored
                               default: None
         - log_fonts (bool)  : if True, an alphabetical list of available fonts 
                               is logged
                               default: False
         - example (bool)    : if True, an example plot is created and saved
                               default: False
-        - dirname (str)     : directory in which to save example if example is 
+        - dirname (Path)    : directory in which to save example if example is 
                               True 
                               default: "."
 
@@ -126,11 +127,11 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         ax.set_title("Example plot")
         ax.axvline(x=1, ls="dashed", c="k")
     
-        if len(dirname) and not os.path.exists(dirname):
-            os.makedirs(dirname)
+        dirname = Path(dirname)
+        dirname.mkdir(parents=True, exist_ok=True)
         
         ext = plt.rcParams["savefig.format"]
-        savepath = os.path.join(dirname, f"example_plot.{ext}")
+        savepath = dirname.joinpath(f"example_plot").with_suffix(f".{ext}")
         fig.savefig(savepath)
 
         logger.info(f"Example saved under {savepath}")
@@ -170,12 +171,12 @@ def linclab_colormap(nbins=100, gamma=1.0):
 
 
 #############################################
-def adjusted_nipy_spectral_cmap(nbins=100, gamma=1.0):
+def nipy_spectral_no_white_cmap(nbins=100, gamma=1.0):
     """
-    adjusted_nipy_spectral_cmap()
+    nipy_spectral_no_white_cmap()
 
     Returns the nipy_spectral matplotlib colormap adjusted to not have the 
-    white end.
+    white upper end.
 
     Optional args:
         - nbins (int): number of bins to use to create colormap
@@ -187,12 +188,39 @@ def adjusted_nipy_spectral_cmap(nbins=100, gamma=1.0):
         - cmap (colormap): a matplotlib colormap
     """
 
-    colors = mpl.cm.nipy_spectral(np.linspace(0, 1, 11))
+    colors = mpl_cm.nipy_spectral(np.linspace(0, 1, 11))
 
     cmap = mpl.colors.LinearSegmentedColormap.from_list(
-        "nipy_spectral_adjusted", colors[:-1], N=nbins, gamma=gamma)
+        "nipy_spectral_no_white", colors[:-1], N=nbins, gamma=gamma)
 
     return cmap
+
+
+#############################################
+def viridis_with_black_cmap(nbins=100, gamma=1.0):
+    """
+    viridis_with_black_cmap()
+
+    Returns the viridis matplotlib colormap adjusted to have a black lower end.
+
+    Optional args:
+        - nbins (int): number of bins to use to create colormap
+                       default: 100
+        - gamma (num): non-linearity
+                       default: 1.0
+
+    Returns:
+        - cmap (colormap): a matplotlib colormap
+    """
+
+    colors = mpl_cm.viridis(np.linspace(0, 1, 9))
+    colors = np.insert(colors, 0, np.asarray([0, 0, 0, 1]), axis=0)
+
+    cmap = mpl.colors.LinearSegmentedColormap.from_list(
+        "viridis_with_black", colors, N=nbins, gamma=gamma)
+
+    return cmap
+
 
 #############################################
 def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
@@ -208,22 +236,23 @@ def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
         - font (str or list): font or font family to use, or list in order of 
                               preference
                               default: "Liberation Sans"
-        - fontdir (str)     : directory to where extra fonts (.ttf) are stored
+        - fontdir (Path)    : directory to where extra fonts (.ttf) are stored
                               default: None
         - log_fonts (bool)  : if True, an alphabetical list of available fonts 
                               is logged
                               default: False
     """
 
-    if fontdir is not None and len(fontdir) and not os.path.exists(fontdir):
-        raise OSError(f"{fontdir} font directory does not exist.")
-
     # keep in lower case
     font_families = ["cursive", "family", "fantasy", "monospace", 
         "sans-serif", "serif"]
 
-    # add new fonts to list of available fonts if a font directory is provided
-    if fontdir and os.path.exists(fontdir):
+    if fontdir is not None:
+        fontdir = Path(fontdir)
+        if not fontdir.exists():
+            raise OSError(f"{fontdir} font directory does not exist.")
+
+        # add new fonts to list of available fonts if a font directory is provided
         fontdirs = [fontdir, ]
         # prevent a long stream of debug messages
         logging.getLogger("matplotlib.font_manager").disabled = True
@@ -296,7 +325,7 @@ def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
             if selected in font_families:
                 selected_str = selected_str.replace(".", " family.")
         warnings.warn(f"Requested font(s) not found: {omitted_str}."
-            f"{selected_str}")
+            f"{selected_str}", category=UserWarning, stacklevel=1)
     
     plt.rcParams.update(params)
 
@@ -426,11 +455,11 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
                            default: None
         - linclab (bool) : if True, the Linclab default are set
                            default: True
-        - fontdir (str ) : directory to where extra fonts (.ttf) are stored
+        - fontdir (Path) : directory to where extra fonts (.ttf) are stored
                            default: None
         - cmap (bool)    : if True, a colormap is returned. If linclab is True,
                            the Linclab colormap is returned, otherwise the 
-                           "jet" colormap
+                           "viridis" colormap
                            default: False
         - nbins (int)    : number of bins to use to create colormap
                            default: 100
@@ -451,7 +480,7 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
         if linclab:
             cmap = linclab_colormap(nbins)
         else:
-            cmap = "jet"
+            cmap = "viridis"
         return cmap
 
 
@@ -467,8 +496,8 @@ def set_ticks_safe(sub_ax, ticks, axis="x"):
         - ticks (num or array-like): tick values
 
     Optional args:
-        - axis (str)    : axis for which to set ticks, i.e., x, y or both
-                          default: "x"
+        - axis (str): axis for which to set ticks, i.e., x, y or both
+                      default: "x"
     """
 
     if isinstance(ticks, np.ndarray):
@@ -819,7 +848,7 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
         - savename (str): name under which to save figure
     
     Optional args:
-        - fulldir (str)   : directory in which to save figure
+        - fulldir (Path)  : directory in which to save figure
                             default: "."
         - datetime (bool) : if True, figures are saved in a subfolder named 
                             based on the date and time.
@@ -841,18 +870,19 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
         - savefig_kw (dict): keyword arguments for plt.savefig()
 
     Returns:
-        - fulldir (str): final name of the directory in which the figure is 
-                         saved (may differ from input fulldir, if datetime 
-                         subfolder is added.)
+        - fulldir (Path): final name of the directory in which the figure is 
+                          saved (may differ from input fulldir, if datetime 
+                          subfolder is added.)
     """
 
     # add subfolder with date and time
+    fulldir = Path(fulldir)
     if datetime:
         if use_dt is not None:
-            fulldir = os.path.join(fulldir, use_dt)
+            fulldir = fulldir.joinpath(use_dt)
         else:
             datetime = gen_util.create_time_str()
-            fulldir = os.path.join(fulldir, datetime)
+            fulldir = fulldir.joinpath(datetime)
 
     # create directory if doesn't exist
     file_util.createdir(fulldir, log_dir=False)
@@ -865,7 +895,7 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
             fullname = file_util.get_unique_path(savename, ext=fig_ext)
 
         if save_fig:
-            fig.savefig(os.path.join(fulldir, fullname), **savefig_kw)
+            fig.savefig(fulldir.joinpath(fullname), **savefig_kw)
             log_text = "Figures saved under"
         else:
             log_text = "Figure directory (figure not saved):"
@@ -971,7 +1001,7 @@ def add_bars(sub_ax, hbars=None, bars=None, color="k", alpha=0.5, ls="dashed",
                                default: 0.5
         - ls (str or tuple)  : linestyle
                                default: "dashed"
-        - lw (list)          : list of 2 linewidths 
+        - lw (list)          : list of 2 linewidths [hbars, bars]
                                (if None, default values are used)
                                default: None
 
@@ -981,7 +1011,12 @@ def add_bars(sub_ax, hbars=None, bars=None, color="k", alpha=0.5, ls="dashed",
 
     if lw is None:
         lw = [2.5, 1.5]
-    elif not isinstance(lw, list) or len(lw) != 2:
+    else:
+        lw = gen_util.list_if_not(lw)
+        if len(lw) == 1:
+            lw = lw * 2
+
+    if len(lw) != 2:
         raise ValueError("'lw' must be a list of length 2.")
 
     torem = []
@@ -1152,7 +1187,7 @@ def rel_confine_ylims(sub_ax, sub_ran, rel=5):
 
     Adjusts the y limits of a sub axis to confine a specific range to a 
     relative middle range in the y axis. Will not reduce the y lims only
-    increase them
+    increase them.
 
     Required args:
         - sub_ax (plt Axis subplot): subplot
@@ -1216,7 +1251,8 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color="k", lw=0,
             sub_ax.axvspan(st, e, alpha=alpha, color=color, lw=lw, 
                            **axspan_kw)
         if width is not None:
-            warnings.warn("Cannot specify both end and width. Using end.")
+            warnings.warn("Cannot specify both end and width. Using end.", 
+                category=RuntimeWarning, stacklevel=1)
     else:
         for st in start:
             sub_ax.axvspan(st, st + width, alpha=alpha, color=color, lw=lw, 
@@ -1741,6 +1777,8 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k",
 
     # y positions
     yval = np.asarray(yval)
+    if not yval.shape:
+        yval = yval.reshape(-1)
     if yerr is None:
         yerr = np.zeros_like(yval)
 
@@ -1748,7 +1786,6 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k",
         if np.isnan(err):
             yerr[y] = 0
 
-    yerr = np.asarray(yerr)
     if len(yval) != len(yerr):
         raise ValueError("If provided, yerr must have the same length as yval.")
 
@@ -1898,7 +1935,7 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
 #############################################
 def plot_colormap(sub_ax, data, xran=None, yran=None, title=None, cmap=None, 
                   n_xticks=6, xticks=None, yticks_ev=10, xlims=None, 
-                  ylims=None, **cmesh_kw):
+                  ylims=None, origin=None, **cmesh_kw):
     """
     plot_colormap(sub_ax, data)
 
@@ -1929,7 +1966,10 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title=None, cmap=None,
         - xlims (list)   : xlims
                            default: None
         - ylims (list)   : ylims
-                          default: None
+                           default: None
+        - origin (str)   : where to position the y axis origin 
+                           ("upper" or "lower")
+                           default: "upper"
     
     Kewyord args:
         - cmesh_kw (dict): keyword arguments for plt.pcolormesh()
@@ -1967,6 +2007,19 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title=None, cmap=None,
 
     if title is not None:
         sub_ax.set_title(title)
+    
+    # check whether y axis needs to be flipped, based on origin
+    if origin is not None:
+        ylims = sub_ax.get_ylim()
+        flip = False
+        if (origin == "lower") and (ylims[1] < ylims[0]):
+            flip = True
+        elif (origin == "upper") and (ylims[1] > ylims[0]):
+            flip = True
+        elif origin not in ["lower", "upper"]:
+            gen_util.accepted_values_error("origin", origin, ["lower", "upper"])
+        if flip:
+            sub_ax.set_ylim((ylims[1], ylims[0]))
 
     return im
 
@@ -2046,6 +2099,51 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color="black", width=0.4,
     sub_ax.bar(
         x, height=y_th, bottom=bottom, color=color, width=width, alpha=alpha, 
         **bar_kw)
+
+
+#############################################
+def plot_ufo(sub_ax, x, y, err=None, color="k", no_line=False, **errorbar_kw):
+    """
+    plot_ufo(sub_ax, x, y)
+
+    Plots data as a circle with a line behind it.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+        - x (array-like)           : x values
+        - y (array-like)           : y values
+    
+    Optional args:
+        - err (num or array-like): either std, SEM or MAD, or quintiles
+                                   default: None
+        - color (str)            : color
+                                   default: "k"
+        - no_line (bool)         : if True, line is omitted
+                                   default: False
+    """
+
+    if not no_line:
+        # plot actual data as line
+        plot_CI(sub_ax, np.asarray([y, y]).reshape(-1, 1), med=[y], x=[x], 
+            width=0.6, med_col=color, med_rat=0.025)
+
+    # plot errorbars
+    if err is not None:
+        if not isinstance(err, (list, np.ndarray)):
+            err = [err]
+        plot_errorbars(sub_ax, y, err=err, x=x, color=color, alpha=0.8, 
+            **errorbar_kw)
+
+    if not no_line:
+        # plot a white circle center
+        sub_ax.plot(x, y, color="white", marker="o", markersize=13, 
+                    markeredgewidth=2.5)
+
+    # plot circle edge
+    sub_ax.plot(x, y, color=color, marker="o", markersize=13, 
+                fillstyle="none", markeredgewidth=2.5)
+    # plot circle center
+    sub_ax.plot(x, y, color=color, marker="o", markersize=13, alpha=0.5)
 
 
 #############################################
@@ -2189,8 +2287,8 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
     poses = []
     if dim == "x":
         if n_cols % grp_len != 0:
-            raise ValueError(f"Group length of {grp_len} does not fit with "
-                "{n_cols} columns.")
+            raise RuntimeError(f"Group length of {grp_len} does not fit with "
+                f"{n_cols} columns.")
         n_grps = int(n_cols/grp_len)
         for n in range(n_grps):
             left_subax = ax[0, n * grp_len]
@@ -2204,7 +2302,7 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
             poses.append(np.mean([left_pos, right_pos]))
     elif dim == "y":
         if n_rows % grp_len != 0:
-            raise ValueError(f"Group length of {grp_len} does not fit with "
+            raise RuntimeError(f"Group length of {grp_len} does not fit with "
                 f"{n_rows} rows.")
         n_grps = int(n_rows/grp_len)
         for n in range(n_grps):
@@ -2224,13 +2322,13 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
 
 
 #############################################
-def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
+def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
     """
     set_interm_ticks(ax, n_ticks)
 
-    Sets axis tick values based on number of ticks, with the following 
-    pattern: major ticks, with unlabelled minor ticks in between, and 0 and 
-    top tick as major ticks.
+    Sets axis tick values based on number of ticks, either all as major ticks, 
+    or as major ticks with skipped, unlabelled ticks in between. When possible, 
+    0 and top tick are set as major ticks.
 
     Required args:
         - ax (plt Axis): axis
@@ -2238,7 +2336,11 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
 
     Optional args:
         - dim (str)   : dimension for which to get position ("x" or "y")
+                        default: "x"
         - share (bool): if True, all axes set the same, based on first axis.
+                        default: True
+        - skip (bool) : if True, intermediate ticks are unlabelled. If False, 
+                        all ticks are labelled
                         default: True
 
     Kewyord args:
@@ -2247,7 +2349,7 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
     """
 
     if not isinstance(ax, np.ndarray):
-        raise ValueError("Must pass an axis array.")
+        raise TypeError("Must pass an axis array.")
 
     for s, sub_ax in enumerate(ax.reshape(-1)):
         if s == 0 or not share:
@@ -2260,15 +2362,20 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
 
             diff = np.mean(np.diff(ticks)) # get original tick steps
             if len(ticks) >= n_ticks:
-                ratio = np.ceil(len(ticks)/n_ticks)
+                ratio = np.ceil(len(ticks) / n_ticks)
             else:
-                ratio = 1 / np.ceil(n_ticks/len(ticks))
+                ratio = 1 / np.ceil(n_ticks / len(ticks))
     
             step = diff * ratio / 2
-            min_tick_idx = np.round(np.min(ticks)/step).astype(int)
-            max_tick_idx = np.round(np.max(ticks)/step).astype(int)
-            tick_vals = np.linspace(min_tick_idx * step, max_tick_idx * step, 
-                max_tick_idx - min_tick_idx + 1)
+
+            min_tick_idx = np.round(np.min(ticks) / step).astype(int)
+            max_tick_idx = np.round(np.max(ticks) / step).astype(int)
+
+            # adjust if only the central 0 is labelled
+            if skip and min_tick_idx != 0:
+                if max_tick_idx - min_tick_idx <= 3:
+                    step = step / 1.5
+                    max_tick_idx += 1
 
             # 1 signif digit for differences
             if step == 0:
@@ -2277,27 +2384,116 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, **font_kw):
                 order = math_util.get_order_of_mag(step * 2)
                 o = np.max([-order, 0]).astype(int)
 
+            step = step * 2 if not skip else step
+
+            tick_vals = np.linspace(min_tick_idx * step, max_tick_idx * step, 
+                max_tick_idx - min_tick_idx + 1)
+
             idx = np.where(tick_vals == 0)[0]
             if 0 not in tick_vals:
                 idx = 0
             
             labels = []
+            final_tick_vals = []
             for v, val in enumerate(tick_vals):
-                if (v % 2 == idx % 2):
+                if (v % 2 == idx % 2) or not skip:
+                    final_tick_vals.append(val)
                     if str(val)[-1] == "5":
                         val += 0.000000001 # to avoid .5 rounding asymmetry
                     labels.append("{:.{prec}f}".format(val, prec=o))
                 else:
+                    final_tick_vals.append(val)
                     labels.append("")
 
         if dim == "x":
-            sub_ax.set_xticks(tick_vals)
+            sub_ax.set_xticks(final_tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_xticklabels(labels, fontdict=font_kw)
+            # adjust limits if needed
+            if final_tick_vals[-1] > sub_ax.get_xlim()[1]:
+                sub_ax.set_xlim(sub_ax.get_xlim()[0], final_tick_vals[-1])
         elif dim == "y":
-            sub_ax.set_yticks(tick_vals)
+            sub_ax.set_yticks(final_tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_yticklabels(labels, fontdict=font_kw)
+            # adjust limits if needed
+            if final_tick_vals[-1] > sub_ax.get_ylim()[1]:
+                sub_ax.set_ylim(sub_ax.get_ylim()[0], final_tick_vals[-1])
+
+
+#############################################
+def set_minimal_ticks(sub_ax, dim="x", **font_kw):
+    """
+    set_minimal_ticks(sub_ax)
+
+    Sets minimal ticks for a subplot.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Optional args:
+        - dim (str): dimension for which to get position ("x" or "y")
+                     default: "x"
+
+    Kewyord args:
+        - font_kw (dict): keyword arguments for plt.yticklabels() or 
+                          plt.xticklabels() fontdict, e.g. weight
+    """
+
+    sub_ax.autoscale()
+
+    if dim == "x":
+        lims = sub_ax.get_xlim()
+    elif dim == "y":
+        lims = sub_ax.get_ylim()
+    else:
+        gen_util.accepted_values_error("dim", dim, ["x", "y"])
+
+    ticks = rounded_lims(lims)
+
+    if np.sign(ticks[0]) != np.sign(ticks[1]):
+        if np.absolute(ticks[1]) > np.absolute(ticks[0]):
+            ticks = [0, ticks[1]]
+        elif np.absolute(ticks[1]) < np.absolute(ticks[0]):
+            ticks = [ticks[0], 0]
+        else:
+            ticks = [ticks[0], 0, ticks[1]]
+
+    if dim == "x":
+        sub_ax.set_xticks(ticks)
+        sub_ax.set_xticklabels(ticks, fontdict=font_kw)
+    elif dim == "y":
+        sub_ax.set_yticks(ticks)
+        sub_ax.set_yticklabels(ticks, fontdict=font_kw)
+    
+
+
+#############################################
+def rounded_lims(lims):
+    """
+    rounded_lims(lims)
+
+    Returns axis limit values rounded to the nearest order of magnitude.
+
+    Required args:
+        - lims (iterable): axis limits (lower, upper)
+
+    Returns:
+        - new_lims (list): rounded axis limits [lower, upper]
+    """
+
+    new_lims = list(lims)[:]
+    lim_diff = lims[1] - lims[0]
+
+    if lim_diff != 0:
+        order = math_util.get_order_of_mag(lim_diff)
+        o = np.max([-order, 0]).astype(int)
+
+        new_lims = [
+            np.around(lim * 10 ** o) / 10 ** o for lim in lims
+            ]
+    
+    return new_lims
 
 
 #############################################

@@ -46,7 +46,9 @@ def calculate_conv_output(d_in, ks, ss=1, ps=0, ds=1):
     
     if len(n_vals):
         if len(set(n_vals)) != 1:
-            raise ValueError("Must provide same number of values for ks, ss, ps and ds.")
+            raise ValueError(
+                "Must provide same number of values for ks, ss, ps and ds."
+                )
         else:
             n_vals = n_vals[0]
     else:

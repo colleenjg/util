@@ -196,8 +196,9 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
             for s, set_n in enumerate(set_ns):
                 if [train_idx, val_idx, test_idx][s] != 0 and thresh_cl != 0:
                     if set_n < thresh_cl:
-                        raise ValueError("Sets cannot meet the threshold "
-                            "requirement.")
+                        raise RuntimeError(
+                            "Sets cannot meet the threshold requirement."
+                            )
             train_idx.extend(cl_mixed_idx[0 : set_ns[0]])
             val_idx.extend(cl_mixed_idx[set_ns[0] : set_ns[0] + set_ns[1]])
             test_idx.extend(cl_mixed_idx[set_ns[0] + set_ns[1] : 
@@ -332,7 +333,7 @@ def split_idx(n, train_p=0.75, val_p=None, test_p=None, thresh_set=10,
         [val_n, test_n], [val_p, test_p], ["val n", "test n"]):
         if set_n < thresh_set:
             if set_p != 0:
-                raise ValueError(f"{name} is {set_n} (below threshold "
+                raise RuntimeError(f"{name} is {set_n} (below threshold "
                     f"of {thresh_set})")
 
     train_idx, val_idx, test_idx = data_indices(

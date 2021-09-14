@@ -18,8 +18,11 @@ import multiprocessing
 import os
 import random
 import re
+import sys
 import warnings
+from pathlib import Path
 
+from joblib import Parallel, delayed
 import numexpr
 import numpy as np
 
@@ -106,21 +109,57 @@ def CC_config_cache():
     existing_keys = os.environ.keys()
 
     if "SCRATCH" in existing_keys:
-        gen_config_dir = os.path.join(os.environ["SCRATCH"], ".config")
-        gen_cache_dir = os.path.join(os.environ["SCRATCH"], ".cache")
+        gen_config_dir = Path(os.environ["SCRATCH"], ".config")
+        gen_cache_dir = Path(os.environ["SCRATCH"], ".cache")
 
         if "MPLCONFIGDIR" not in existing_keys:
-            os.environ["MPLCONFIGDIR"] = os.path.join(
-                gen_config_dir, "matplotlib")
+            os.environ["MPLCONFIGDIR"] = str(Path(gen_config_dir, "matplotlib"))
 
         # for astropy... create writable cache and config directory
         for key, gen_dir in zip(
             ["CONFIG", "CACHE"], [gen_config_dir, gen_cache_dir]):
             if f"XDG_{key}_HOME" not in existing_keys:
-                os.environ[f"XDG_{key}_HOME"] = gen_dir
-                astropy_dir = os.path.join(gen_dir, "astropy")
-                if not os.path.exists(astropy_dir):
-                    os.makedirs(astropy_dir)
+                os.environ[f"XDG_{key}_HOME"] = str(gen_dir)
+                astropy_dir = Path(gen_dir, "astropy")
+                astropy_dir.mkdir(parents=True, exist_ok=True)
+
+
+#############################################
+def extend_sys_path(file_path, parents=1):
+    """
+    extend_sys_path(file_path)
+
+    Extends system path by adding the parents of the file path.
+
+    If __file__ is passed as the file_path, this ensures that the parent 
+    directory paths are correctly added, relative to the current working 
+    directory.
+
+    Required args:
+        - file_path (Path): local file path relative to which to add parents
+    
+    Optional args:
+        - parents (int): number of parent directories to add
+                         parents=1
+    """
+    
+    local_path = Path(file_path).parent
+    
+    add_paths = [local_path]
+    
+    n_parts = len(local_path.parts)
+    for i in range(parents):
+        if i < n_parts:
+            add_path = Path(*local_path.parts[:-i])
+        elif i == n_parts:
+            add_path = Path(".")
+        elif i > n_parts:
+            add_path = Path(*[[".."] * (i - n_parts)])
+        add_paths.append(add_path)
+
+    add_paths = [str(add_path) for add_path in add_paths]
+
+    sys.path.extend(add_paths)
 
 
 #############################################
@@ -227,10 +266,10 @@ def remove_lett(lett_str, rem):
     """
 
     if not isinstance(lett_str, str):
-        raise ValueError("lett_str must be a string.")
+        raise TypeError("lett_str must be a string.")
     
     if not isinstance(rem, str):
-        raise ValueError("rem must be a string.")
+        raise TypeError("rem must be a string.")
 
     removed = ""
     for lett in rem:
@@ -261,8 +300,8 @@ def slice_idx(axis, pos):
         sl_idx = tuple([slice(None)])
 
     elif axis < 0:
-        raise ValueError("Do not pass -1 axis value as this will always "
-            "be equivalent to axis 0.")
+        raise NotImplementedError("Negative axis values not accepted, as "
+            "they are not correctly differentiated from 0.")
 
     else:
         sl_idx = tuple([slice(None)] * axis + [pos])
@@ -430,7 +469,7 @@ def intlist_to_str(intlist):
         else:
             intstr = "-".join([str(i) for i in sorted(intlist)])
     else:
-        raise ValueError("'intlist' must be a list.")
+        raise TypeError("'intlist' must be a list.")
 
     return intstr
 
@@ -685,14 +724,14 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
             vals = conv_types(vals, dtype)
         if single:
             if len(vals) != 1:
-                raise ValueError("Expected to find 1 value, but "
+                raise RuntimeError("Expected to find 1 value, but "
                     f"found {len(vals)}.")
             else:
                 vals = vals[0]
         return vals
     else: 
         if single and len(df) != 1:
-            raise ValueError("Expected to find 1 dataframe line, but "
+            raise RuntimeError("Expected to find 1 dataframe line, but "
                 f"found {len(df)}.")
         return df
 
@@ -843,7 +882,7 @@ def hierarch_argsort(data, sorter="fwd", axis=0, dtypes=None):
     """
 
     if len(data.shape) != 2:
-        raise ValueError("Only implemented for 2D arrays.")
+        raise NotImplementedError("Only implemented for 2D arrays.")
 
     axis, rem_axis = pos_idx([axis, 1-axis], len(data.shape))
     axis_len = data.shape[axis]
@@ -1093,9 +1132,45 @@ def n_cores_numba(n_tasks, parallel=True, max_cores="all", allow="around",
 
 
 #############################################
+class ProgressParallel(Parallel):
+    """
+    Class allowing joblib Parallel to work with tqdm.
+    
+    Taken from https://stackoverflow.com/questions/37804279/how-can-we-use-tqdm-in-a-parallel-execution-with-joblib.
+    """
+
+    def __init__(self, use_tqdm=True, total=None, *args, **kwargs):
+        """
+        Initializes a joblib Parallel object that works with tqdm.
+
+        Optional args:
+            - use_tqdm (bool): if True, tqdm is used
+                               default: True
+            - total (int)    : number of items in the progress bar
+                               default: None
+        """
+
+        from tqdm.auto import tqdm
+        self._use_tqdm = use_tqdm
+        self._total = total
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        from tqdm.auto import tqdm
+        with tqdm(disable=not self._use_tqdm, total=self._total) as self._pbar:
+            return Parallel.__call__(self, *args, **kwargs)
+
+    def print_progress(self):
+        if self._total is None:
+            self._pbar.total = self.n_dispatched_tasks
+        self._pbar.n = self.n_completed_tasks
+        self._pbar.refresh()
+
+
+#############################################
 def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True, 
                   max_cores="all", zip_output=False, mult_loop=False, 
-                  pass_parallel=False):
+                  pass_parallel=False, use_tqdm=False):
     """
     parallel_wrap(fct, loop_arg)
 
@@ -1134,6 +1209,8 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                                   parallel, the value of 'parallel' is still 
                                   passed on.
                                   default: False
+        - use_tqdm (bool)       : if True, tqdm is used for progress bars.
+                                  default: False
 
     Returns:
         - outputs (list of tuples): outputs, structured as 
@@ -1144,8 +1221,7 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                                         (loop_arg length)
     """
 
-    from joblib import Parallel, delayed
-
+    loop_arg = list(loop_arg)
     n_jobs = get_n_jobs(len(loop_arg), parallel, max_cores)
     
     if args_list is None: args_list = []
@@ -1161,18 +1237,31 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
         args_dict = dict()
 
     if n_jobs is not None and n_jobs > 1:
+        if use_tqdm:
+            ParallelUse = ProgressParallel(
+                use_tqdm=True, total=len(loop_arg), n_jobs=n_jobs
+                )
+        else:
+            ParallelUse = Parallel(n_jobs=n_jobs)
+
         if pass_parallel: 
             # prevent subfunctions from also sprouting parallel processes
             args_dict["parallel"] = False 
         if args_dict is None:
-            outputs = Parallel(n_jobs=n_jobs)(
-                delayed(fct)(*arg, *args_list) for arg in loop_arg)
+            outputs = ParallelUse(
+                delayed(fct)(*arg, *args_list) for arg in loop_arg
+                )
         else:
-            outputs = Parallel(n_jobs=n_jobs)(
-                delayed(fct)(*arg, *args_list, **args_dict) for arg in loop_arg)
+            outputs = ParallelUse(
+                delayed(fct)(*arg, *args_list, **args_dict) for arg in loop_arg
+                )
     else:
         if pass_parallel: # pass parallel on
             args_dict["parallel"] = parallel
+        if use_tqdm:
+            from tqdm import tqdm
+            loop_arg = tqdm(loop_arg)
+
         outputs = []
         if args_dict is None:
             for arg in loop_arg:
@@ -1251,7 +1340,7 @@ def reshape_df_data(df, squeeze_rows=False, squeeze_cols=False):
     new_dims = [*row_dims, *col_dims]
 
     if np.prod(new_dims) != df.size:
-        raise ValueError("Cannot automatically reshape dataframe data, as "
+        raise RuntimeError("Unable to automatically reshape dataframe data, as "
             "levels are not shared across all labels.")
 
     df_data = df.to_numpy().reshape(new_dims)

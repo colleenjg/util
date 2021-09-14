@@ -12,39 +12,45 @@ Note: this code uses python 3.7.
 """
 
 import logging
-import os
 import sys
+from pathlib import Path
+import warnings
 
 from util import gen_util
 
 
 #############################################
-def temp_change_log_level(function):
+class TempChangeLogLevel():
     """
-    Wrapper for temporarily changing logging level.
+    Context manager for temporarily changing logging level.
 
-    Optional args:
+    Optional init args:
         - logger (logger) : logging Logger object. If None, root logger is used.
                             default: None
         - level (int, str): logging level to temporarily set logger to.
-                            default: []
+                            If None,log level is not changed.
+                            default: "info"
     """
 
-    def wrapper(*args, logger=None, level="info", **kwargs):
-        
+    def __init__(self, logger=None, level="info"):
+
         if logger is None or logger.level == logging.NOTSET:
             logger = logging.getLogger()
-
-        prev_level = logger.level
-        set_level(level=level, logger=logger)
-
-        returns = function(*args, **kwargs)
-
-        set_level(level=prev_level, logger=logger)
         
-        return returns
+        self.logger = logger
+        self.level = level
 
-    return wrapper
+
+    def __enter__(self):
+
+        if self.level is not None:
+            self.prev_level = self.logger.level
+            set_level(level=self.level, logger=self.logger)
+
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if self.level is not None:
+            set_level(level=self.prev_level, logger=self.logger)
 
 
 #############################################
@@ -100,7 +106,7 @@ class BasicLogFormatter(logging.Formatter):
 
 
 #############################################
-def set_level(level="info", logger=None):
+def set_level(level="info", logger=None, return_only=False):
     """
     set_level()
 
@@ -112,9 +118,11 @@ def set_level(level="info", logger=None):
                               default: "info"
         - logger (Logger)   : logging Logger. If None, the root logger is set.
                               default: None
-        - logger (Logger)   : logging Logger. If None, the root logger is set.
-                              default: None
+        - return_only (bool): if True, level is not set, but only returned
+                              default: False
 
+    Returns:
+        - level (int): logging level requested
     """
     
     if logger is None:
@@ -137,7 +145,41 @@ def set_level(level="info", logger=None):
             "level", level, 
             ["debug", "info", "warning", "error", "critical"])
 
-    logger.setLevel(level)
+    if not return_only:
+        logger.setLevel(level)
+
+    return level
+
+#############################################
+def level_at_least(level="info", logger=None):
+    """
+    level_at_least()
+
+    Returns whether level is equal or above specified level.
+
+    Optional args:
+        - level (int or str): level of the logger ("info", "error", "warning", 
+                              "debug", "critical", 10, 50)
+                              default: "info"
+        - logger (Logger)   : logging Logger. If None, the root logger is set.
+                              default: None
+
+    Returns:
+        - at_least (bool): whether current logging level is above specified 
+                           level
+    """
+    
+
+    if logger is None:
+        logger = logging.getLogger()
+
+    curr_level = logger.level
+
+    level = set_level(level, logger=logger, return_only=True)
+
+    at_least = (curr_level >= level)
+
+    return at_least
 
 
 #############################################
@@ -191,7 +233,7 @@ def get_logger(logtype="stream", name=None, filename="logs.log",
             sh.setFormatter(fmt)
         logger.addHandler(sh)
     if logtype in ["file", "both"]:
-        fh = logging.FileHandler(os.path.join(fulldir, filename))
+        fh = logging.FileHandler(Path(fulldir, filename))
         if fmt is not None:
             fh.setFormatter(fmt)
         logger.addHandler(fh)
@@ -211,7 +253,7 @@ def get_logger_with_basic_format(**logger_kw):
 
     Returns logger with basic formatting, defined by BasicLogFormatter class.
 
-    Kewyord args:
+    Keyword args:
         - logger_kw (dict): keyword arguments for get_logger()
         
     Returns:
@@ -226,5 +268,25 @@ def get_logger_with_basic_format(**logger_kw):
     return logger
 
 
+#############################################
+def warnings_simple(message, category, filename, lineno, file=None, line=None):
+    """
+    warnings_simple(message, category, filename, lineno()
+
+    Warning format that doesn't cite the line of code.
+    Adapted from: https://pymotw.com/2/warnings/
+
+    Required args: warnings module arguments
+        
+    Returns:
+        - (str): formatting string
+    """
+
+    return '%s:%s: %s:\n%s\n' % (filename, lineno, category.__name__, message)
+
+
+
+# set logger and warnings format
 logger = get_logger_with_basic_format()
+warnings.formatwarning = warnings_simple
 

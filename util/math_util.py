@@ -13,7 +13,9 @@ Note: this code uses python 3.7.
 
 import copy
 import logging
+import os
 import re
+import warnings
 
 import numpy as np
 import scipy.ndimage as scn
@@ -24,6 +26,14 @@ from util import gen_util, logger_util
 logger = logging.getLogger(__name__)
 
 TAB = "    "
+
+# Set default max array size for permutation tests 
+LIM_E6_SIZE = 350
+if "LIM_E6_SIZE" in os.environ.keys():
+    LIM_E6_SIZE = int(os.environ["LIM_E6_SIZE"])
+
+# Minimum number of examples outside for confidence interval edge calculation
+MIN_N = 2
 
 
 #############################################
@@ -268,6 +278,8 @@ def get_stats(data, stats="mean", error="sem", axes=None, nanpol=None,
                                      remaining_dims
     """
 
+    data = np.asarray(data)
+
     if data.shape == 1:
         raise ValueError("Data array must comprise at least 2 dimensions.")
 
@@ -390,6 +402,33 @@ def integ(data, dx, axis=None, nanpol=None):
 
 
 #############################################
+def get_near_square_divisors(val):
+    """
+    get_near_square_divisors(val)
+
+    Returns near-square divisors of a number.
+
+    Required args:
+        - val (int): value for which to get divisors
+    
+    Returns:
+        - divs (list): list of divisor values in order [high, low]
+    """
+
+    if int(val) != float(val):
+        raise TypeError("'val' must be an int.")
+
+    i = int(np.max([np.floor(np.sqrt(val)), 1]))
+    j = int(np.ceil(val / i))
+
+    divs = [i, j]
+    if j > i:
+        divs = divs[::-1]
+
+    return divs
+
+
+#############################################
 def get_divisors(val, min_val=None, max_val=None):
     """
     get_divisors(val)
@@ -406,11 +445,11 @@ def get_divisors(val, min_val=None, max_val=None):
                          default: None
     
     Returns:
-        - integ_data (nd array): integral of data along specified axis
+        - divs (list): list of divisor values
     """
 
     if int(val) != float(val):
-        raise ValueError("'val' must be an int.")
+        raise TypeError("'val' must be an int.")
 
     if min_val is None:
         min_val = 1
@@ -698,7 +737,7 @@ def scale_facts(data, axis=None, pos=None, sc_type="min_max", extrem="reg",
             ["stand", "stand_rob", "center", "scale", "min_max"])
     
     if not allow_0 and (np.asarray(div) == 0).any():
-        raise ValueError("Scaling cannot proceed due to division by 0.")
+        raise RuntimeError("Scaling cannot proceed due to division by 0.")
 
     if isinstance(sub, np.ndarray):
         sub = sub.tolist()
@@ -894,9 +933,28 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op="diff",
 
 
 #############################################
-def calc_mult_comp(n_comp, p_val=0.05, n_perms=10000, min_n=100):
+def check_n_rand(n_rand=1000, p_val=0.05, min_n=MIN_N, raise_err=True):
     """
-    calc_mult_comp(n_comp)
+    check_n_rand()
+
+    Checks whether number of random values is sufficient to evaluate the 
+    specified p-value, and raises an error if not.
+    """
+
+    out_vals = int(n_rand * p_val)
+    if out_vals < min_n:
+        error_msg = (f"Insufficient number of values ({out_vals}) outside "
+            f"the CI (min. {min_n}) if using {n_rand} random values.")
+        if raise_err:
+            raise RuntimeError(error_msg)
+        else:
+            warnings.warn(error_msg, category=RuntimeWarning, stacklevel=1)
+
+
+#############################################
+def adj_n_perms(n_comp, p_val=0.05, n_perms=10000, min_n=MIN_N):
+    """
+    adj_n_perms(n_comp)
 
     Returns new p-value, based on the original p-value and a new number of 
     permutations using a Bonferroni correction.
@@ -915,23 +973,21 @@ def calc_mult_comp(n_comp, p_val=0.05, n_perms=10000, min_n=100):
         - p_val (num)  : original p_value
                          default: 0.05
         - min_n (int)  : minimum number of values required outside of the CI
-                         default: 100
+                         default: 20
     
     Return:
         - new_p_val (num)  : new p-value
         - new_n_perms (num): new number of permutations
     """
     
-    new_p_val   = float(p_val)/n_comp
-
-    new_n_perms = int(np.ceil(np.max([n_perms, float(min_n)/new_p_val])))
-
+    new_p_val   = float(p_val) / n_comp
+    new_n_perms = int(np.ceil(np.max([n_perms, float(min_n) / new_p_val])))
 
     return new_p_val, new_n_perms
 
 
 #############################################
-def run_permute(all_data, n_perms=10000, lim_e6=350):
+def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE):
     """
     run_permute(all_data)
 
@@ -948,8 +1004,10 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
                           default: 10000
         - lim_e6 (num)  : limit (when multiplied by 1e6) to permuted data array 
                           size at which an AssertionError is thrown. "none" for
-                          no limit
-                          default: 350
+                          no limit.
+                          Default value be set externally by setting 
+                          LIM_E6_SIZE as an environment variable.
+                          default: LIM_E6_SIZE
     Returns:
         - permed_data (3D array): array of multiple permutation of the data, 
                                   structured as: 
@@ -966,13 +1024,18 @@ def run_permute(all_data, n_perms=10000, lim_e6=350):
     if lim_e6 != "none":
         lim = int(lim_e6*1e6)
         fold = int(np.ceil(float(perm_size)/lim))
-        permute_cri = ("Permutation array exceeds allowed size "
-            f"({lim_e6} * 10^6) by {fold} fold.")
-        assert (perm_size < lim), permute_cri
+        permute_cri = (f"Permutation array is up to {fold}x allowed size "
+            f"({lim_e6} * 10^6).")
+        if perm_size > lim:
+            raise RuntimeError(permute_cri)
 
     # (item x datapoints (all groups))
+    # (sample with n_perms in first dimension, so results are consistent 
+    # within permutations, for different values of n_perms)
     perms_idxs = np.argsort(
-        np.random.rand(all_data.shape[1], n_perms), axis=0)[np.newaxis, :, :]
+        np.random.rand(n_perms, all_data.shape[1]).T, axis=0
+        )[np.newaxis, :, :]
+
     dim_data   = np.arange(all_data.shape[0])[:, np.newaxis, np.newaxis]
 
     # generate permutation array
@@ -991,15 +1054,16 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
     resulting from the permutation analysis on input data.
 
     Required args:
-        - all_data (2D array)  : full data on which to run permutation
-                                 (items x datapoints to permute (all groups))
+        - all_data (2D array): full data on which to run permutation
+                               (items x datapoints to permute (all groups))
 
     Optional args:
         - div (str or int)  : nbr of datapoints in first group
                               default: "half"
         - n_perms (int)     : nbr of permutations to run
                               default: 10000
-        - stats (str)       : statistic parameter, i.e. "mean" or "median"
+        - stats (str)       : statistic parameter, i.e. "mean" or "median" to 
+                              use for groups
                               default: "mean"
         - nanpol (str)      : policy for NaNs, "omit" or None when taking 
                               statistics
@@ -1038,7 +1102,7 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
             perms_rem = n_perms_tot - perms_done
             if perms_rem < n_perms:
                 n_perms = perms_rem
-            permed_data = run_permute(all_data, n_perms=n_perms)
+            permed_data = run_permute(all_data, n_perms=int(n_perms))
 
             if op != "d-prime":
                 axis = None
@@ -1069,51 +1133,16 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
             if perms_done >= n_perms_tot:
                 perm = False
 
-        except AssertionError as err:
-            logger.warning(err)
-            logger.warning("Doing permutations in smaller batches.")
-            # retrieve fold from error message.
-            err_fold_str = str(err)[str(err).find("by "):]
-            fold = int(re.findall("\d+", err_fold_str)[0])
-            n_perms = int(n_perms//fold)
+        except RuntimeError as err:
+            # retrieve ?x from error message.
+            err_n_str = str(err)[: str(err).find("x allowed")]
+            n = int(re.findall("\d+", err_n_str)[0])
+            n_perms = int(n_perms // n)
+            logger.warning(f"{err} Running in {n} batches.")
 
     all_rand_res = np.concatenate(all_rand_res, axis=-1)
 
     return all_rand_res
-
-
-#############################################
-def log_elem_list(elems, tail="up", act_vals=None):
-    """
-    log_elem_list(rand_vals, act_vals)
-
-    Logs numbers of elements showing significant difference in a specific tail,
-    and optionally their actual values.
-
-    Required args:
-        - elems (1D array): array of elements showing significant differences
-
-    Optional args:
-        - tails (str)        : which tail the elements are in: "up", "lo"
-                               default: "up"
-        - act_vals (1D array): array of actual values corresponding to elems 
-                               (same length). If None, actual values are not 
-                               logged.
-    """
-
-    if len(elems) == 0:
-        logger.info(f"Signif {tail}: None", extra={"spacing": f"{TAB}{TAB}"})
-    else:
-        elems_pr = ", ".join(f"{x}" for x in elems)
-        logger.info(
-            f"Signif {tail}: {elems_pr}", extra={"spacing": f"{TAB}{TAB}"})
-        if act_vals is not None:
-            if len(act_vals) != len(elems):
-                raise ValueError("'elems' and 'act_vals' should be the "
-                    f"same length, but are of length {len(elems)} and "
-                    f"{len(act_vals)} respectively.")
-            vals_pr = ", ".join([f"{x:.2f}" for x in act_vals])
-            logger.info(f"Vals: {vals_pr}", extra={"spacing": f"{TAB}{TAB}"})
 
 
 #############################################
@@ -1141,14 +1170,88 @@ def lin_interp_nan(data_arr):
     return data_arr_interp
 
 
+#############################################
+def get_percentiles(CI=0.95, tails=2):
+    """
+    get_percentiles()
+
+    Returns percentiles and names corresponding to the confidence interval
+    (centered on the median).
+
+    Optional args:
+        - CI (num)          : confidence interval
+                              default: 0.95
+        - tails (str or int): which tail(s) to test: "hi", "lo", "2"
+                              default: "2"
+
+    Returns:
+        - ps (list)     : list of percentile values, e.g., [2.5, 97.5]
+        - p_names (list): list of percentile names, e.g., ["p2-5", "p97-5"]
+    """
+
+    if CI < 0 or CI > 1:
+        raise ValueError("CI must be between 0 and 1.")
+
+    CI *= 100
+
+    if tails == "hi":
+        ps = [0.0, CI]
+    elif tails == "lo":
+        ps = [100 - CI, 100]
+    elif tails in ["2", 2]:
+        ps = [0.5 * (100 + v) for v in [-CI, CI]]
+    else:
+        gen_util.accepted_values_error("tails", tails, ["hi", "lo", 2])
+
+    p_names = []
+    for p in ps:
+        p_names.append(f"p{gen_util.num_to_str(p)}")
+
+    return ps, p_names
+    
+
+#############################################
+def log_elem_list(elems, tail="hi", act_vals=None):
+    """
+    log_elem_list(rand_vals, act_vals)
+
+    Logs numbers of elements showing significant difference in a specific tail,
+    and optionally their actual values.
+
+    Required args:
+        - elems (1D array): array of elements showing significant differences
+
+    Optional args:
+        - tails (str)        : which tail the elements are in: "hi", "lo"
+                               default: "hi"
+        - act_vals (1D array): array of actual values corresponding to elems 
+                               (same length). If None, actual values are not 
+                               logged.
+    """
+
+    if len(elems) == 0:
+        logger.info(f"Signif {tail}: None", extra={"spacing": f"{TAB}{TAB}"})
+    else:
+        elems_pr = ", ".join(f"{x}" for x in elems)
+        logger.info(
+            f"Signif {tail}: {elems_pr}", extra={"spacing": f"{TAB}{TAB}"})
+        if act_vals is not None:
+            if len(act_vals) != len(elems):
+                raise ValueError("'elems' and 'act_vals' should be the "
+                    f"same length, but are of length {len(elems)} and "
+                    f"{len(act_vals)} respectively.")
+            vals_pr = ", ".join([f"{x:.2f}" for x in act_vals])
+            logger.info(f"Vals: {vals_pr}", extra={"spacing": f"{TAB}{TAB}"})
+
+
 #############################################    
-def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100, 
+def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=20, 
             log_elems=False, ret_th=False, nanpol="omit", ret_pval=False):
     """
     id_elem(rand_vals, act_vals)
 
     Returns elements whose actual values are beyond the threshold(s) obtained 
-    with distributions of randomly generated values. 
+    with null distributions of randomly generated values. 
     Optionally also returns the threshold(s) for each element.
     Optionally also logs significant element indices and their values.
 
@@ -1159,7 +1262,7 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
         - act_vals (1D array) : actual values for each element
 
     Optional args:
-        - tails (str or int): which tail(s) to test: "up", "lo", "2"
+        - tails (str or int): which tail(s) to test: "hi", "lo", "2"
                               default: "2"
         - p_val (num)       : p-value to use for significance thresholding 
                               (0 to 1)
@@ -1181,11 +1284,11 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
 
     Returns:
         - elems (list): list of elements showing significant differences, or 
-                        list of lists if 2-tailed analysis [lo, up].
+                        list of lists if 2-tailed analysis [lo, hi].
         if ret_th, also:
         - threshs (list): list of threshold(s) for each element, either one 
                           value per element if 1-tailed analysis, or list of 2 
-                          thresholds if 2-tailed [lo, up].
+                          thresholds if 2-tailed [lo, hi].
         if ret_pval, also:
         - act_pvals (list): list of p-values for each element.
     """
@@ -1213,15 +1316,11 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
     nan_rand_vals = np.isnan(rand_vals).any()
 
     if nan_act_vals > 0:
-        raise ValueError("NaNs encountered in actual values.")
+        raise RuntimeError("NaNs encountered in actual values.")
     if nan_rand_vals > 0:
-        raise ValueError("NaNs encountered in random values.")
+        raise RuntimeError("NaNs encountered in random values.")
 
-    # check whether there are enough values for determining thresholds
-    out_vals = int(rand_vals.shape[-1] * p_val)
-    if out_vals < min_n:
-        raise ValueError(f"Insufficient number of values ({out_vals}) outside "
-            f"the CI (< {min_n}).")
+    check_n_rand(rand_vals.shape[-1], p_val)
 
     if tails == "lo":
         threshs = np.percentile(rand_vals, p_val*100, axis=-1)
@@ -1229,23 +1328,23 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
         if log_elems:
             log_elem_list(elems, "lo", act_vals[elems])
         elems = elems.tolist()
-    elif tails == "up":
+    elif tails == "hi":
         threshs = np.percentile(rand_vals, 100-p_val*100, axis=-1)
         elems = np.where(act_vals > threshs)[0]
         if log_elems:
-            log_elem_list(elems, "up", act_vals[elems])
+            log_elem_list(elems, "hi", act_vals[elems])
         elems = elems.tolist()
     elif str(tails) == "2":
         lo_threshs = np.percentile(rand_vals, p_val*100/2., axis=-1)
         lo_elems = np.where(act_vals < lo_threshs)[0]
-        up_threshs = np.percentile(rand_vals, 100-p_val*100/2., axis=-1)
-        up_elems = np.where(act_vals > up_threshs)[0]
+        hi_threshs = np.percentile(rand_vals, 100-p_val*100/2., axis=-1)
+        hi_elems = np.where(act_vals > hi_threshs)[0]
         if log_elems:
             log_elem_list(lo_elems, "lo", act_vals[lo_elems])
-            log_elem_list(up_elems, "up", act_vals[up_elems])
-        elems = [lo_elems.tolist(), up_elems.tolist()]
+            log_elem_list(hi_elems, "hi", act_vals[hi_elems])
+        elems = [lo_elems.tolist(), hi_elems.tolist()]
     else:
-        gen_util.accepted_values_error("tails", tails, ["up", "lo", "2"])
+        gen_util.accepted_values_error("tails", tails, ["hi", "lo", "2"])
     
     if ret_pval:
         act_percs = [scist.percentileofscore(sub_rand_vals, val) 
@@ -1255,16 +1354,16 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
 
     returns = [elems]
     if ret_th:
-        if tails in ["lo", "up"]:
+        if tails in ["lo", "hi"]:
             if single:
                 threshs = [threshs]
             else:
                 threshs = threshs.tolist()
         else:
             if single:
-                threshs = [[lo_threshs, up_threshs]]
+                threshs = [[lo_threshs, hi_threshs]]
             else:
-                threshs = [[lo, up] for lo, up in zip(lo_threshs, up_threshs)]
+                threshs = [[lo, hi] for lo, hi in zip(lo_threshs, hi_threshs)]
         returns = returns + [threshs]
     if ret_pval:
         returns = returns + [act_pvals]
@@ -1276,72 +1375,179 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=100,
 
 
 #############################################
-def get_diff_p_val(act_data, n_perms=10000, stats="mean", op="diff"):
+def get_p_val_from_rand(act_data, rand_data, return_CIs=False, p_thresh=0.05, 
+                        tails=2, multcomp=None):
     """
-    get_diff_p_val(act_data)
+    get_p_val_from_rand(act_data, rand_data)
 
+    Returns p-value obtained from a random null distribution of the data.
 
     Required args:
-        - act_data (list): stats to use for permutation test
+        - act_data (num)      : actual data
+        - rand_data (1D array): random values
     
     Optional args:
-        - n_perms (int): number of permutations
-                         default: 10000
-        - stats (str)  : stats to use for permutation test
-                         default: "mean"
-        - op (str)     : operation to use to compare the groups (see calc_op())
-                         default: "diff"
+        - return_CIs (bool) : if True, confidence intervals (CI) are returned 
+                              as well
+                              default: False
+        - p_thresh (float)  : p-value to use to build CI
+                              default: 0.05
+        - tails (str or int): which tail(s) to use in building CI
+                              default: "2"
+        - multcomp (int)    : number of comparisons to correct CI for
+                              default: None
 
     Returns:
         - p_val (float): p-value calculated from a randomly generated 
-                         distribution
+                         null distribution (not corrected)
+        if return_CIs:
+        - null_CI (list): null confidence interval (low, median, high), 
+                          adjusted for multiple comparisons
     """
+
+    sorted_rand_data = np.sort(rand_data)
+    if len(rand_data.shape) != 1:
+        raise ValueError("Expected rand_data to be 1-dimensional.")
+
+    perc = scist.percentileofscore(sorted_rand_data, act_data, kind='mean')
+    if perc > 50:
+        perc = 100 - perc
+    p_val = perc / 100
+
+    if return_CIs:
+        multcomp = 1 if not multcomp else multcomp
+        corr_p_thresh = p_thresh / multcomp
+        check_n_rand(len(sorted_rand_data), p_val=corr_p_thresh)
+
+        percs = get_percentiles(CI=(1 - corr_p_thresh), tails=tails)[0]
+        percs = [percs[0], 50, percs[1]]
+        null_CI = [np.percentile(sorted_rand_data, p, axis=-1) for p in percs]
+        
+        return p_val, null_CI
     
-    if len(act_data) != 2:
-        raise ValueError("Expected 'act_data' to comprise 2 groups.")
-
-    grp1, grp2 = act_data
-
-    real_diff = mean_med(grp2, stats=stats) - mean_med(grp1, stats=stats)
-
-    concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1)
-    rand_diffs = np.squeeze(
-        permute_diff_ratio(concat, div=len(grp1), n_perms=n_perms, 
-        stats=stats, op=op))
-    rand_diffs = \
-        rand_diffs.reshape(1) if len(rand_diffs.shape) == 0 else rand_diffs
-    
-    loc = np.where(np.sort(rand_diffs) > real_diff)[0]
-    if len(loc) == 0:
-        p_val = 0
     else:
-        p_val = loc[0]/float(n_perms)
-    if p_val > 0.5:
-        p_val = 1.0 - p_val
-    
-    return p_val
+        return p_val
 
 
 #############################################
-def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats="mean"):
+def get_diff_p_val(act_data, n_perms=10000, stats="mean", op="diff", 
+                   return_CIs=False, p_thresh=0.05, tails=2, multcomp=None, 
+                   paired=False):
     """
-    comp_vals_acr_groups(vals)
+    get_diff_p_val(act_data)
+
+    Returns p-value obtained from a random null distribution constructed from 
+    the actual data.
+
+    Required args:
+        - act_data (array-like): full data on which to run permutation
+                                 (groups x datapoints to permute)
+    
+    Optional args:
+        - n_perms (int)     : number of permutations
+                              default: 10000
+        - stats (str)       : stats to use for each group
+                              default: "mean"
+        - op (str)          : operation to use to compare the group stats
+                              (see calc_op())
+                              default: "diff"
+        - return_CIs (bool) : if True, confidence intervals (CI) are returned 
+                              as well
+                              default: False
+        - p_thresh (float)  : p-value to use to build CI
+                              default: 0.05
+        - tails (str or int): which tail(s) to use in building CI
+                              default: "2"
+        - multcomp (int)    : number of comparisons to correct CI for
+                              default: None
+        - paired (bool)     : if True, paired comparisons are done.  
+                              default: False
+
+    Returns:
+        - p_val (float) : p-value calculated from a randomly generated 
+                          null distribution (not corrected)
+        if return_CIs:
+        - null_CI (list): null confidence interval (low, median, high), 
+                          adjusted for multiple comparisons
+    """
+
+    if len(act_data) != 2:
+        raise ValueError("Expected 'act_data' to comprise 2 groups.")
+
+    grp1, grp2 = [np.asarray(grp_data) for grp_data in act_data]
+
+    if len(grp1.shape) != 1 or len(grp2.shape) != 1:
+        raise ValueError("Expected act_data groups to be 1-dimensional.")
+
+    real_diff = mean_med(grp2, stats=stats) - mean_med(grp1, stats=stats)
+
+    if not paired:
+        concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1) # add items dim
+        div = len(grp1)
+    else:
+        if len(grp1) != len(grp2):
+            raise ValueError(
+                "If data is paired, groups must have the same length."
+                )
+        concat = np.vstack([grp1, grp2]).T # datapoints x groups
+        div = 1 # permuting 2 values for each datapoint, since data is paired
+
+    rand_diffs = permute_diff_ratio(
+        concat, div=div, n_perms=n_perms, stats=stats, op=op
+        )
+
+    if not paired:
+        rand_diffs = np.squeeze(rand_diffs)
+        rand_diffs = \
+            rand_diffs.reshape(1) if len(rand_diffs.shape) == 0 else rand_diffs
+    else:
+        # permute within rows, as permute_diff_ratio permutes columns together! 
+        rand_perm = np.argsort(
+            np.random.permutation(rand_diffs.size).reshape(rand_diffs.shape),
+            axis=1)
+        data_idx = np.arange(len(rand_diffs)).reshape(-1, 1)
+        rand_diffs = rand_diffs[data_idx, rand_perm]
+        rand_diffs = mean_med(rand_diffs, stats=stats, axis=0)
+
+    returns = get_p_val_from_rand(
+        real_diff, rand_diffs, return_CIs=return_CIs, p_thresh=p_thresh, 
+        tails=tails, multcomp=multcomp
+        )
+    
+    if return_CIs:
+        p_val, null_CI = returns
+        return p_val, null_CI
+
+    else:
+        p_val = returns
+        return p_val
+
+
+#############################################
+def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean", 
+                         paired=False):
+    """
+    comp_vals_acr_groups(act_data)
 
     Returns p values for comparisons across groups (unpaired).
 
     Required args:
-        - vals (list): values for each groups 
+        - act_data (array-like): full data on which to run permutation
+                                 (groups x datapoints to permute)
 
     Optional args:
         - n_perms (int): number of permutations to do if doing a permutation 
                          test. If None, a different test is used
                          default: None
-        - stats (str)  : stats to use for permutation test
+        - stats (str)  : stats to use for each group
                          default: "mean"
         - normal (bool): whether data is expected to be normal or not 
                          (determines whether a t-test or Mann Whitney test 
                          will be done. Ignored if n_perms is not None.)
                          default: True
+        - paired (bool): if True, paired comparisons are done.  
+                         default: False
+
     Returns:
         - p_vals (1D array): p values for each comparison, organized by 
                              group pairs (where the second group is cycled 
@@ -1349,64 +1555,27 @@ def comp_vals_acr_groups(vals, n_perms=None, normal=True, stats="mean"):
                              None groups)
     """
 
-    n_comp = sum(range(len(vals)))
+    n_comp = sum(range(len(act_data)))
     p_vals = np.full(n_comp, np.nan)
     i = 0
-    for s, s_vals in enumerate(vals):
-        for v_vals in vals[s + 1:]:
-            if s_vals is not None and v_vals is not None and \
-               len(s_vals) != 0 and len(v_vals) != 0:
+    for g, g_data in enumerate(act_data):
+        for g_data_2 in act_data[g + 1:]:
+            if g_data is not None and g_data_2 is not None and \
+                len(g_data) != 0 and len(g_data_2) != 0:
+                
                 if n_perms is not None:
                     p_vals[i] = get_diff_p_val(
-                        [s_vals, v_vals], n_perms, stats=stats, op="diff")
+                        [g_data, g_data_2], n_perms, stats=stats, op="diff", 
+                        paired=paired)
                 elif normal:
-                    p_vals[i] = scist.ttest_ind(
-                        s_vals, v_vals, axis=None)[1]
+                    fct = scist.ttest_rel if paired else scist.ttest_ind
+                    p_vals[i] = fct(g_data, g_data_2, axis=None)[1]
                 else:
-                    p_vals[i] = scist.mannwhitneyu(s_vals, v_vals,)[1]
+                    fct = scist.wilcoxon if paired else scist.mannwhitneyu 
+                    p_vals[i] = fct(g_data, g_data_2)[1]
             i += 1
     
     return p_vals
-
-
-#############################################
-def get_percentiles(CI=0.95, tails=2):
-    """
-    get_percentiles()
-
-    Returns percentiles and names corresponding to the confidence interval
-    (centered on the median).
-
-    Optional args:
-        - CI (num)          : confidence interval
-                              default: 0.95
-        - tails (str or int): which tail(s) to test: "up", "lo", "2"
-                              default: "2"
-
-    Returns:
-        - ps (list)     : list of percentile values, e.g., [2.5, 97.5]
-        - p_names (list): list of percentile names, e.g., ["p2-5", "p97-5"]
-    """
-
-    if CI < 0 or CI > 1:
-        raise ValueError("CI must be between 0 and 1.")
-
-    CI *= 100
-
-    if tails == "up":
-        ps = [0.0, CI]
-    elif tails == "lo":
-        ps = [100 - CI, 100]
-    elif tails in ["2", 2]:
-        ps = [0.5 * (100 + v) for v in [-CI, CI]]
-    else:
-        gen_util.accepted_values_error("tails", tails, ["up", "lo", 2])
-
-    p_names = []
-    for p in ps:
-        p_names.append(f"p{gen_util.num_to_str(p)}")
-
-    return ps, p_names
 
 
 #############################################
@@ -1563,7 +1732,7 @@ def get_order_of_mag(val):
         - order (int): order of magnitude for rounding value
     """
 
-    order = np.floor(np.log10(val))
+    order = int(np.floor(np.log10(val)))
 
     return order
 
@@ -1611,14 +1780,15 @@ def round_by_order_of_mag(val, n_sig=1, direc="any", decimal_only=False):
 
 
 #############################################
-def bootstrapped_std(data, n=None, n_samples=1000, proportion=False):
+def bootstrapped_std(data, n=None, n_samples=1000, proportion=False, 
+                     randst=None):
     """
     bootstrapped_std(data)
     
     Returns bootstrapped standard deviation of the mean or proportion.
 
     Required args:
-        - data (float or 1D array): value to round
+        - data (float or 1D array): proportion or full data for mean
     
     Optional args:
         - n (int)          : number of datapoints in dataset. Required if 
@@ -1628,10 +1798,19 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False):
                              default: 1000
         - proportion (bool): if True, data is a proportion (0-1)
                              default: False
+        - randst (int)     : seed or random state to use when generating random 
+                             values.
+                             default: None
 
     Returns:
-        - bootstrapped_std (float): bootstrapped standard deviation of mean or percentage
+        - bootstrapped_std (float): bootstrapped standard deviation of mean or 
+                                    percentage
     """
+
+    if randst is None:
+        randst = np.random
+    elif isinstance(randst, int):
+        randst = np.random.RandomState(randst) 
 
     # random values
     if proportion:
@@ -1643,7 +1822,7 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False):
         
         # random proportions
         rand_data = np.mean(
-            np.random.rand(n * n_samples).reshape(n, n_samples) < data, 
+            randst.rand(n * n_samples).reshape(n, n_samples) < data, 
             axis=0)
         
     else:
@@ -1655,10 +1834,76 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False):
    
         # random means
         rand_data = np.mean(
-            data[np.random.choice(choices, (n, n_samples), replace=True)], 
+            data[randst.choice(choices, (n, n_samples), replace=True)], 
             axis=0)
 
     bootstrapped_std = np.std(rand_data)
     
     return bootstrapped_std
+
+
+#############################################
+def binom_CI(p_thresh, perc, n_items, null_perc, multcomp=None):
+    """
+    binom_CI(p_thresh, perc, n_items, null_perc)
+
+    Returns theoretical confidence intervals over a percentage using binomial 
+    distribution.
+
+    NOTE: p_values and CIs may not correspond exactly, due to rounding effects,
+    given that the binomial distribution is a discrete probability distribution.
+
+    Specifically, scist.binom.ppf always returns an integer number of items, 
+    regardless of the thresholds (p_thresh) requested. Thus, lower values of 
+    n_items yield lower resolution CIs, with a larger range of p-value 
+    thresholds outputting the same CI values.
+
+    As a result, at the CI edges, p_val may be a better measure of 
+    significance than the CIs.
+
+    Required args:
+        - p_thresh (float) : desired p-value, two-tailed, 
+                             e.g. 0.05 for a CI ranging from 2.5 to 97.5
+        - perc (float)     : percentage of significant items (0-100)
+        - n_items (int)    : number of items
+        - null_perc (float): null percentage expected (0-100)
+
+    Optional args:
+        - multcomp (int): number of comparisons to correct CIs for
+                          default: None
+
+    Returns:
+        - CI (1D array)     : low, median and high values for the confidence 
+                              interval over the true percentage (perc)
+        - null_CI (1D array): low, median and high values for the confidence 
+                              interval over the null percentage expected 
+                              (null_perc)
+        - p_val (float)     : uncorrected p-value of the true percentage given 
+                              the theoretical null distribution
+    """
+
+    multcomp = 1 if not multcomp else multcomp
+    
+    # Calculate the confidence interval for "frac_pos/sig".
+    threshs = [p_thresh / (multcomp * 2), 0.5, 1 - p_thresh / (multcomp * 2)]
+    CI_low, CI_med, CI_high = [
+        scist.binom.ppf(thresh, n_items, perc / 100) / n_items 
+        for thresh in threshs
+        ]
+    
+    # Calculate the p-val of the true value for the null distro
+    p_val = scist.binom.cdf(perc / 100 * n_items, n_items, null_perc / 100)
+    if p_val > 0.50:
+        p_val = 1 - p_val
+
+    # Calculate the confidence interval for the null distro
+    null_CI_low, null_CI_med, null_CI_high = [
+        scist.binom.ppf(thresh, n_items, null_perc / 100) / n_items 
+        for thresh in threshs
+        ]
+    
+    CI = np.asarray([CI_low, CI_med, CI_high]) * 100
+    null_CI = np.asarray([null_CI_low, null_CI_med, null_CI_high]) * 100
+        
+    return CI, null_CI, p_val
 
