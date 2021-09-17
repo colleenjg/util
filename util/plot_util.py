@@ -1421,7 +1421,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color="k", alpha=0.5, **fillbtw_kw):
 #############################################
 def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8, 
                    xticks=None, yticks=None, label=None, fmt="-o", 
-                   **errorbar_kw):
+                   line_dash=None, **errorbar_kw):
     """
     plot_errorbars(sub_ax, y)
 
@@ -1451,6 +1451,9 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8,
                                default: None
         - fmt (str)          : data point/lines format.
                                default: "-o"
+        - line_dash (str)    : dash pattern for the data line 
+                               (not the errorbar components)
+                               default: None
 
     Kewyord args:
         - errorbar_kw (dict): keyword arguments for plt.errorbar(), 
@@ -1490,6 +1493,9 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8,
 
     sub_ax.errorbar(x, y, err, label=label, fmt=fmt, alpha=alpha, 
                     **errorbar_kw)
+
+    if line_dash is not None:
+        sub_ax.get_lines()[-3].set_linestyle(line_dash)
 
     if label is not None:
         sub_ax.legend()

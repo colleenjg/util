@@ -19,6 +19,7 @@ import os
 import random
 import re
 import sys
+import time
 import warnings
 from pathlib import Path
 
@@ -62,6 +63,48 @@ class TempWarningFilter():
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         warnings.filters = self.orig_warnings
+
+
+#############################################
+class TimeIt():
+    """
+    Context manager for timing a function, and logging duration to the logger
+    (in HHh MMmin SSsec).
+    """
+
+    def __init__(self):
+        return
+
+    def __enter__(self):
+        self.start = time.time()
+
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+
+        end = time.time()
+        duration = end - self.start # in seconds
+
+        rem_duration = duration
+        hours, mins = 0, 0
+        duration_str = ""
+        fail_str = " (failed)" if exc_type else ""
+
+        secs_per_hour = 60 * 60
+        if duration > secs_per_hour:
+            hours = int(rem_duration // secs_per_hour)
+            rem_duration = rem_duration - hours * secs_per_hour
+            duration_str = f"{duration_str}{hours}h "
+        
+        secs_per_min = 60
+        if duration > secs_per_min:
+            mins = int(rem_duration // secs_per_min)
+            rem_duration = rem_duration - mins * secs_per_min
+            duration_str = f"{duration_str}{mins}m "
+        
+        secs = rem_duration
+        duration_str = f"{duration_str}{secs:.2f}s"
+
+        logger.info(f"Duration: {duration_str}{fail_str}")
 
 
 #############################################
