@@ -1182,7 +1182,7 @@ def get_percentiles(CI=0.95, tails=2):
         - CI (num)          : confidence interval
                               default: 0.95
         - tails (str or int): which tail(s) to test: "hi", "lo", "2"
-                              default: "2"
+                              default: 2
 
     Returns:
         - ps (list)     : list of percentile values, e.g., [2.5, 97.5]
@@ -1245,7 +1245,7 @@ def log_elem_list(elems, tail="hi", act_vals=None):
 
 
 #############################################    
-def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=20, 
+def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=20, 
             log_elems=False, ret_th=False, nanpol="omit", ret_pval=False):
     """
     id_elem(rand_vals, act_vals)
@@ -1262,8 +1262,8 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=20,
         - act_vals (1D array) : actual values for each element
 
     Optional args:
-        - tails (str or int): which tail(s) to test: "hi", "lo", "2"
-                              default: "2"
+        - tails (str or int): which tail(s) to test: "hi", "lo", "2", 2
+                              default: 2
         - p_val (num)       : p-value to use for significance thresholding 
                               (0 to 1)
                               default: 0.05
@@ -1349,8 +1349,11 @@ def id_elem(rand_vals, act_vals, tails="2", p_val=0.05, min_n=20,
     if ret_pval:
         act_percs = [scist.percentileofscore(sub_rand_vals, val) 
             for (sub_rand_vals, val) in zip(rand_vals, act_vals)]
-        act_pvals = [1 - perc/100 if perc > 50 else perc/100 
-            for perc in act_percs]
+        act_pvals = []
+        for perc in act_percs:
+            if str(tails) in ["hi", "2"] and perc > 50:
+                perc = 100 - perc
+            act_pvals.append(perc / 100)
 
     returns = [elems]
     if ret_th:
@@ -1392,8 +1395,9 @@ def get_p_val_from_rand(act_data, rand_data, return_CIs=False, p_thresh=0.05,
                               default: False
         - p_thresh (float)  : p-value to use to build CI
                               default: 0.05
-        - tails (str or int): which tail(s) to use in building CI
-                              default: "2"
+        - tails (str or int): which tail(s) to use in building CI, and 
+                              inverting p-values above 0.5
+                              default: 2
         - multcomp (int)    : number of comparisons to correct CI for
                               default: None
 
@@ -1410,7 +1414,7 @@ def get_p_val_from_rand(act_data, rand_data, return_CIs=False, p_thresh=0.05,
         raise ValueError("Expected rand_data to be 1-dimensional.")
 
     perc = scist.percentileofscore(sorted_rand_data, act_data, kind='mean')
-    if perc > 50:
+    if str(tails) in ["hi", "2"] and perc > 50:
         perc = 100 - perc
     p_val = perc / 100
 
@@ -1457,7 +1461,7 @@ def get_diff_p_val(act_data, n_perms=10000, stats="mean", op="diff",
         - p_thresh (float)  : p-value to use to build CI
                               default: 0.05
         - tails (str or int): which tail(s) to use in building CI
-                              default: "2"
+                              default: 2
         - multcomp (int)    : number of comparisons to correct CI for
                               default: None
         - paired (bool)     : if True, paired comparisons are done.  
@@ -1843,7 +1847,7 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False,
 
 
 #############################################
-def binom_CI(p_thresh, perc, n_items, null_perc, multcomp=None):
+def binom_CI(p_thresh, perc, n_items, null_perc, tails=2, multcomp=None):
     """
     binom_CI(p_thresh, perc, n_items, null_perc)
 
@@ -1869,8 +1873,10 @@ def binom_CI(p_thresh, perc, n_items, null_perc, multcomp=None):
         - null_perc (float): null percentage expected (0-100)
 
     Optional args:
-        - multcomp (int): number of comparisons to correct CIs for
-                          default: None
+        - tails (str or int): which tail(s) to use in evaluating p-value
+                              default: 2
+        - multcomp (int)    : number of comparisons to correct CIs for
+                              default: None
 
     Returns:
         - CI (1D array)     : low, median and high values for the confidence 
@@ -1893,7 +1899,8 @@ def binom_CI(p_thresh, perc, n_items, null_perc, multcomp=None):
     
     # Calculate the p-val of the true value for the null distro
     p_val = scist.binom.cdf(perc / 100 * n_items, n_items, null_perc / 100)
-    if p_val > 0.50:
+
+    if str(tails) in ["hi", "2"] and p_val > 0.50:
         p_val = 1 - p_val
 
     # Calculate the confidence interval for the null distro

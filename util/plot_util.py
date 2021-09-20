@@ -1927,8 +1927,8 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
         - cbar (plt Colorbar): pyplot colorbar
     """
 
-    cm_w = cm_prop/n_cols
-    fig.subplots_adjust(right=1-cm_w*2)
+    cm_w = cm_prop / n_cols
+    fig.subplots_adjust(right=1 - cm_w*2)
     cbar_ax = fig.add_axes([1, 0.15, cm_w, 0.7])
     cbar = fig.colorbar(im, cax=cbar_ax, **cbar_kw)
 
