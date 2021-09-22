@@ -2130,7 +2130,7 @@ def plot_ufo(sub_ax, x, y, err=None, color="k", no_line=False, **errorbar_kw):
 
     if not no_line:
         # plot actual data as line
-        plot_CI(sub_ax, np.asarray([y, y]).reshape(-1, 1), med=[y], x=[x], 
+        plot_CI(sub_ax, np.asarray([y, y]).reshape(-1, 1), med=y, x=x, 
             width=0.6, med_col=color, med_rat=0.025)
 
     # plot errorbars
@@ -2185,9 +2185,12 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
                             default: None
     """
 
+    x = np.asarray(x).reshape(-1)
+    med = np.asarray(med).reshape(-1)
+
     extr = np.asarray(extr)
     if len(extr.shape) == 1:
-        extr.reshape([-1, 1])
+        extr = extr.reshape([-1, 1])
     if extr.shape[0] != 2:
         raise ValueError("Must provide exactly 2 extrema values for each bar.")
 
@@ -2385,15 +2388,20 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
 
             # 1 signif digit for differences
             if step == 0:
-                o = 0
+                o, o_half = 0, 0
             else:
-                order = math_util.get_order_of_mag(step * 2)
-                o = np.max([-order, 0]).astype(int)
+                o = -int(math_util.get_order_of_mag(step * 2))
+                if skip:
+                    o_half = -int(math_util.get_order_of_mag(step))
 
+            step = np.around(step * 2, o) / 2
             step = step * 2 if not skip else step
 
-            tick_vals = np.linspace(min_tick_idx * step, max_tick_idx * step, 
-                max_tick_idx - min_tick_idx + 1)
+            tick_vals = np.linspace(
+                min_tick_idx * step, 
+                max_tick_idx * step, 
+                max_tick_idx - min_tick_idx + 1
+                )
 
             idx = np.where(tick_vals == 0)[0]
             if 0 not in tick_vals:
@@ -2402,13 +2410,13 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
             labels = []
             final_tick_vals = []
             for v, val in enumerate(tick_vals):
+                val = np.around(val, o + 3) # to avoid floating point precision problems
+                final_tick_vals.append(val)                    
+                
                 if (v % 2 == idx % 2) or not skip:
-                    final_tick_vals.append(val)
-                    if str(val)[-1] == "5":
-                        val += 0.000000001 # to avoid .5 rounding asymmetry
-                    labels.append("{:.{prec}f}".format(val, prec=o))
+                    val = int(val) if int(val) == val else val
+                    labels.append(val)
                 else:
-                    final_tick_vals.append(val)
                     labels.append("")
 
         if dim == "x":
@@ -2493,12 +2501,19 @@ def rounded_lims(lims):
 
     if lim_diff != 0:
         order = math_util.get_order_of_mag(lim_diff)
-        o = np.max([-order, 0]).astype(int)
+        o = -int(order) 
 
-        new_lims = [
-            np.around(lim * 10 ** o) / 10 ** o for lim in lims
-            ]
-    
+        new_lims = []
+        for lim in lims:
+            if lim < 0:
+                new_lim = -np.around(-lim * 10 ** o)
+            else:
+                new_lim = np.around(lim * 10 ** o)
+
+            new_lim = new_lim / 10 ** o
+            
+            new_lims.append(new_lim)
+
     return new_lims
 
 

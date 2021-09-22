@@ -402,7 +402,7 @@ def pos_idx(idx, leng):
 
     Required args:
         - idx (int or list): index or list of indices
-        - leng (int)       : length of the axis
+        - leng (int)       : number of axes/dimensions
 
     Returns:
         - idx (int or list): modified index or list of indices (all positive)

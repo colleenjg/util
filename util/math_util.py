@@ -191,6 +191,115 @@ def error_stat(data, stats="mean", error="sem", axis=None, nanpol=None,
 
 
 #############################################
+def bootstrapped_std(data, n=None, n_samples=1000, proportion=False, 
+                     randst=None, choices=None, return_rand=False, 
+                     return_choices=False, nanpol=None):
+    """
+    bootstrapped_std(data)
+    
+    Returns bootstrapped standard deviation of the mean or proportion.
+
+    Required args:
+        - data (float or 1D array): proportion or full data for mean
+    
+    Optional args:
+        - n (int)              : number of datapoints in dataset. Required if 
+                                 proportion is True.
+                                 default: None
+        - n_samples (int)      : number of samplings to take for bootstrapping
+                                 default: 1000
+        - proportion (bool)    : if True, data is a proportion (0-1)
+                                 default: False
+        - randst (int)         : seed or random state to use when generating 
+                                 random values.
+                                 default: None
+        - choices (1D array)   : int array to index data, if proportion is 
+                                 False. If None, random values as selected.
+                                 default: None 
+        - return_rand (bool)   : if True, random data is returned
+                                 default: False
+        - return_choices (bool): if True, choices are returned
+                                 default: False
+        - nanpol (str)         : policy for NaNs, "omit" or None
+                                 default: None
+
+    Returns:
+        - bootstrapped_std (float): bootstrapped standard deviation of mean or 
+                                    percentage
+        if return_rand:
+        - rand_data (1D array)    : randomly generated means
+        if return_choices:
+        - choices 
+    """
+
+    if randst is None:
+        randst = np.random
+    elif isinstance(randst, int):
+        randst = np.random.RandomState(randst) 
+
+    n_samples = int(n_samples)
+
+    # random values
+    if proportion:
+        if return_choices or choices is not None:
+            raise ValueError(
+                "return_choices and choices only apply if proportion is False."
+                )
+        if data < 0 or data > 1:
+            raise ValueError("'data' must lie between 0 and 1 if it is a "
+                "proportion.")
+        if n is None:
+            raise ValueError("Must provide n if data is a proportion.")
+        
+        # random proportions
+        rand_data = mean_med(
+            randst.rand(n * n_samples).reshape(n, n_samples) < data, 
+            stats="mean", axis=0
+            )
+        
+    else:
+        if n is not None and n != len(data):
+            raise ValueError("If n is provided, it must be the length of data.")
+        n = len(data)
+
+        if choices is not None:
+            choices = np.asarray(choices)
+            if len(choices) != n:
+                raise ValueError("choices should have as many values as data.")
+            if choices.min() < 0 or choices.max() >= n:
+                raise ValueError(
+                    "choices must cannot contain values below 0 or above "
+                    "data length - 1."
+                    )
+            if (choices.astype(int) != choices).any():
+                raise ValueError("choices is contain indices for data.")
+            choices = choices.astype(int)
+
+        else:
+            choices = np.arange(n)
+            choices = randst.choice(choices, (n, n_samples), replace=True)
+   
+        # random means
+        rand_data = mean_med(
+            data[choices], stats="mean", nanpol=nanpol, axis=0
+            )
+
+    bootstrapped_std = error_stat(
+        rand_data, stats="mean", error="std", nanpol=nanpol
+        )
+    
+    returns = [bootstrapped_std]
+    if return_rand:
+        returns = returns + [rand_data]
+    if return_choices:
+        returns = returns + [choices]
+    if not (return_rand or return_choices):
+        returns = bootstrapped_std
+
+    return returns
+
+
+#############################################
 def outlier_bounds(data, fences="outer", axis=None, nanpol=None):
     """
     outlier_bounds(data)
@@ -472,6 +581,8 @@ def rolling_mean(vals, win=3):
 
     Returns rolling mean over the last dimension of the input data.
 
+    NaNs/Infs will propagate.
+
     Required args:
         - vals (nd array): data array, for which rolling mean will be taken 
                            along last dimension
@@ -489,6 +600,42 @@ def rolling_mean(vals, win=3):
     vals_out = scn.convolve(vals, weights, mode="mirror")
 
     return vals_out
+
+
+#############################################
+def np_pearson_r(x, y, axis=0, nanpol=None):
+    """
+    np_pearson_r(x, y)
+
+
+
+    """
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    if nanpol not in [None, "omit"]:
+        gen_util.accepted_values_error("nanpol", nanpol, ["[None]", "omit"])
+
+    if x.shape != y.shape:
+        raise ValueError("x and y must have the same shape.")
+
+    mean_fct = np.mean if nanpol is None else np.nanmean
+    sum_fct = np.sum if nanpol is None else np.nansum
+
+
+    x_centered = x - mean_fct(x, axis=axis, keepdims=True)
+    y_centered = y - mean_fct(y, axis=axis, keepdims=True)
+    x_centered_ss = sum_fct(x_centered * x_centered, axis=axis)
+    y_centered_ss = sum_fct(y_centered * y_centered, axis=axis)
+
+    corr = (
+        sum_fct(x_centered * y_centered, axis=axis) /
+        np.sqrt(x_centered_ss * y_centered_ss)
+        )
+    # bound the values to -1 to 1 (for precision problems) -> propagate NaNs
+    corr_bounded = np.maximum(np.minimum(corr, 1.0), -1.0)
+
+    return corr_bounded
 
 
 #############################################
@@ -510,14 +657,18 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
                         "d-prime": (mean(index 1) - mean(index 0)) / 
                                    (sqrt(
                                      1/2 * (std(index 1)**2 + std(index 0)**2))
+                        "corr": pearson correlation between groups along axis
+                        "diff_corr": pearson correlation between 
+                                     grp1 and grp2 - grp1 
                         default: "diff"
-        - dim (int)   : dimension along which to do operation
+        - dim (int)   : dimension along which to split groups
                         default: 0
         - rev (bool)  : if True, indices 1 and 0 are reversed
                         default: False
         - nanpol (str): policy for NaNs, "omit" or None
                         default: None
-        - axis (int)  : axis along which to take stats, e.g. std for "d-prime"
+        - axis (int)  : axis along which to take stats, indexed within each 
+                        group, e.g. std for "d-prime"
                         default: -1
     
     Returns:
@@ -547,20 +698,32 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
         if op == "diff":
             data = (data[fir_idx] - data[sec_idx])
         elif op == "ratio":
-            data = (data[fir_idx]/data[sec_idx])
+            data = (data[fir_idx] / data[sec_idx])
         elif op == "rel_diff":
             data = (data[fir_idx] - data[sec_idx])/ \
                 (data[fir_idx] + data[sec_idx])
         elif op == "d-prime":
-            mean_diff = (np.mean(data[fir_idx], axis=axis) 
-                        - np.mean(data[sec_idx], axis=axis))
-            stds = (np.std(data[fir_idx], axis=axis),
-                   np.std(data[sec_idx], axis=axis))
+            mean_diff = np.diff([
+                mean_med(data[sec_idx], stats="mean", axis=axis, nanpol=nanpol),
+                mean_med(data[fir_idx], stats="mean", axis=axis, nanpol=nanpol)
+                ], axis=0)[0] # remove singleton dimension
+            stds = [
+                error_stat(data[fir_idx], error="std", axis=axis, nanpol=nanpol),
+                error_stat(data[sec_idx], error="std", axis=axis, nanpol=nanpol)
+            ]
             div = np.sqrt(0.5 * np.sum(np.power(stds, 2), axis=0))
-            data = mean_diff/div
+            data = mean_diff / div
+        elif op in ["corr", "diff_corr"]:
+            if op == "corr":
+                corr_data = data[fir_idx], data[sec_idx]
+            elif op == "diff_corr":
+                corr_data = [data[sec_idx], data[fir_idx] - data[sec_idx]]
+            data = np_pearson_r(*corr_data, axis=axis, nanpol=None)
         else:
             gen_util.accepted_values_error(
-                "op", op, ["diff", "ratio", "rel_diff", "d-prime"])
+                "op", op, 
+                ["diff", "ratio", "rel_diff", "d-prime", "corr", "diff_corr"]
+                )
     
     return data
 
@@ -933,6 +1096,46 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op="diff",
 
 
 #############################################
+def get_percentiles(CI=0.95, tails=2):
+    """
+    get_percentiles()
+
+    Returns percentiles and names corresponding to the confidence interval
+    (centered on the median).
+
+    Optional args:
+        - CI (num)          : confidence interval
+                              default: 0.95
+        - tails (str or int): which tail(s) to test: "hi", "lo", "2"
+                              default: 2
+
+    Returns:
+        - ps (list)     : list of percentile values, e.g., [2.5, 97.5]
+        - p_names (list): list of percentile names, e.g., ["p2-5", "p97-5"]
+    """
+
+    if CI < 0 or CI > 1:
+        raise ValueError("CI must be between 0 and 1.")
+
+    CI *= 100
+
+    if tails == "hi":
+        ps = [0.0, CI]
+    elif tails == "lo":
+        ps = [100 - CI, 100]
+    elif tails in ["2", 2]:
+        ps = [0.5 * (100 + v) for v in [-CI, CI]]
+    else:
+        gen_util.accepted_values_error("tails", tails, ["hi", "lo", 2])
+
+    p_names = []
+    for p in ps:
+        p_names.append(f"p{gen_util.num_to_str(p)}")
+
+    return ps, p_names
+    
+
+#############################################
 def check_n_rand(n_rand=1000, p_val=0.05, min_n=MIN_N, raise_err=True):
     """
     check_n_rand()
@@ -987,7 +1190,7 @@ def adj_n_perms(n_comp, p_val=0.05, n_perms=10000, min_n=MIN_N):
 
 
 #############################################
-def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE):
+def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False):
     """
     run_permute(all_data)
 
@@ -995,9 +1198,13 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE):
     throw an AssertionError if permuted data array is projected to exceed 
     limit. 
 
+    NOTE:: if data is not paired, to save memory, datapoints are permuted 
+    together across items, for each permutation.
+
     Required args:
-        - all_data (2D array)  : full data on which to run permutation
-                                 (items x datapoints to permute (all groups))
+        - all_data (2D array): full data on which to run permutation
+                               if paired: groups x datapoints to permute (2)
+                               else: items x datapoints to permute (all groups)
 
     Optional args:
         - n_perms  (int): nbr of permutations to run
@@ -1008,6 +1215,11 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE):
                           Default value be set externally by setting 
                           LIM_E6_SIZE as an environment variable.
                           default: LIM_E6_SIZE
+        - paired (bool) : if True, all_data is paired
+                          if "within", pairs are shuffled, instead of 
+                          datapoints
+                          default: False
+
     Returns:
         - permed_data (3D array): array of multiple permutation of the data, 
                                   structured as: 
@@ -1017,6 +1229,12 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE):
     if len(all_data.shape) > 2:
         raise NotImplementedError("Permutation analysis only implemented for "
             "2D data.")
+
+    if paired and all_data.shape[1] != 2:
+        raise ValueError(
+            "If paired is True, second dimension of all_data should be of "
+            "length 2."
+            )
 
     # checks final size of permutation array and throws an error if
     # it is bigger than accepted limit.
@@ -1029,24 +1247,41 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE):
         if perm_size > lim:
             raise RuntimeError(permute_cri)
 
-    # (item x datapoints (all groups))
     # (sample with n_perms in first dimension, so results are consistent 
     # within permutations, for different values of n_perms)
-    perms_idxs = np.argsort(
-        np.random.rand(n_perms, all_data.shape[1]).T, axis=0
-        )[np.newaxis, :, :]
+    if paired:
+        if paired == "within":
+            all_data = all_data.T # shuffle pairings instead of datatpoints
+        rand_shape = (n_perms, ) + all_data.shape    
+        transpose = (1, 2, 0)
+        sort_axis = 1
+    else:
+        rand_shape = (n_perms, all_data.shape[1]) # permute columns together
+        transpose = (1, 0)
+        sort_axis = 0
 
-    dim_data   = np.arange(all_data.shape[0])[:, np.newaxis, np.newaxis]
+    # (item x datapoints (all groups))
+    perm_idxs = np.argsort(
+        np.transpose(np.random.rand(*rand_shape), transpose), axis=sort_axis
+        )
+    if not paired:
+        perm_idxs = perm_idxs[np.newaxis, :, :] # add row dimension
+        sort_axis = 1
+
+    dim_data = np.arange(all_data.shape[0])[:, np.newaxis, np.newaxis]
 
     # generate permutation array
-    permed_data = np.stack(all_data[dim_data, perms_idxs])
+    permed_data = np.stack(all_data[dim_data, perm_idxs])
+
+    if paired == "within": # transpose back
+        permed_data = np.transpose(permed_data, (1, 0, 2))
 
     return permed_data
 
 
 #############################################
 def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean", 
-                       nanpol=None, op="diff"):       
+                       nanpol=None, op="diff", paired=False):       
     """
     permute_diff_ratio(all_data)
 
@@ -1055,10 +1290,12 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
 
     Required args:
         - all_data (2D array): full data on which to run permutation
-                               (items x datapoints to permute (all groups))
+                               if paired: groups x datapoints to permute (2)
+                               else: items x datapoints to permute (all groups)
 
     Optional args:
-        - div (str or int)  : nbr of datapoints in first group
+        - div (str or int)  : nbr of datapoints in first group 
+                              (ignored if data is paired)
                               default: "half"
         - n_perms (int)     : nbr of permutations to run
                               default: 10000
@@ -1076,8 +1313,17 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                                          (sqrt(1/2 * 
                                              (std(index 1)**2 + std(index 0)**2)
                                          )
+                              "corr": pearson correlation 
+                                      (only possible if paired is True)
+                              "diff_corr": pearson correlation between 
+                                           grp1 and grp2 - grp1 
+                                           (only possible if paired is True)
                               "none"
                               default: "diff"
+        - paired (bool)     : if True, all_data is paired
+                              if "within", pairs are shuffled, instead of 
+                              datapoints
+                              default: False
 
     Returns:
         - all_rand_vals (2 or 3D array): permutation results, structured as:
@@ -1085,10 +1331,15 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                                              items x perms
     """
 
-    if len(all_data.shape) > 2:
+    if len(all_data.shape) != 2:
         raise NotImplementedError("Significant difference/ratio analysis only "
             "implemented for 2D data.")
-    
+
+    if op == "corr" and not paired:
+        raise ValueError(
+            "Correlation operation can only be done if data is paired."
+            )
+
     all_rand_res = []
     perm = True
     n_perms_tot = n_perms
@@ -1102,24 +1353,33 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
             perms_rem = n_perms_tot - perms_done
             if perms_rem < n_perms:
                 n_perms = perms_rem
-            permed_data = run_permute(all_data, n_perms=int(n_perms))
-
-            if op != "d-prime":
+            permed_data = run_permute(
+                all_data, n_perms=int(n_perms), paired=paired
+                )
+            
+            if op not in ["d-prime", "corr", "diff_corr"]:
                 axis = None
-                rand = np.stack([
-                    mean_med(
-                        permed_data[:, 0:div], stats, axis=1, nanpol=nanpol
-                        ), 
-                    mean_med(
-                        permed_data[:, div:], stats, axis=1, nanpol=nanpol
-                        )
-                    ])
+                if paired:
+                    rand = mean_med(permed_data, stats, axis=0, nanpol=nanpol) 
+                else:
+                    rand = np.stack([
+                        mean_med(
+                            permed_data[:, 0:div], stats, axis=1, nanpol=nanpol
+                            ), 
+                        mean_med(
+                            permed_data[:, div:], stats, axis=1, nanpol=nanpol
+                            )
+                        ])
             else:
-                # don't take mean yet
                 axis = 1
-                rand = [permed_data[:, 0:div], permed_data[:, div:]]
+                if paired:                    
+                    # dummy item dimension, then 
+                    # transpose to (2, 1, datapoints, perms)
+                    rand = np.transpose(permed_data[np.newaxis], (2, 0, 1, 3))
+                else:
+                    rand = [permed_data[:, 0:div], permed_data[:, div:]]
 
-            if op == "none":
+            if op.lower() == "none":
                 rand_res = rand
             else:
                 # calculate grp2-grp1 or grp2/grp1... -> elem x perms
@@ -1146,69 +1406,307 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
 
 
 #############################################
-def lin_interp_nan(data_arr):
+def get_p_val_from_rand(act_data, rand_data, return_CIs=False, p_thresh=0.05, 
+                        tails=2, multcomp=None, nanpol=None):
     """
-    lin_interp_nan(data_arr)
+    get_p_val_from_rand(act_data, rand_data)
 
-    Linearly interpolate NaNs in data array.
+    Returns p-value obtained from a random null distribution of the data.
 
     Required args:
-        - data_arr (1D array): data array
+        - act_data (num)      : actual data
+        - rand_data (1D array): random values
+    
+    Optional args:
+        - return_CIs (bool) : if True, confidence intervals (CI) are returned 
+                              as well
+                              default: False
+        - p_thresh (float)  : p-value to use to build CI
+                              default: 0.05
+        - tails (str or int): which tail(s) to use in building CI, and 
+                              inverting p-values above 0.5
+                              default: 2
+        - multcomp (int)    : number of comparisons to correct CI for
+                              default: None
+        - nanpol (str)      : policy for NaNs, "omit" or None when taking 
+                              statistics
+                              default: None
 
     Returns:
-        - data_arr_interp (1D array): linearly interpolated data array
+        - p_val (float): p-value calculated from a randomly generated 
+                         null distribution (not corrected)
+        if return_CIs:
+        - null_CI (list): null confidence interval (low, median, high), 
+                          adjusted for multiple comparisons
     """
 
-    arr_len = len(data_arr)
+    sorted_rand_data = np.sort(rand_data)
+    if len(rand_data.shape) != 1:
+        raise ValueError("Expected rand_data to be 1-dimensional.")
+    
+    if np.isnan(act_data):
+        p_val = np.NaN
+        if return_CIs:
+            null_CI = [np.nan, np.nan, np.nan]
+            return p_val, null_CIs
+        else:
+            return p_val
+    
+    nans = np.isnan(sorted_rand_data)
+    if nans.sum():
+        if nanpol == "omit": # remove NaNs
+            sorted_rand_data = sorted_rand_data[~nans]
+        else:
+            raise ValueError(
+                "If 'nanpol' is None, sorted_rand_data should not include "
+                "NaN values, unless act_data is NaN.")
 
-    # get indices of non NaN values
-    nan_idx = np.where(1 - np.isnan(data_arr))[0]
+    perc = scist.percentileofscore(sorted_rand_data, act_data, kind='mean')
+    if str(tails) in ["hi", "2"] and perc > 50:
+        perc = 100 - perc
+    p_val = perc / 100
 
-    arr_no_nans = data_arr[nan_idx]
-    data_arr_interp = np.interp(range(arr_len), nan_idx, arr_no_nans)
+    if return_CIs:
+        multcomp = 1 if not multcomp else multcomp
+        corr_p_thresh = p_thresh / multcomp
+        check_n_rand(len(sorted_rand_data), p_val=corr_p_thresh)
 
-    return data_arr_interp
+        percs = get_percentiles(CI=(1 - corr_p_thresh), tails=tails)[0]
+        percs = [percs[0], 50, percs[1]]
+        null_CI = [np.percentile(sorted_rand_data, p, axis=-1) for p in percs]
+        
+        return p_val, null_CI
+    
+    else:
+        return p_val
 
 
 #############################################
-def get_percentiles(CI=0.95, tails=2):
+def get_op_p_val(act_data, n_perms=10000, stats="mean", op="diff", 
+                 return_CIs=False, p_thresh=0.05, tails=2, multcomp=None, 
+                 paired=False, return_rand=False, nanpol=None):
     """
-    get_percentiles()
+    get_op_p_val(act_data)
 
-    Returns percentiles and names corresponding to the confidence interval
-    (centered on the median).
+    Returns p-value obtained from a random null distribution constructed from 
+    the actual data.
 
+    Required args:
+        - act_data (array-like): full data on which to run permutation
+                                 (groups x datapoints to permute)
+    
     Optional args:
-        - CI (num)          : confidence interval
-                              default: 0.95
-        - tails (str or int): which tail(s) to test: "hi", "lo", "2"
+        - n_perms (int)     : number of permutations
+                              default: 10000
+        - stats (str)       : stats to use for each group
+                              default: "mean"
+        - op (str)          : operation to use to compare the group stats
+                              (see calc_op())
+                              default: "diff"
+        - return_CIs (bool) : if True, confidence intervals (CI) are returned 
+                              as well
+                              default: False
+        - p_thresh (float)  : p-value to use to build CI
+                              default: 0.05
+        - tails (str or int): which tail(s) to use in building CI
                               default: 2
+        - multcomp (int)    : number of comparisons to correct CI for
+                              default: None
+        - paired (bool)     : if True, paired comparisons are done.
+                              if "within", pairs are shuffled, instead of 
+                              datapoints
+                              default: False
+        - return_rand (bool): if True, random data is returned
+                              default: False
+        - nanpol (str)      : policy for NaNs, "omit" or None when taking 
+                              statistics
+                              default: None
 
     Returns:
-        - ps (list)     : list of percentile values, e.g., [2.5, 97.5]
-        - p_names (list): list of percentile names, e.g., ["p2-5", "p97-5"]
+        - p_val (float) : p-value calculated from a randomly generated 
+                          null distribution (not corrected)
+        if return_CIs:
+        - null_CI (list): null confidence interval (low, median, high), 
+                          adjusted for multiple comparisons
+        if return_rand:
+        - rand_vals (1D array): randomly generated data
     """
 
-    if CI < 0 or CI > 1:
-        raise ValueError("CI must be between 0 and 1.")
+    if len(act_data) != 2:
+        raise ValueError("Expected 'act_data' to comprise 2 groups.")
 
-    CI *= 100
+    grp1, grp2 = [np.asarray(grp_data) for grp_data in act_data]
 
-    if tails == "hi":
-        ps = [0.0, CI]
-    elif tails == "lo":
-        ps = [100 - CI, 100]
-    elif tails in ["2", 2]:
-        ps = [0.5 * (100 + v) for v in [-CI, CI]]
+    if len(grp1.shape) != 1 or len(grp2.shape) != 1:
+        raise ValueError("Expected act_data groups to be 1-dimensional.")
+
+    if paired:
+        if len(grp1) != len(grp2):
+            raise ValueError(
+                "If data is paired, groups must have the same length."
+                )
+        real_vals = calc_op([grp1, grp2], op=op, nanpol=nanpol)
+        real_val = mean_med(real_vals, stats=stats, nanpol=nanpol)
+        concat = np.vstack([grp1, grp2]).T # groups x datapoints (2)
+        div = None
+
     else:
-        gen_util.accepted_values_error("tails", tails, ["hi", "lo", 2])
+        data = [grp1, grp2]
+        if op != "d-prime":
+            data = [mean_med(grp, stats=stats, nanpol=nanpol) for grp in data]
+        real_val = calc_op(data, op=op, nanpol=nanpol)
 
-    p_names = []
-    for p in ps:
-        p_names.append(f"p{gen_util.num_to_str(p)}")
+        concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1) # add items dim
+        div = len(grp1)
 
-    return ps, p_names
+    rand_vals = permute_diff_ratio(
+        concat, div=div, n_perms=n_perms, stats=stats, op=op, paired=paired, 
+        nanpol=nanpol
+        ).squeeze()
+    if len(rand_vals.shape) == 0:
+        rand_vals = rand_vals.reshape(1)
+
+    returns = get_p_val_from_rand(
+        real_val, rand_vals, return_CIs=return_CIs, p_thresh=p_thresh, 
+        tails=tails, multcomp=multcomp
+        )
     
+    if return_rand:
+        if return_CIs:
+            returns = returns + [rand_vals]
+        else:
+            returns = [p_val, rand_vals]
+    
+    return returns
+
+
+#############################################
+def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean", 
+                         paired=False, nanpol=None):
+    """
+    comp_vals_acr_groups(act_data)
+
+    Returns p-values for comparisons across groups.
+
+    Required args:
+        - act_data (array-like): full data on which to run permutation
+                                 (groups x datapoints to permute)
+
+    Optional args:
+        - n_perms (int): number of permutations to do if doing a permutation 
+                         test. If None, a different test is used
+                         default: None
+        - stats (str)  : stats to use for each group
+                         default: "mean"
+        - normal (bool): whether data is expected to be normal or not 
+                         (determines whether a t-test or Mann Whitney test 
+                         will be done. Ignored if n_perms is not None.)
+                         default: True
+        - paired (bool): if True, paired comparisons are done.  
+                         if "within", pairs are shuffled, instead of 
+                         datapoints
+                         default: False
+        - nanpol (str) : policy for NaNs, "omit" or None when taking statistics
+                         default: None
+
+    Returns:
+        - p_vals (1D array): p values for each comparison, organized by 
+                             group pairs (where the second group is cycled 
+                             in the inner loop, e.g., 0-1, 0-2, 1-2, including 
+                             None groups)
+    """
+
+    n_comp = sum(range(len(act_data)))
+    p_vals = np.full(n_comp, np.nan)
+    i = 0
+    for g, g_data in enumerate(act_data):
+        for g_data_2 in act_data[g + 1:]:
+            if g_data is not None and g_data_2 is not None and \
+                len(g_data) != 0 and len(g_data_2) != 0:
+                
+                if n_perms is not None:
+                    p_vals[i] = get_op_p_val(
+                        [g_data, g_data_2], n_perms, stats=stats, op="diff", 
+                        paired=paired, nanpol=nanpol)
+                elif normal:
+                    fct = scist.ttest_rel if paired else scist.ttest_ind
+                    p_vals[i] = fct(g_data, g_data_2, axis=None)[1]
+                else:
+                    fct = scist.wilcoxon if paired else scist.mannwhitneyu 
+                    p_vals[i] = fct(g_data, g_data_2)[1]
+            i += 1
+    
+    return p_vals
+
+
+#############################################
+def binom_CI(p_thresh, perc, n_items, null_perc, tails=2, multcomp=None):
+    """
+    binom_CI(p_thresh, perc, n_items, null_perc)
+
+    Returns theoretical confidence intervals over a percentage using binomial 
+    distribution.
+
+    NOTE: p_values and CIs may not correspond exactly, due to rounding effects,
+    given that the binomial distribution is a discrete probability distribution.
+
+    Specifically, scist.binom.ppf always returns an integer number of items, 
+    regardless of the thresholds (p_thresh) requested. Thus, lower values of 
+    n_items yield lower resolution CIs, with a larger range of p-value 
+    thresholds outputting the same CI values.
+
+    As a result, at the CI edges, p_val may be a better measure of 
+    significance than the CIs.
+
+    Required args:
+        - p_thresh (float) : desired p-value, two-tailed, 
+                             e.g. 0.05 for a CI ranging from 2.5 to 97.5
+        - perc (float)     : percentage of significant items (0-100)
+        - n_items (int)    : number of items
+        - null_perc (float): null percentage expected (0-100)
+
+    Optional args:
+        - tails (str or int): which tail(s) to use in evaluating p-value
+                              default: 2
+        - multcomp (int)    : number of comparisons to correct CIs for
+                              default: None
+
+    Returns:
+        - CI (1D array)     : low, median and high values for the confidence 
+                              interval over the true percentage (perc)
+        - null_CI (1D array): low, median and high values for the confidence 
+                              interval over the null percentage expected 
+                              (null_perc)
+        - p_val (float)     : uncorrected p-value of the true percentage given 
+                              the theoretical null distribution
+    """
+
+    multcomp = 1 if not multcomp else multcomp
+    
+    # Calculate the confidence interval for "frac_pos/sig".
+    threshs = [p_thresh / (multcomp * 2), 0.5, 1 - p_thresh / (multcomp * 2)]
+    CI_low, CI_med, CI_high = [
+        scist.binom.ppf(thresh, n_items, perc / 100) / n_items 
+        for thresh in threshs
+        ]
+    
+    # Calculate the p-val of the true value for the null distro
+    p_val = scist.binom.cdf(perc / 100 * n_items, n_items, null_perc / 100)
+
+    if str(tails) in ["hi", "2"] and p_val > 0.50:
+        p_val = 1 - p_val
+
+    # Calculate the confidence interval for the null distro
+    null_CI_low, null_CI_med, null_CI_high = [
+        scist.binom.ppf(thresh, n_items, null_perc / 100) / n_items 
+        for thresh in threshs
+        ]
+    
+    CI = np.asarray([CI_low, CI_med, CI_high]) * 100
+    null_CI = np.asarray([null_CI_low, null_CI_med, null_CI_high]) * 100
+        
+    return CI, null_CI, p_val
+
 
 #############################################
 def log_elem_list(elems, tail="hi", act_vals=None):
@@ -1245,8 +1743,8 @@ def log_elem_list(elems, tail="hi", act_vals=None):
 
 
 #############################################    
-def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=20, 
-            log_elems=False, ret_th=False, nanpol="omit", ret_pval=False):
+def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=MIN_N, 
+            log_elems=False, ret_th=False, ret_pval=False):
     """
     id_elem(rand_vals, act_vals)
 
@@ -1269,15 +1767,11 @@ def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=20,
                               default: 0.05
         - min_n (int)       : minimum number of values required outside of the 
                               CI
-                              default: 100
+                              default: MIN_N
         - log_elems (bool)  : if True, the indices of significant elements and
                               their actual values are logged
                               default: False
         - ret_th (bool)     : if True, thresholds are returned for each element
-                              default: False
-        - nanpol (str)      : if "omit", NaNs in act_vals are allowed, and
-                              prevented from leading to positive significance
-                              evaluation
                               default: False
         - ret_pval (bool)   : if True, p-values are returned for each element
                               default: False
@@ -1316,11 +1810,11 @@ def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=20,
     nan_rand_vals = np.isnan(rand_vals).any()
 
     if nan_act_vals > 0:
-        raise RuntimeError("NaNs encountered in actual values.")
+        raise NotImplementedError("NaNs encountered in actual values.")
     if nan_rand_vals > 0:
-        raise RuntimeError("NaNs encountered in random values.")
+        raise NotImplementedError("NaNs encountered in random values.")
 
-    check_n_rand(rand_vals.shape[-1], p_val)
+    check_n_rand(rand_vals.shape[-1], p_val, min_n=min_n)
 
     if tails == "lo":
         threshs = np.percentile(rand_vals, p_val*100, axis=-1)
@@ -1378,208 +1872,28 @@ def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=20,
 
 
 #############################################
-def get_p_val_from_rand(act_data, rand_data, return_CIs=False, p_thresh=0.05, 
-                        tails=2, multcomp=None):
+def lin_interp_nan(data_arr):
     """
-    get_p_val_from_rand(act_data, rand_data)
+    lin_interp_nan(data_arr)
 
-    Returns p-value obtained from a random null distribution of the data.
+    Linearly interpolate NaNs in data array.
 
     Required args:
-        - act_data (num)      : actual data
-        - rand_data (1D array): random values
-    
-    Optional args:
-        - return_CIs (bool) : if True, confidence intervals (CI) are returned 
-                              as well
-                              default: False
-        - p_thresh (float)  : p-value to use to build CI
-                              default: 0.05
-        - tails (str or int): which tail(s) to use in building CI, and 
-                              inverting p-values above 0.5
-                              default: 2
-        - multcomp (int)    : number of comparisons to correct CI for
-                              default: None
+        - data_arr (1D array): data array
 
     Returns:
-        - p_val (float): p-value calculated from a randomly generated 
-                         null distribution (not corrected)
-        if return_CIs:
-        - null_CI (list): null confidence interval (low, median, high), 
-                          adjusted for multiple comparisons
+        - data_arr_interp (1D array): linearly interpolated data array
     """
 
-    sorted_rand_data = np.sort(rand_data)
-    if len(rand_data.shape) != 1:
-        raise ValueError("Expected rand_data to be 1-dimensional.")
+    arr_len = len(data_arr)
 
-    perc = scist.percentileofscore(sorted_rand_data, act_data, kind='mean')
-    if str(tails) in ["hi", "2"] and perc > 50:
-        perc = 100 - perc
-    p_val = perc / 100
+    # get indices of non NaN values
+    nan_idx = np.where(1 - np.isnan(data_arr))[0]
 
-    if return_CIs:
-        multcomp = 1 if not multcomp else multcomp
-        corr_p_thresh = p_thresh / multcomp
-        check_n_rand(len(sorted_rand_data), p_val=corr_p_thresh)
+    arr_no_nans = data_arr[nan_idx]
+    data_arr_interp = np.interp(range(arr_len), nan_idx, arr_no_nans)
 
-        percs = get_percentiles(CI=(1 - corr_p_thresh), tails=tails)[0]
-        percs = [percs[0], 50, percs[1]]
-        null_CI = [np.percentile(sorted_rand_data, p, axis=-1) for p in percs]
-        
-        return p_val, null_CI
-    
-    else:
-        return p_val
-
-
-#############################################
-def get_diff_p_val(act_data, n_perms=10000, stats="mean", op="diff", 
-                   return_CIs=False, p_thresh=0.05, tails=2, multcomp=None, 
-                   paired=False):
-    """
-    get_diff_p_val(act_data)
-
-    Returns p-value obtained from a random null distribution constructed from 
-    the actual data.
-
-    Required args:
-        - act_data (array-like): full data on which to run permutation
-                                 (groups x datapoints to permute)
-    
-    Optional args:
-        - n_perms (int)     : number of permutations
-                              default: 10000
-        - stats (str)       : stats to use for each group
-                              default: "mean"
-        - op (str)          : operation to use to compare the group stats
-                              (see calc_op())
-                              default: "diff"
-        - return_CIs (bool) : if True, confidence intervals (CI) are returned 
-                              as well
-                              default: False
-        - p_thresh (float)  : p-value to use to build CI
-                              default: 0.05
-        - tails (str or int): which tail(s) to use in building CI
-                              default: 2
-        - multcomp (int)    : number of comparisons to correct CI for
-                              default: None
-        - paired (bool)     : if True, paired comparisons are done.  
-                              default: False
-
-    Returns:
-        - p_val (float) : p-value calculated from a randomly generated 
-                          null distribution (not corrected)
-        if return_CIs:
-        - null_CI (list): null confidence interval (low, median, high), 
-                          adjusted for multiple comparisons
-    """
-
-    if len(act_data) != 2:
-        raise ValueError("Expected 'act_data' to comprise 2 groups.")
-
-    grp1, grp2 = [np.asarray(grp_data) for grp_data in act_data]
-
-    if len(grp1.shape) != 1 or len(grp2.shape) != 1:
-        raise ValueError("Expected act_data groups to be 1-dimensional.")
-
-    real_diff = mean_med(grp2, stats=stats) - mean_med(grp1, stats=stats)
-
-    if not paired:
-        concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1) # add items dim
-        div = len(grp1)
-    else:
-        if len(grp1) != len(grp2):
-            raise ValueError(
-                "If data is paired, groups must have the same length."
-                )
-        concat = np.vstack([grp1, grp2]).T # datapoints x groups
-        div = 1 # permuting 2 values for each datapoint, since data is paired
-
-    rand_diffs = permute_diff_ratio(
-        concat, div=div, n_perms=n_perms, stats=stats, op=op
-        )
-
-    if not paired:
-        rand_diffs = np.squeeze(rand_diffs)
-        rand_diffs = \
-            rand_diffs.reshape(1) if len(rand_diffs.shape) == 0 else rand_diffs
-    else:
-        # permute within rows, as permute_diff_ratio permutes columns together! 
-        rand_perm = np.argsort(
-            np.random.permutation(rand_diffs.size).reshape(rand_diffs.shape),
-            axis=1)
-        data_idx = np.arange(len(rand_diffs)).reshape(-1, 1)
-        rand_diffs = rand_diffs[data_idx, rand_perm]
-        rand_diffs = mean_med(rand_diffs, stats=stats, axis=0)
-
-    returns = get_p_val_from_rand(
-        real_diff, rand_diffs, return_CIs=return_CIs, p_thresh=p_thresh, 
-        tails=tails, multcomp=multcomp
-        )
-    
-    if return_CIs:
-        p_val, null_CI = returns
-        return p_val, null_CI
-
-    else:
-        p_val = returns
-        return p_val
-
-
-#############################################
-def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean", 
-                         paired=False):
-    """
-    comp_vals_acr_groups(act_data)
-
-    Returns p values for comparisons across groups (unpaired).
-
-    Required args:
-        - act_data (array-like): full data on which to run permutation
-                                 (groups x datapoints to permute)
-
-    Optional args:
-        - n_perms (int): number of permutations to do if doing a permutation 
-                         test. If None, a different test is used
-                         default: None
-        - stats (str)  : stats to use for each group
-                         default: "mean"
-        - normal (bool): whether data is expected to be normal or not 
-                         (determines whether a t-test or Mann Whitney test 
-                         will be done. Ignored if n_perms is not None.)
-                         default: True
-        - paired (bool): if True, paired comparisons are done.  
-                         default: False
-
-    Returns:
-        - p_vals (1D array): p values for each comparison, organized by 
-                             group pairs (where the second group is cycled 
-                             in the inner loop, e.g., 0-1, 0-2, 1-2, including 
-                             None groups)
-    """
-
-    n_comp = sum(range(len(act_data)))
-    p_vals = np.full(n_comp, np.nan)
-    i = 0
-    for g, g_data in enumerate(act_data):
-        for g_data_2 in act_data[g + 1:]:
-            if g_data is not None and g_data_2 is not None and \
-                len(g_data) != 0 and len(g_data_2) != 0:
-                
-                if n_perms is not None:
-                    p_vals[i] = get_diff_p_val(
-                        [g_data, g_data_2], n_perms, stats=stats, op="diff", 
-                        paired=paired)
-                elif normal:
-                    fct = scist.ttest_rel if paired else scist.ttest_ind
-                    p_vals[i] = fct(g_data, g_data_2, axis=None)[1]
-                else:
-                    fct = scist.wilcoxon if paired else scist.mannwhitneyu 
-                    p_vals[i] = fct(g_data, g_data_2)[1]
-            i += 1
-    
-    return p_vals
+    return data_arr_interp
 
 
 #############################################
@@ -1781,136 +2095,4 @@ def round_by_order_of_mag(val, n_sig=1, direc="any", decimal_only=False):
         gen_util.accepted_values_error("direc", direc, ["any", "up", "down"])
 
     return rounded_val
-
-
-#############################################
-def bootstrapped_std(data, n=None, n_samples=1000, proportion=False, 
-                     randst=None):
-    """
-    bootstrapped_std(data)
-    
-    Returns bootstrapped standard deviation of the mean or proportion.
-
-    Required args:
-        - data (float or 1D array): proportion or full data for mean
-    
-    Optional args:
-        - n (int)          : number of datapoints in dataset. Required if 
-                             proportion is True.
-                             default: None
-        - n_samples (int)  : number of samplings to take for bootstrapping
-                             default: 1000
-        - proportion (bool): if True, data is a proportion (0-1)
-                             default: False
-        - randst (int)     : seed or random state to use when generating random 
-                             values.
-                             default: None
-
-    Returns:
-        - bootstrapped_std (float): bootstrapped standard deviation of mean or 
-                                    percentage
-    """
-
-    if randst is None:
-        randst = np.random
-    elif isinstance(randst, int):
-        randst = np.random.RandomState(randst) 
-
-    # random values
-    if proportion:
-        if data < 0 or data > 1:
-            raise ValueError("'data' must lie between 0 and 1 if it is a "
-                "proportion.")
-        if n is None:
-            raise ValueError("Must provide n if data is a proportion.")
-        
-        # random proportions
-        rand_data = np.mean(
-            randst.rand(n * n_samples).reshape(n, n_samples) < data, 
-            axis=0)
-        
-    else:
-        if n is not None and n != len(data):
-            raise ValueError("If n is provided, it must be the length of data.")
-        n = len(data)
-
-        choices = np.arange(n)
-   
-        # random means
-        rand_data = np.mean(
-            data[randst.choice(choices, (n, n_samples), replace=True)], 
-            axis=0)
-
-    bootstrapped_std = np.std(rand_data)
-    
-    return bootstrapped_std
-
-
-#############################################
-def binom_CI(p_thresh, perc, n_items, null_perc, tails=2, multcomp=None):
-    """
-    binom_CI(p_thresh, perc, n_items, null_perc)
-
-    Returns theoretical confidence intervals over a percentage using binomial 
-    distribution.
-
-    NOTE: p_values and CIs may not correspond exactly, due to rounding effects,
-    given that the binomial distribution is a discrete probability distribution.
-
-    Specifically, scist.binom.ppf always returns an integer number of items, 
-    regardless of the thresholds (p_thresh) requested. Thus, lower values of 
-    n_items yield lower resolution CIs, with a larger range of p-value 
-    thresholds outputting the same CI values.
-
-    As a result, at the CI edges, p_val may be a better measure of 
-    significance than the CIs.
-
-    Required args:
-        - p_thresh (float) : desired p-value, two-tailed, 
-                             e.g. 0.05 for a CI ranging from 2.5 to 97.5
-        - perc (float)     : percentage of significant items (0-100)
-        - n_items (int)    : number of items
-        - null_perc (float): null percentage expected (0-100)
-
-    Optional args:
-        - tails (str or int): which tail(s) to use in evaluating p-value
-                              default: 2
-        - multcomp (int)    : number of comparisons to correct CIs for
-                              default: None
-
-    Returns:
-        - CI (1D array)     : low, median and high values for the confidence 
-                              interval over the true percentage (perc)
-        - null_CI (1D array): low, median and high values for the confidence 
-                              interval over the null percentage expected 
-                              (null_perc)
-        - p_val (float)     : uncorrected p-value of the true percentage given 
-                              the theoretical null distribution
-    """
-
-    multcomp = 1 if not multcomp else multcomp
-    
-    # Calculate the confidence interval for "frac_pos/sig".
-    threshs = [p_thresh / (multcomp * 2), 0.5, 1 - p_thresh / (multcomp * 2)]
-    CI_low, CI_med, CI_high = [
-        scist.binom.ppf(thresh, n_items, perc / 100) / n_items 
-        for thresh in threshs
-        ]
-    
-    # Calculate the p-val of the true value for the null distro
-    p_val = scist.binom.cdf(perc / 100 * n_items, n_items, null_perc / 100)
-
-    if str(tails) in ["hi", "2"] and p_val > 0.50:
-        p_val = 1 - p_val
-
-    # Calculate the confidence interval for the null distro
-    null_CI_low, null_CI_med, null_CI_high = [
-        scist.binom.ppf(thresh, n_items, null_perc / 100) / n_items 
-        for thresh in threshs
-        ]
-    
-    CI = np.asarray([CI_low, CI_med, CI_high]) * 100
-    null_CI = np.asarray([null_CI_low, null_CI_med, null_CI_high]) * 100
-        
-    return CI, null_CI, p_val
 
