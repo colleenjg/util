@@ -46,7 +46,8 @@ except ModuleNotFoundError as err:
     TORCH_NN_MODULE = object
     pass
 
-from util import file_util, gen_util, logger_util, math_util, plot_util
+from util import file_util, gen_util, logger_util, math_util, plot_util, \
+    rand_util
 
 logger = logging.getLogger(__name__)
 
@@ -1475,7 +1476,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
 
 #############################################
 class ModData:
-    def __init__(self, scale=True, extrem=False, shuffle=False, seed=None, 
+    def __init__(self, scale=True, extrem=False, shuffle=False, randst=None, 
                  **kwargs):
         """
         Initializes a data modification tool to flatten, optionally scales
@@ -1485,13 +1486,14 @@ class ModData:
         If this case, copy of the object will use the same RandomState.  
 
         Sets attributes:
-            - _extrem (str)         : if True, extrema are used
-            - _orig_shape (tuple)   : original shape, as (frames, channels), 
-                                      though set to None
-            - _rst (np Random State): numpy random state (None if seed is None)
-            - _scaler (scaler)      : scaler to use (None if none)
-            - _seed (int)           : if not None, random seed
-            - _shuffle (bool)       : shuffle boolean
+            - _extrem (str)            : if True, extrema are used
+            - _orig_shape (tuple)      : original shape, as (frames, channels), 
+                                         though set to None
+            - _randst (np Random State): numpy random state 
+                                         (None if randst is None)
+            - _scaler (scaler)         : scaler to use (None if none)
+            - _input_randst (int)      : if not None, input random seed or state
+            - _shuffle (bool)          : shuffle boolean
 
         Optional args:
             - scale (bool)  : if True, data is scaled by channel using 
@@ -1501,7 +1503,7 @@ class ModData:
                               default: False
             - shuffle (bool): if True, X is shuffled
                               default: False
-            - seed (int)    : if not None, random seed
+            - randst (int)  : if not None, random seed or random state
                               default: None
         """
         if scale:
@@ -1520,23 +1522,24 @@ class ModData:
         self._shuffle = shuffle
         self._orig_shape = None
 
-        self._seed = seed
-        if self._seed is not None: 
-            # initialize random state at init only if seed provided
-            _ = self.rst
+        self._input_randst = randst
+        if self._input_randst is not None: 
+            _ = self.randst
     
     @property
-    def rst(self):
+    def randst(self):
         """
-        self.rst
+        self.randst
 
         Returns:
-            - _rst (np RandomState): numpy random state
+            - _randst (np RandomState): numpy random state
         """
         
-        if not hasattr(self, "_rst"):
-            self._rst = np.random.RandomState(self._seed)
-        return self._rst
+        if not hasattr(self, "_randst"):
+            self._randst = rand_util.get_np_rand_state(
+                self._input_randst, set_none=True
+                )
+        return self._randst
     
 
     def fit(self, X, y=None, **kwargs):
@@ -1713,7 +1716,7 @@ class ModData:
     def _get_shuffled(self, X):
         """
         Returns X shuffled across trials. Creates a new shuffling index if none
-        exists and uses a previously created one otherwise. Uses self._rst as 
+        exists and uses a previously created one otherwise. Uses self._randst as 
         random state.
 
         Note: For parallel runs with the same seed, the shuffled idx will 
@@ -1733,7 +1736,7 @@ class ModData:
 
         if not hasattr(self, "_shuff_reidx"):
             idx = np.arange(len(X)) # get trial indices
-            self.rst.shuffle(idx)
+            self.randst.shuffle(idx)
             # to get sort index corresponding to targets, not input
             self._shuff_reidx = np.argsort(idx)
         else:
@@ -1748,7 +1751,7 @@ class ModData:
 #############################################
 @catch_set_problem
 def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar, 
-                     scale=True, sample=False, split_test=False, seed=None,
+                     scale=True, sample=False, split_test=False, randst=None,
                      parallel=False, max_size=9e7, save_models=True):
     """
     run_logreg_cv_sk(roi_seqs, seq_classes, logregpar, extrapar)
@@ -1780,8 +1783,8 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
         - split_test (bool)     : if True, test sets are split in half to 
                                   create a "test_out"
                                   default: False
-        - seed (int)            : if provided, seed for sci-kit learn logistic 
-                                  regression
+        - randst (int)          : if provided, seed or random state for sci-kit 
+                                  learn logistic regression
                                   default: None
         - parallel (bool)       : if True, splits are run in parallel
                                   default: False
@@ -1828,12 +1831,12 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     mod = LogisticRegression(C=1, fit_intercept=True, class_weight="balanced", 
         penalty="l2", solver="lbfgs", max_iter=logregpar["n_epochs"], 
-        random_state=seed, multi_class="auto") # seed only used if n_jobs is not None
+        random_state=randst, multi_class="auto") # seed only used if n_jobs is not None
     scaler = ModData(scale=scale, extrem=True, shuffle=extrapar["shuffle"], 
-        seed=seed)
+        randst=randst)
     cv = StratifiedShuffleSplitMod(n_splits=extrapar["n_runs"], 
         train_p=logregpar["train_p"], sample=sample, bal=logregpar["bal"], 
-        split_test=split_test, random_state=seed)
+        split_test=split_test, random_state=randst)
 
     mod_pip = make_pipeline(scaler, mod)
 
@@ -2191,10 +2194,12 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
         - err (float)  : std/SEM/q1-3/MAD across fold scores
     """
 
+    randst = rand_util.get_np_rand_state(randst)
+
     if model == "logreg":
         clf = LogisticRegression(C=1, fit_intercept=True, 
             class_weight=class_weight, penalty="l2", solver="lbfgs",
-            max_iter=100, random_state=randst, multi_class="auto")
+            max_iter=max_iter, random_state=randst, multi_class="auto")
     elif model == "svm":
         clf = SVC(C=1, kernel="linear", gamma="auto", 
             class_weight=class_weight, random_state=randst)                    

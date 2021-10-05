@@ -251,21 +251,70 @@ def remove_if(vals, rem):
 
 
 #############################################
-def list_if_not(items):
+def is_iterable(item, excl_strings=False):
+    """
+    is_iterable(item)
+
+    Returns whether item is an iterable, based on whether the iter() function 
+    can be used with it.
+
+    Required args:
+        - item (obj): item
+
+    Optional args:
+        - excl_strings (bool): if True, a False value is returned for a string, 
+                              even though it is an iterable.
+                              default: False
+    
+    Returns:
+        - (bool): whether the input is an iterable
+    """
+
+    if excl_strings and isinstance(item, str):
+        return False
+
+    try:
+        _ = iter(item)
+        return True
+
+    except TypeError:
+        return False
+
+
+#############################################
+def list_if_not(items, any_iterable=False, excl_strings=False):
     """
     list_if_not(items)
 
-    Returns input in a list, if it is not a list.
+    Returns input in a list, if it is not a list, or, optionally, if it is not 
+    an iterable.
 
     Required args:
         - items (obj or list): item or list
+
+    Optional args:
+        - any_iterable (bool): if True, if items is an iterable, it is not 
+                               placed in a list.
+                               default: False
+        - excl_strings (bool): if True, strings are excluded from allowed 
+                               iterables, and placed in a list.
+                               default: False
 
     Returns:
         - items (list): list version of input.
     """
     
-    if not isinstance(items, list):
+    make_list = False
+
+    if any_iterable and not is_iterable(item, excl_strings=excl_strings):
+        make_list = True    
+    
+    elif not isinstance(items, list):
+        make_list = True        
+        
+    if make_list:
         items = [items]
+
     return items
 
 
@@ -274,18 +323,19 @@ def delist_if_not(items):
     """
     delist_if_not(items)
 
-    If a list contains only one element, returns the element. Otherwise,
-    returns the original list.
+    If a list or iterable contains only one element, returns the element. 
+    Otherwise, returns the original list.
 
     Required args:
-        - items (list): list
+        - items (iterable): list or iterable
 
     Returns:
-        - items (item or list): only item in the list or original list.
+        - items (item or iterable): iterable or only item in the iterable.
     """
     
     if len(items) == 1:
         items = items[0]
+
     return items
 
 
@@ -547,80 +597,6 @@ def str_to_list(item_str, only_int=False):
 
 
 #############################################
-def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True, 
-             seed_torch=False):
-    """
-    seed_all()
-
-    Seeds different random number generators using the seed provided or a
-    randomly generated seed if no seed is given.
-
-    Optional args:
-        - seed (int or None): seed value to use. (-1 treated as None)
-                              default: None
-        - device (str)      : if "cuda", torch.cuda, else if "cpu", cuda is not
-                              seeded
-                              default: "cpu"
-        - log_seed (bool)   : if True, seed value is logged
-                              default: True
-        - seed_now (bool)   : if True, random number generators are seeded now
-                              default: True
-        - seed_torch (bool) : if True, torch is seeded
-                              default: False
-    Returns:
-        - seed (int): seed value
-    """
-
-    if seed in [None, -1]:
-        MAX_INT32 = 2**32
-        seed = np.random.randint(1, MAX_INT32)
-        if log_seed:
-            logger.info(f"Random seed: {seed}")
-    else:
-        if log_seed:
-            logger.info(f"Preset seed: {seed}")
-    
-    if seed_now:
-        random.seed(seed)
-        np.random.seed(seed)
-        if seed_torch:
-            import torch
-            torch.manual_seed(seed)
-            if device == "cuda":
-                torch.cuda.manual_seed_all(seed)
-    
-    return seed
-
-
-#############################################
-def split_random_state(randst, n=10):
-    """
-    split_random_state(randst)
-
-    Returns as many new random states as requested, generated from the input 
-    random state.
-
-    Required args:
-        - randst (np.random.RandomState): random state
-    
-    Optional args:
-        - n (int): number of new random state to generate
-
-    Returns
-        - randsts (list): new random states
-    """
-
-    MAX_INT32 = 2**32
-
-    randsts = []
-    for _ in range(n):
-        new_seed = randst.randint(MAX_INT32)
-        randsts.append(np.random.RandomState(new_seed))
-
-    return randsts
-
-
-#############################################
 def conv_type(item, dtype=int):
     """
     conv_type(item)
@@ -715,7 +691,7 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
     criteria. 
 
     Required args:
-        - df (pandas df): dataframe
+        - df (pd.DataFrame): dataframe
 
     Optional args:
         - cols (list)    : ordered list of columns for which criteria are 
@@ -738,7 +714,7 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
 
     Returns:
         if label is None:
-            - lines (pd Dataframe): dataframe containing lines corresponding to 
+            - lines (pd.Dataframe): dataframe containing lines corresponding to 
                                     the specified criteria.
         else:
             if single:
@@ -780,7 +756,7 @@ def get_df_vals(df, cols=[], criteria=[], label=None, unique=True, dtype=None,
 
 
 #############################################
-def set_df_vals(df, idx, cols, vals):
+def set_df_vals(df, idx, cols, vals, in_place=False):
     """
     set_df_vals(df, attributes, criteria)
 
@@ -788,15 +764,23 @@ def set_df_vals(df, idx, cols, vals):
     index and a list of columns and corresponding new values.
 
     Required args:
-        - df (pandas df): dataframe
-        - idx (int)     : dataframe line index (for use with .loc)
-        - cols (list)   : ordered list of columns for which vals are 
-                          provided
+        - df (pd.DataFrame): dataframe
+        - idx (int)        : dataframe line index (for use with .loc)
+        - cols (list)      : ordered list of columns for which vals are 
+                             provided
         - vals (list)   : ordered list of values for each column
 
+    Optional args:
+        - in_place (bool): if True, changes are made in place. Otherwise, a 
+                           deep copy of the dataframe is made first.
+                           default: False
+
     Returns:
-        - df (pd Dataframe): dataframe containing modified lines. 
+        - df (pd.Dataframe): dataframe containing modified lines. 
     """
+
+    if not in_place:
+        df = df.copy(deep=True)
 
     cols = list_if_not(cols)
     vals = list_if_not(vals)
@@ -811,24 +795,64 @@ def set_df_vals(df, idx, cols, vals):
 
 
 #############################################
-def drop_unique(df):
+def drop_unique(df, in_place=False):
     """
     drop_unique(df)
 
     Returns dataframe with columns containing only a unique value dropped.
 
     Required args:
-        - df (pd DataFrame): dataframe
+        - df (pd.DataFrame): dataframe
+
+    Optional args:
+        - in_place (bool): if True, changes are made in place. Otherwise, a 
+                           deep copy of the dataframe is made first.
+                           default: False
 
     Returns:
-        - df (pd DataFrame): dataframe with columns containing only a unique 
+        - df (pd.DataFrame): dataframe with columns containing only a unique 
                              value dropped
     """
+
+    if not in_place:
+        df = df.copy(deep=True)
 
     for col in df.columns:
         uniq_vals = df[col].unique().tolist()
         if len(uniq_vals) == 1:
             df = df.drop(columns=col)
+
+    return df
+
+
+#############################################
+def set_object_columns(df, cols, in_place=False):
+    """
+    set_object_columns(df, cols)
+
+    Returns dataframe with columns converted to object columns. If a column 
+    does not exist, it is created first.
+
+    Required args:
+        - df (pandas df): dataframe
+        - cols (list)   : list of columns to convert to or create as 
+                          object columns 
+
+    Optional args:
+        - in_place (bool): if True, changes are made in place. Otherwise, a 
+                           deep copy of the dataframe is made first.
+                           default: False
+    """
+
+    if not in_place:
+        df = df.copy(deep=True)
+
+    cols = list_if_not(cols)
+
+    for col in cols:
+        if col not in df.columns:
+            df[col] = np.nan
+        df[col] = df[col].astype(object)
 
     return df
 
@@ -1328,7 +1352,7 @@ def get_df_unique_vals(df, axis="index", info="length"):
     hierarchical order.
 
     Required args:
-        - df (pd DataFrame): hierarchical dataframe
+        - df (pd.DataFrame): hierarchical dataframe
     
     Optional args:
         - axis (str): Axis for which to return unique values ("index" or 
@@ -1360,7 +1384,7 @@ def reshape_df_data(df, squeeze_rows=False, squeeze_cols=False):
     axes as index/column levels, if possible, in hierarchical order.
 
     Required args:
-        - df (pd DataFrame): hierarchical dataframe
+        - df (pd.DataFrame): hierarchical dataframe
     
     Optional args:
         - squeeze_rows (bool): if True, rows of length 1 are squeezed out

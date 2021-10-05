@@ -23,7 +23,7 @@ from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
-from util import file_util, gen_util, logger_util, math_util
+from util import file_util, gen_util, logger_util, math_util, rand_util
 
 logger = logging.getLogger(__name__)
 
@@ -2108,7 +2108,8 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color="black", width=0.4,
 
 
 #############################################
-def plot_ufo(sub_ax, x, y, err=None, color="k", no_line=False, **errorbar_kw):
+def plot_ufo(sub_ax, x, y, err=None, color="k", width=0.5, thickness=4.5, 
+             no_line=False, **errorbar_kw):
     """
     plot_ufo(sub_ax, x, y)
 
@@ -2130,8 +2131,11 @@ def plot_ufo(sub_ax, x, y, err=None, color="k", no_line=False, **errorbar_kw):
 
     if not no_line:
         # plot actual data as line
-        plot_CI(sub_ax, np.asarray([y, y]).reshape(-1, 1), med=y, x=x, 
-            width=0.6, med_col=color, med_rat=0.025)
+        x_edges = np.asarray([
+            [i - width / 2, i + width / 2] for i in np.asarray(x).reshape(-1)
+            ]).T
+        y_edges = np.tile(y, 2).reshape(2, -1)
+        sub_ax.plot(x_edges, y_edges, lw=thickness, color=color)
 
     # plot errorbars
     if err is not None:
@@ -2221,9 +2225,9 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
 
 #############################################
 def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None, 
-                    color="k", alpha=0.5, zorder=None, **plot_kw):
+                    color="k", alpha=0.5, randst=None, **plot_kw):
     """
-    plot_data_cloud(sub_ax, extr)
+    plot_data_cloud(sub_ax, x_val, y_vals)
 
     Plots y values as a data cloud around an x value
 
@@ -2251,7 +2255,9 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
         - cloud (plt Line): pyplot Line object containing plotted dots
     """
 
-    x_vals = np.random.normal(x_val, disp_wid, len(y_vals))
+    randst = rand_util.get_np_rand_state(randst)
+
+    x_vals = randst.normal(x_val, disp_wid, len(y_vals))
 
     # clip points outside 2.5 stdev
     min_val, max_val = [x_val + sign * 2.5 * disp_wid for sign in [-1, 1]]
@@ -2331,7 +2337,8 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
 
 
 #############################################
-def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
+def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, 
+                     update_ticks=False, **font_kw):
     """
     set_interm_ticks(ax, n_ticks)
 
@@ -2344,13 +2351,16 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
         - n_ticks (n)  : max number of labelled ticks
 
     Optional args:
-        - dim (str)   : dimension for which to get position ("x" or "y")
-                        default: "x"
-        - share (bool): if True, all axes set the same, based on first axis.
-                        default: True
-        - skip (bool) : if True, intermediate ticks are unlabelled. If False, 
-                        all ticks are labelled
-                        default: True
+        - dim (str)          : dimension for which to get position ("x" or "y")
+                               default: "x"
+        - share (bool)       : if True, all axes set the same, based on first 
+                               axis.
+                               default: True
+        - skip (bool)        : if True, intermediate ticks are unlabelled. If 
+                               False, all ticks are labelled
+                               default: True
+        - update_ticks (bool): if True, ticks are updated to axis limits first
+                               default: False
 
     Kewyord args:
         - font_kw (dict): keyword arguments for plt.yticklabels() or 
@@ -2359,12 +2369,19 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
 
     if not isinstance(ax, np.ndarray):
         raise TypeError("Must pass an axis array.")
+    
+    if n_ticks < 2:
+        raise ValueError("n_ticks must be at least 2.")
 
     for s, sub_ax in enumerate(ax.reshape(-1)):
         if s == 0 or not share:
             if dim == "x":
+                if update_ticks:
+                    sub_ax.set_xticks(sub_ax.get_xlim())
                 ticks = sub_ax.get_xticks()
             elif dim == "y":
+                if update_ticks:
+                    sub_ax.set_yticks(sub_ax.get_ylim())
                 ticks = sub_ax.get_yticks()
             else:
                 gen_util.accepted_values_error("dim", dim, ["x", "y"])
@@ -2377,25 +2394,17 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
     
             step = diff * ratio / 2
 
-            min_tick_idx = np.round(np.min(ticks) / step).astype(int)
-            max_tick_idx = np.round(np.max(ticks) / step).astype(int)
-
-            # adjust if only the central 0 is labelled
-            if skip and min_tick_idx != 0:
-                if max_tick_idx - min_tick_idx <= 3:
-                    step = step / 1.5
-                    max_tick_idx += 1
-
-            # 1 signif digit for differences
+              # 1 signif digit for differences
             if step == 0:
-                o, o_half = 0, 0
+                o = 0
             else:
                 o = -int(math_util.get_order_of_mag(step * 2))
-                if skip:
-                    o_half = -int(math_util.get_order_of_mag(step))
 
             step = np.around(step * 2, o) / 2
             step = step * 2 if not skip else step
+
+            min_tick_idx = np.round(np.min(ticks) / step).astype(int)
+            max_tick_idx = np.round(np.max(ticks) / step).astype(int)
 
             tick_vals = np.linspace(
                 min_tick_idx * step, 
@@ -2406,7 +2415,12 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, **font_kw):
             idx = np.where(tick_vals == 0)[0]
             if 0 not in tick_vals:
                 idx = 0
-            
+
+            # adjust if only 1 tick is labelled
+            if skip and (len(tick_vals) < (3 + idx % 2)):
+                max_tick_idx += 1
+                tick_vals = np.append(tick_vals, tick_vals[-1] + step)
+
             labels = []
             final_tick_vals = []
             for v, val in enumerate(tick_vals):

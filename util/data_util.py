@@ -17,7 +17,7 @@ import numpy as np
 import torch
 import torch.utils.data
 
-from util import gen_util, logger_util, math_util
+from util import gen_util, logger_util, math_util, rand_util
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class CustomDs(torch.utils.data.TensorDataset):
 
 
 #############################################
-def bal_classes(data, targets):
+def bal_classes(data, targets, randst=None):
     """
     bal_classes(data, targets)
 
@@ -106,13 +106,19 @@ def bal_classes(data, targets):
                               is the samples. Must be of the same length as 
                               data.
 
+    Optional args:
+        - randst (int): seed or random state to use when generating random 
+                        values.
+                        default: None
+
     Returns:
         - data (nd array)   : array of sampled dataset datapoints, where the
                               first dimension is the samples.
         - targets (nd array): array of sampled targets, where the first 
                               dimension is the samples.
     """
-    
+
+    randst = rand_util.get_np_rand_state(randst)    
 
     if len(data) != len(targets):
         raise ValueError("data and targets must be of the same length.")
@@ -124,8 +130,7 @@ def bal_classes(data, targets):
     
     sample_idx = []
     for cl in cl_n:
-        idx = np.random.choice(
-            np.where(targets==cl)[0], count_min, replace=False)
+        idx = randst.choice(np.where(targets==cl)[0], count_min, replace=False)
         sample_idx.extend(idx.tolist())
     
     sample_idx = sorted(sample_idx)
@@ -138,7 +143,7 @@ def bal_classes(data, targets):
 
 #############################################
 def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2, 
-                 strat_cl=True):
+                 strat_cl=True, randst=None):
     """
     data_indices(n, train_n, val_n)
 
@@ -148,7 +153,7 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
     indices to be assigned if test_n is provided.
 
     Will keep shuffling until each non empty set contains the minimum number of 
-    occurrences per class.
+    occurrences per class, if targets is provided.
 
     Required args:
         - n (int)      : length of dataset
@@ -171,6 +176,9 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
                               default: 2
         - strat_cl (bool)   : if True, sets are stratified by class. 
                               default: True
+        - randst (int)      : seed or random state to use when generating 
+                              random values.
+                              default: None
 
     Returns:
         - train_idx (list): unsorted list of indices assigned to training set.
@@ -180,16 +188,24 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
 
     if test_n is None:
         test_n = n - train_n - val_n
-   
+    
+    if (train_n + val_n + test_n) != n:
+        raise ValueError("train_n, val_n and test_n must sum to n.")
+
+    if targets is not None and len(targets) != n:
+        raise ValueError("If targets are provided, must be as many as n.")
+
     mixed_idx = list(range(n))
 
-    if targets is not None or strat_cl:
+    randst = rand_util.get_np_rand_state(randst)
+
+    if targets is not None and strat_cl:
         cl_vals, cl_ns = np.unique(targets, return_counts=True)
         props = [float(cl_n)/n for cl_n in cl_ns.tolist()]
         train_idx, val_idx, test_idx = [], [], []
         for val, prop in zip(cl_vals, props):
             cl_mixed_idx = np.asarray(mixed_idx)[np.where(targets == val)[0]]
-            np.random.shuffle(cl_mixed_idx)
+            randst.shuffle(cl_mixed_idx)
             set_ns    = [int(np.ceil(set_n * prop)) 
                 for set_n in [0, val_n, test_n]]
             set_ns[0] = len(cl_mixed_idx) - sum(set_ns)
@@ -207,11 +223,16 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
     else:
         cont_shuff = True
         while cont_shuff:
-            np.random.shuffle(mixed_idx)
+            randst.shuffle(mixed_idx)
             cont_shuff = False
             # count occurrences of each class in each non empty set and ensure 
             # above threshold, otherwise reshuff
-            if targets is not None or thresh_cl != 0:
+            train_idx = mixed_idx[: train_n]
+            val_idx = mixed_idx[train_idx : train_idx + val_n]
+            test_idx = mixed_idx[train_idx + val_n :]
+
+            # check whether reshuffling is needed
+            if targets is not None and thresh_cl != 0: 
                 # count number of classes
                 n_cl = len(np.unique(targets).tolist())
                 for s in [train_idx, val_idx, test_idx]:
@@ -227,9 +248,9 @@ def data_indices(n, train_n, val_n, test_n=None, targets=None, thresh_cl=2,
 
 
 #############################################
-def checkprop(train_p, val_p=0, test_p=0):
+def check_prop(train_p, val_p=0, test_p=0):
     """
-    checkprop(train_p)
+    check_prop(train_p)
 
     Checks that the proportions assigned to the sets are acceptable. Throws an
     error if proportions sum to greater than 1 or if a proportion is < 0. 
@@ -322,7 +343,7 @@ def split_idx(n, train_p=0.75, val_p=None, test_p=None, thresh_set=10,
     elif test_p is None:
         test_p = 1.0 - train_p - val_p
 
-    checkprop(train_p, val_p, test_p)
+    check_prop(train_p, val_p, test_p)
     
     val_n = int(np.ceil(val_p*n))
     test_n = int(np.ceil(test_p*n))
@@ -501,7 +522,7 @@ def scale_datasets(set_data, sc_dim="all", sc_type="min_max", extrem="reg",
 def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None, 
                sc_dim="none", sc_type=None, extrem="reg", mult=1.0, shift=0.0, 
                shuffle=False, batchsize=200, thresh_set=5, thresh_cl=2, 
-               strat_cl=True, train_shuff=True):
+               strat_cl=True, train_shuff=True, randst=None):
     """
     create_dls(data)
 
@@ -574,7 +595,9 @@ def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None,
         - train_shuff (bool): if True, training data is set to be reshuffled at 
                               each epoch
                               default: True
-
+        - randst (int)      : seed or random state to use when generating 
+                              random values.
+                              default: None
     Returns:
         - returns (list): 
             - dls (list of torch DataLoaders): list of torch DataLoaders for 
@@ -595,8 +618,9 @@ def create_dls(data, targets=None, train_p=0.75, val_p=None, test_p=None,
     # shuffle targets first
     if targets is not None:
         if shuffle:
+            randst = rand_util.get_np_rand_state(randst)
             shuff_reidx = list(range(len(targets)))
-            np.random.shuffle(shuff_reidx)
+            randst.shuffle(shuff_reidx)
             returns.append(shuff_reidx)
             targets = targets[shuff_reidx]
     else:
