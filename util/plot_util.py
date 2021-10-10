@@ -645,7 +645,7 @@ def turn_off_extra(ax, n_plots):
 
 
 #############################################
-def share_lims(ax, dim="row"):
+def share_lims(ax, axis="row"):
     """
     share_lims(ax)
 
@@ -655,15 +655,15 @@ def share_lims(ax, dim="row"):
         - ax (plt Axis): axis (2D array)
 
     Optional args:
-        - dim (str): which dimension to match limits along
-                     default: "row"
+        - axis (str): which axis to match limits along
+                      default: "row"
     """
 
     if len(ax.shape) != 2:
         raise NotImplementedError("Function only implemented for 2D axis "
                                   "arrays.")
     
-    if dim == "row":
+    if axis == "row":
         for r in range(ax.shape[0]):
             ylims = [np.inf, -np.inf]
             for task in ["get", "set"]:    
@@ -677,7 +677,7 @@ def share_lims(ax, dim="row"):
                     elif task == "set":
                         ax[r, c].set_ylim(ylims)
     
-    if dim == "col":
+    if axis == "col":
         for r in range(ax.shape[1]):
             xlims = [np.inf, -np.inf]
             for task in ["get", "set"]:   
@@ -892,8 +892,9 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
         if overwrite:
             fullname, _ = file_util.add_ext(savename, fig_ext) 
         else:
-            fullname = file_util.get_unique_path(savename, ext=fig_ext)
-
+            fullname = file_util.get_unique_path(
+                savename, fulldir, ext=fig_ext
+                ).parts[-1]
         if save_fig:
             fig.savefig(fulldir.joinpath(fullname), **savefig_kw)
             log_text = "Figures saved under"
@@ -1185,7 +1186,7 @@ def rel_confine_ylims(sub_ax, sub_ran, rel=5):
     """
     rel_confine_ylims(sub_ax, sub_ran)
 
-    Adjusts the y limits of a sub axis to confine a specific range to a 
+    Adjusts the y limits of a subplot to confine a specific range to a 
     relative middle range in the y axis. Will not reduce the y lims only
     increase them.
 
@@ -1208,6 +1209,43 @@ def rel_confine_ylims(sub_ax, sub_ran, rel=5):
     y_max = np.max([y_max, sub_cen + rel/2 * (sub_max - sub_cen)])
 
     sub_ax.set_ylim([y_min, y_max])
+
+
+#############################################
+def expand_lims(sub_ax, axis="x", prop=0.2):
+    """
+    expand_lims(sub_ax)
+
+    Expands the axis limits of a subplot.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Optional args:
+        - axis (str)  : axis for which to expand limits ("x" or "y")
+                        default: "x"
+        - prop (float): proportion of current axis limits that limits should be 
+                        expanded by (total for both ends)
+                        default: 0.2
+    """
+
+    if axis == "x":
+        min_val, max_val = sub_ax.get_xlim()
+    elif axis == "y":
+        min_val, max_val = sub_ax.get_ylim()
+    else:
+        gen_util.accepted_values_error("axis", axis, ["x", "y"])
+    
+    expand = (max_val - min_val) * prop / 2
+    new_lims = [min_val - expand, max_val + expand]
+
+    if new_lims[1] < new_lims[0]:
+        raise RuntimeError("Expansion requested would flip the axis limits.")
+
+    if axis == "x":
+        sub_ax.set_xlim(new_lims)
+    elif axis == "y":
+        sub_ax.set_ylim(new_lims)
 
 
 #############################################
@@ -2275,7 +2313,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
 
     
 #############################################
-def get_fig_rel_pos(ax, grp_len, dim="x"):
+def get_fig_rel_pos(ax, grp_len, axis="x"):
     """
     get_fig_rel_pos(ax, grp_len)
 
@@ -2287,8 +2325,8 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
         - grp_len (n)  : grouping
 
     Optional args:
-        - dim (str)      : dimension for which to get position ("x" or "y")
-                           default: "x"
+        - axis (str): axis for which to get position ("x" or "y")
+                      default: "x"
     Returns:
         - poses (list): positions for each group
     """
@@ -2300,7 +2338,7 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
     fig = ax.reshape(-1)[0].figure
     n_rows, n_cols = ax.shape
     poses = []
-    if dim == "x":
+    if axis == "x":
         if n_cols % grp_len != 0:
             raise RuntimeError(f"Group length of {grp_len} does not fit with "
                 f"{n_cols} columns.")
@@ -2315,7 +2353,7 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
                 right_subax.transAxes.transform([1, 0]))[0]
 
             poses.append(np.mean([left_pos, right_pos]))
-    elif dim == "y":
+    elif axis == "y":
         if n_rows % grp_len != 0:
             raise RuntimeError(f"Group length of {grp_len} does not fit with "
                 f"{n_rows} rows.")
@@ -2331,13 +2369,13 @@ def get_fig_rel_pos(ax, grp_len, dim="x"):
 
             poses.append(np.mean([top_pos, bottom_pos]))
     else:
-        gen_util.accepted_values_error("dim", dim, ["x", "y"])
+        gen_util.accepted_values_error("axis", axis, ["x", "y"])
 
     return poses
 
 
 #############################################
-def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True, 
+def set_interm_ticks(ax, n_ticks, axis="x", share=True, skip=True, 
                      update_ticks=False, **font_kw):
     """
     set_interm_ticks(ax, n_ticks)
@@ -2351,7 +2389,7 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True,
         - n_ticks (n)  : max number of labelled ticks
 
     Optional args:
-        - dim (str)          : dimension for which to get position ("x" or "y")
+        - axis (str)         : axis for which to set ticks ("x" or "y")
                                default: "x"
         - share (bool)       : if True, all axes set the same, based on first 
                                axis.
@@ -2375,16 +2413,16 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True,
 
     for s, sub_ax in enumerate(ax.reshape(-1)):
         if s == 0 or not share:
-            if dim == "x":
+            if axis == "x":
                 if update_ticks:
                     sub_ax.set_xticks(sub_ax.get_xlim())
                 ticks = sub_ax.get_xticks()
-            elif dim == "y":
+            elif axis == "y":
                 if update_ticks:
                     sub_ax.set_yticks(sub_ax.get_ylim())
                 ticks = sub_ax.get_yticks()
             else:
-                gen_util.accepted_values_error("dim", dim, ["x", "y"])
+                gen_util.accepted_values_error("axis", axis, ["x", "y"])
 
             diff = np.mean(np.diff(ticks)) # get original tick steps
             if len(ticks) >= n_ticks:
@@ -2433,14 +2471,14 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True,
                 else:
                     labels.append("")
 
-        if dim == "x":
+        if axis == "x":
             sub_ax.set_xticks(final_tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_xticklabels(labels, fontdict=font_kw)
             # adjust limits if needed
             if final_tick_vals[-1] > sub_ax.get_xlim()[1]:
                 sub_ax.set_xlim(sub_ax.get_xlim()[0], final_tick_vals[-1])
-        elif dim == "y":
+        elif axis == "y":
             sub_ax.set_yticks(final_tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_yticklabels(labels, fontdict=font_kw)
@@ -2450,7 +2488,7 @@ def set_interm_ticks(ax, n_ticks, dim="x", share=True, skip=True,
 
 
 #############################################
-def set_minimal_ticks(sub_ax, dim="x", **font_kw):
+def set_minimal_ticks(sub_ax, axis="x", **font_kw):
     """
     set_minimal_ticks(sub_ax)
 
@@ -2460,8 +2498,8 @@ def set_minimal_ticks(sub_ax, dim="x", **font_kw):
         - sub_ax (plt Axis subplot): subplot
 
     Optional args:
-        - dim (str): dimension for which to get position ("x" or "y")
-                     default: "x"
+        - axis (str): axes for which to set ticks ("x" or "y")
+                      default: "x"
 
     Kewyord args:
         - font_kw (dict): keyword arguments for plt.yticklabels() or 
@@ -2470,12 +2508,12 @@ def set_minimal_ticks(sub_ax, dim="x", **font_kw):
 
     sub_ax.autoscale()
 
-    if dim == "x":
+    if axis == "x":
         lims = sub_ax.get_xlim()
-    elif dim == "y":
+    elif axis == "y":
         lims = sub_ax.get_ylim()
     else:
-        gen_util.accepted_values_error("dim", dim, ["x", "y"])
+        gen_util.accepted_values_error("axis", axis, ["x", "y"])
 
     ticks = rounded_lims(lims)
 
@@ -2487,10 +2525,10 @@ def set_minimal_ticks(sub_ax, dim="x", **font_kw):
         else:
             ticks = [ticks[0], 0, ticks[1]]
 
-    if dim == "x":
+    if axis == "x":
         sub_ax.set_xticks(ticks)
         sub_ax.set_xticklabels(ticks, fontdict=font_kw)
-    elif dim == "y":
+    elif axis == "y":
         sub_ax.set_yticks(ticks)
         sub_ax.set_yticklabels(ticks, fontdict=font_kw)
     

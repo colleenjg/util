@@ -373,7 +373,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
     # within permutations, for different values of n_perms)
     if paired:
         if paired == "within":
-            all_data = all_data.T # shuffle pairings instead of datatpoints
+            all_data = all_data.T # shuffle pairings instead of datapoints
         rand_shape = (n_perms, ) + all_data.shape    
         transpose = (1, 2, 0)
         sort_axis = 1
@@ -698,6 +698,7 @@ def get_op_p_val(act_data, n_perms=10000, stats="mean", op="diff",
         concat, div=div, n_perms=n_perms, stats=stats, op=op, paired=paired, 
         nanpol=nanpol, randst=randst
         ).squeeze()
+
     if len(rand_vals.shape) == 0:
         rand_vals = rand_vals.reshape(1)
 
@@ -749,10 +750,10 @@ def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean",
                          default: None
 
     Returns:
-        - p_vals (1D array): p values for each comparison, organized by 
-                             group pairs (where the second group is cycled 
-                             in the inner loop, e.g., 0-1, 0-2, 1-2, including 
-                             None groups)
+        - p_vals (1D array): p values (not adjusted for tails) for each 
+                             comparison, organized by group pairs (where the 
+                             second group is cycled in the inner loop, 
+                             e.g., 0-1, 0-2, 1-2, including None groups)
     """
 
     n_comp = sum(range(len(act_data)))
@@ -769,10 +770,12 @@ def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean",
                         paired=paired, nanpol=nanpol, randst=randst)
                 elif normal:
                     fct = scist.ttest_rel if paired else scist.ttest_ind
-                    p_vals[i] = fct(g_data, g_data_2, axis=None)[1]
+                    # reverse 2-tail adjustment
+                    p_vals[i] = fct(g_data, g_data_2, axis=None)[1] / 2
                 else:
                     fct = scist.wilcoxon if paired else scist.mannwhitneyu 
-                    p_vals[i] = fct(g_data, g_data_2)[1]
+                    # reverse 2-tail adjustment
+                    p_vals[i] = fct(g_data, g_data_2)[1] / 2
             i += 1
     
     return p_vals
