@@ -576,7 +576,7 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
     if len_dim != 2:
         raise ValueError(f"Data should have length 2 along dim: {dim}")
 
-    if isinstance(op, int):
+    if isinstance(op, int): # if op is the data index to return
         data_idx = gen_util.slice_idx(dim, op)
         data = data[data_idx]
     else:

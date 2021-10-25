@@ -684,11 +684,12 @@ def get_op_p_val(act_data, n_perms=10000, stats="mean", op="diff",
 
     else:
         data = [grp1, grp2]
-        if op != "d-prime":
+        if op not in ["d-prime", "corr", "diff_corr"]:
             data = [
                 math_util.mean_med(grp, stats=stats, nanpol=nanpol) 
                 for grp in data
                 ]
+        
         real_val = math_util.calc_op(data, op=op, nanpol=nanpol)
 
         concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1) # add items dim

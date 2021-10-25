@@ -2476,15 +2476,24 @@ def set_interm_ticks(ax, n_ticks, axis="x", share=True, skip=True,
             # always set ticks (even again) before setting labels
             sub_ax.set_xticklabels(labels, fontdict=font_kw)
             # adjust limits if needed
-            if final_tick_vals[-1] > sub_ax.get_xlim()[1]:
-                sub_ax.set_xlim(sub_ax.get_xlim()[0], final_tick_vals[-1])
+            lims = sub_ax.get_xlim()
+            if final_tick_vals[-1] > lims[1]:
+                lims[1] = final_tick_vals[-1]
+            if final_tick_vals[0] < lims[0]:
+                lims[0] = final_tick_vals[0]
+            sub_ax.set_xlim(lims)
+    
         elif axis == "y":
             sub_ax.set_yticks(final_tick_vals)
             # always set ticks (even again) before setting labels
             sub_ax.set_yticklabels(labels, fontdict=font_kw)
             # adjust limits if needed
-            if final_tick_vals[-1] > sub_ax.get_ylim()[1]:
-                sub_ax.set_ylim(sub_ax.get_ylim()[0], final_tick_vals[-1])
+            lims = sub_ax.get_ylim()
+            if final_tick_vals[-1] > lims[1]:
+                lims[1] = final_tick_vals[-1]
+            if final_tick_vals[0] < lims[0]:
+                lims[0] = final_tick_vals[0]
+            sub_ax.set_ylim(lims)
 
 
 #############################################
