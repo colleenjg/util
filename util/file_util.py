@@ -174,7 +174,7 @@ def loadfile(filename, fulldir=".", filetype="pickle", dtype=None):
     filename, ext = add_ext(filename, filetype)
     fullname = Path(fulldir, filename)
     
-    if fullname.exists():
+    if fullname.is_file():
         if ext == ".pkl":
             try:
                 with open(fullname, "rb") as f:
@@ -191,7 +191,7 @@ def loadfile(filename, fulldir=".", filetype="pickle", dtype=None):
         else:
             raise ValueError("'ext' must be in '.pkl', '.json', '.csv'.")
     else:
-        raise OSError(f"{fullname} does not exist.")
+        raise OSError(f"{fullname} is not an existing file.")
 
     return datafile
 

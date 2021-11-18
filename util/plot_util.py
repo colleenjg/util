@@ -11,6 +11,7 @@ Note: this code uses python 3.7.
 
 """
 
+import colorsys
 from pathlib import Path
 import logging
 import warnings
@@ -138,24 +139,30 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
 
 
 #############################################
-def linclab_colormap(nbins=100, gamma=1.0):
+def linclab_colormap(nbins=100, gamma=1.0, no_white=False):
     """
     linclab_colormap()
 
-    Returns a matplotlib colormap using the linclab blue, white and linclab 
+    Returns a matplotlib colorplot using the linclab blue, white and linclab 
     red.
-
+    
     Optional args:
-        - nbins (int): number of bins to use to create colormap
-                       default: 100
-        - gamma (num): non-linearity
-                       default: 1.0
-
+        - nbins (int)    : number of bins to use to create colormap
+                           default: 100
+        - gamma (num)    : non-linearity
+                           default: 1.0
+        - no_white (bool): if True, white as the intermediate color is omitted 
+                           from the colormap.
+                           default: False
     Returns:
         - cmap (colormap): a matplotlib colormap
     """
 
-    colors = [get_color("blue"), "#ffffff", get_color("red")]
+    colors = [LINCLAB_COLS["blue"], "#ffffff", LINCLAB_COLS["red"]]
+    name = "linclab_bwr"
+    if no_white:
+        colors = [colors[0], colors[-1]]
+        name = "linclab_br"
 
     # convert to RGB
     rgb_col = [[] for _ in range(len(colors))]
@@ -165,7 +172,9 @@ def linclab_colormap(nbins=100, gamma=1.0):
             rgb_col[c].append(ch_val)
 
     cmap = mpl.colors.LinearSegmentedColormap.from_list(
-        "linclab_bwr", rgb_col, N=nbins, gamma=gamma)
+        name, rgb_col, N=nbins, gamma=gamma)
+
+    cmap.set_bad(color="black")
 
     return cmap
 
@@ -442,6 +451,43 @@ def get_color_range(n=4, col="red"):
 
 
 #############################################
+def get_hex_color_range(n=3, col="#0000FF", interval=0.3):
+    """
+    get_hex_color_range()
+
+    Returns a list of color values from dark to light, around the specified 
+    hex color requested.
+
+    Optional args:
+        - n (int)          : number of colors required
+                             default: 3
+        - col (str or list): color in hex (or matplotlib name)
+                             default: "#0000FF"
+        - interval (float) : space between each color, centered around col
+                             default: 0.3
+
+    Returns:
+        - cols (list): list of colors
+    """
+
+    # identify range of values to use for scaling lightness
+    full_interval = interval * (n - 1)
+    range_scale = np.linspace(1 - full_interval / 2, 1 + full_interval / 2, n)
+
+    r, g, b = mpl.colors.to_rgb(col)
+
+    # convert rgb to hls
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+
+    cols = []
+    for scale_l in range_scale:
+        new_col = colorsys.hls_to_rgb(h, max(0, min(1, l * scale_l)), s = s)
+        cols.append(new_col)
+
+    return cols
+
+
+#############################################
 def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False, 
                nbins=100):
     """
@@ -482,6 +528,27 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
         else:
             cmap = "viridis"
         return cmap
+
+
+#############################################
+def remove_axis_marks(sub_ax):
+    """
+    remove_axis_marks(sub_ax)
+
+    Removes all axis marks (ticks, tick labels, spines).
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot    
+    """
+
+    sub_ax.tick_params(axis="x", which="both", bottom=False, top=False) 
+    sub_ax.tick_params(axis="y", which="both", left=False, right=False) 
+
+    sub_ax.set_xticks([])
+    sub_ax.set_yticks([])
+
+    for spine in ["right", "left", "top", "bottom"]:
+        sub_ax.spines[spine].set_visible(False)
 
 
 #############################################
@@ -2476,7 +2543,7 @@ def set_interm_ticks(ax, n_ticks, axis="x", share=True, skip=True,
             # always set ticks (even again) before setting labels
             sub_ax.set_xticklabels(labels, fontdict=font_kw)
             # adjust limits if needed
-            lims = sub_ax.get_xlim()
+            lims = list(sub_ax.get_xlim())
             if final_tick_vals[-1] > lims[1]:
                 lims[1] = final_tick_vals[-1]
             if final_tick_vals[0] < lims[0]:
@@ -2488,7 +2555,7 @@ def set_interm_ticks(ax, n_ticks, axis="x", share=True, skip=True,
             # always set ticks (even again) before setting labels
             sub_ax.set_yticklabels(labels, fontdict=font_kw)
             # adjust limits if needed
-            lims = sub_ax.get_ylim()
+            lims = list(sub_ax.get_ylim())
             if final_tick_vals[-1] > lims[1]:
                 lims[1] = final_tick_vals[-1]
             if final_tick_vals[0] < lims[0]:

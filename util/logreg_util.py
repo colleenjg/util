@@ -787,7 +787,7 @@ def load_params(dirname, model="best", alg="sklearn"):
 
     if alg == "sklearn":
         filename = Path(dirname, "models.sav")
-        if filename.exists() and not isinstance(model, (str, Path)):
+        if filename.is_file() and not isinstance(model, (str, Path)):
             with open(filename, "rb") as f:
                 mod = pkl.load(f)["estimator"][model]["logisticregression"]
             weights = mod.coef_
@@ -1278,7 +1278,7 @@ def get_scores(dirname=".", alg="sklearn"):
         best_ep = get_epoch_n_pt(dirname, "best")
 
     # get scores df
-    if df_path.exists():
+    if df_path.is_file():
         scores_df = file_util.loadfile(df_path)
     else:
         logger.warning("No scores were recorded.")
@@ -1878,6 +1878,28 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 ############################################
 def rescore_training_logreg_sk_single(mod_cv_est, est_set_idx, input_data, 
                                       targ_data, scoring, train_set_idx=0):
+    """
+    rescore_training_logreg_sk_single(mod_cv_est, est_set_idx, input_data, 
+                                      targ_data, scoring)
+    
+    Returns updated training scores for shuffled data.
+
+    Required args:
+        - mod_cv_est (estimator): sklearn estimator pipeline
+        - est_set_idx (list)    : data indices for different sets
+        - input_data (2D array) : full dataset inputs (seq x frames, channels) 
+        - targ_data (2D array)  : full dataset targets (seq x 1)
+        - scoring (list)        : list of sklearn score names to collect
+
+    Optional args:
+        - train_set_idx (int): est_set_idx index for the training set
+                               default: 0
+
+    Returns:
+        - new_train_scores (dict): training scores for each score, with keys
+                                   [f"train_{score}"]
+
+    """
 
     new_train_scores = dict()
     train_X = input_data[est_set_idx[train_set_idx]]
@@ -2142,9 +2164,47 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
 
 
 #############################################
+def get_clf(model="logreg", class_weight="balanced", randst=None, 
+            max_iter_lr=100):
+               
+    """
+    get_clf()
+    
+    Returns classifier (log reg or SVM).
+
+    Optional args:
+        - model (str)       : model to use ("logreg" or "svm")
+                              default: "logreg"
+        - class_weight (str): sklearn class_weight attribute
+                              default: "balanced"
+        - randst (int)      : seed or random state to pass to models
+                              default: None 
+        - max_iter_lr (int) : max number of iterations for logistic regression
+                              default: 100
+
+    Returns:
+        - clf (sklearn model): sklearn model (logistic regression or SVM)
+    """
+
+    randst = rand_util.get_np_rand_state(randst)
+
+    if model == "logreg":
+        clf = LogisticRegression(C=1, fit_intercept=True, 
+            class_weight=class_weight, penalty="l2", solver="lbfgs",
+            max_iter=max_iter_lr, random_state=randst, multi_class="auto")
+    elif model == "svm":
+        clf = SVC(C=1, kernel="rbf", gamma="scale", class_weight=class_weight, 
+            random_state=randst)                    
+    else:
+        gen_util.accepted_values_error("model", model, ["logreg", "svm"])
+
+    return clf
+
+
+#############################################
 def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std", 
                class_weight="balanced", n_jobs=None, model="logreg", 
-               scaler=None, randst=None, max_iter=100):
+               scaler=None, randst=None, max_iter_lr=100):
                
     """
     run_cv_clf(inp, target)
@@ -2180,7 +2240,7 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
                               default: "logreg"
         - randst (int)      : seed or random state to pass to models
                               default: None 
-        - max_iter (int)    : max number of iterations for logistic regression
+        - max_iter_lr (int) : max number of iterations for logistic regression
                               default: 100
 
     Returns:
@@ -2196,15 +2256,7 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
 
     randst = rand_util.get_np_rand_state(randst)
 
-    if model == "logreg":
-        clf = LogisticRegression(C=1, fit_intercept=True, 
-            class_weight=class_weight, penalty="l2", solver="lbfgs",
-            max_iter=max_iter, random_state=randst, multi_class="auto")
-    elif model == "svm":
-        clf = SVC(C=1, kernel="linear", gamma="auto", 
-            class_weight=class_weight, random_state=randst)                    
-    else:
-        gen_util.accepted_values_error("model", model, ["logreg", "svm"])
+    clf = get_clf(model, class_weight, randst=randst, max_iter_lr=max_iter_lr)
 
     if scaler is not None:
         clf = make_pipeline(scaler, clf)

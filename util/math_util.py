@@ -120,7 +120,8 @@ def error_stat(data, stats="mean", error="sem", axis=None, nanpol=None,
     Optional args:
         - stats (str) : "mean" or "median"
                         default: "mean"
-        - error (str) : "std" (for std or quintiles) or "sem" (for SEM or MAD)
+        - error (str) : "std" (for std or quintiles) or "sem" (for SEM or MAD) 
+                        or "var" (for variance)
                         default: "sem"
         - axis (int)  : axis along which to take the statistic
                         default: None
@@ -145,6 +146,11 @@ def error_stat(data, stats="mean", error="sem", axis=None, nanpol=None,
             error = scist.sem(data, axis=axis)
         elif nanpol == "omit":
             error = scist.sem(data, axis=axis, nan_policy="omit")
+    elif stats == "mean" and error == "var":
+        if nanpol is None:
+            error = np.var(data, axis=axis)
+        elif nanpol == "omit":
+            error = np.nanvar(data, axis=axis)
     elif stats == "median" and error == "std":
         if nanpol is None:
             error = [np.percentile(data, qu[0], axis=axis), 
@@ -166,10 +172,16 @@ def error_stat(data, stats="mean", error="sem", axis=None, nanpol=None,
         elif nanpol == "omit":
             me    = np.asarray(np.nanmedian(data, axis=axis)).reshape(me_shape)
             error = np.nanmedian(np.absolute(data - me), axis=axis)
+
+    elif stats == "median" and error == "var":
+        raise NotImplementedError(
+            "No robust equivalent for 'variance' is implemented."
+            )
+
     elif stats != "median" and stats != "mean":
         gen_util.accepted_values_error("stats", stats, ["mean", "median"])
     else:
-        gen_util.accepted_values_error("error", error, ["std", "sem"])
+        gen_util.accepted_values_error("error", error, ["std", "sem", "var"])
     if nanpol is not None and nanpol != "omit":
         gen_util.accepted_values_error("nanpol", nanpol, ["[None]", "omit"])
 
@@ -249,7 +261,7 @@ def get_stats(data, stats="mean", error="sem", axes=None, nanpol=None,
         - stats (str)       : stats to take, i.e., "mean" or "median"
                               default: "mean"
         - error (str)       : error to take, i.e., "std" (for std or quintiles) 
-                              or "sem" (for SEM or MAD)
+                              or "sem" (for SEM or MAD) or "var" (for variance)
                               default: "std"
         - axes (int or list): axes along which to  take statistics. If a list  
                               is passed.
@@ -554,6 +566,9 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
                         "corr": pearson correlation between groups along axis
                         "diff_corr": pearson correlation between 
                                      grp1 and grp2 - grp1 
+                        "R_sqr": R squared or percent explained variance
+                        "diff_R_sqr": R squared or percent explained variance 
+                                      from diff_corr
                         default: "diff"
         - dim (int)   : dimension along which to split groups
                         default: 0
@@ -607,18 +622,21 @@ def calc_op(data, op="diff", dim=0, rev=False, nanpol=None, axis=-1):
             ]
             div = np.sqrt(0.5 * np.sum(np.power(stds, 2), axis=0))
             data = mean_diff / div
-        elif op in ["corr", "diff_corr"]:
+        elif op in ["corr", "diff_corr", "R_sqr", "diff_R_sqr"]:
             main_data = data[main_idx]
             base_data = data[base_idx]
-            if op == "corr":
+            if op in ["corr", "R_sqr"]:
                 corr_data = [base_data, main_data]
-            elif op == "diff_corr":
+            elif op in ["diff_corr", "diff_R_sqr"]:
                 corr_data = [base_data, main_data - base_data]
             data = np_pearson_r(*corr_data, axis=axis, nanpol=None)
+            if op in ["R_sqr", "diff_R_sqr"]:
+                data = data ** 2
         else:
             gen_util.accepted_values_error(
                 "op", op, 
-                ["diff", "ratio", "rel_diff", "d-prime", "corr", "diff_corr"]
+                ["diff", "ratio", "rel_diff", "d-prime", 
+                 "corr", "diff_corr", "R_sqr", "diff_R_sqr"]
                 )
     
     return data
@@ -989,6 +1007,45 @@ def calc_mag_change(data, change_dim, item_dim, order=1, op="diff",
         if scale:
             data_ch_norm, _ = scale_data(data_ch_norm, axis, pos, sc_type)
         return data_ch_norm
+
+
+#############################################
+def calc_stat(data, stats="mean", axis=None, nanpol=None):
+    """
+    calc_stat(data)
+
+    Returns the statistic for the data along a specified axis.
+
+    Required args:
+        - data (nd array): data on which to calculate statistic
+
+    Optional args:
+        - stats (str) : "mean", "median", "std", "sem", "mad", "var"
+                        default: "mean"
+        - axis (int)  : axis along which to take the statistic
+                        default: None
+        - nanpol (str): policy for NaNs, "omit" or None
+                        default: None
+    
+    Returns:
+        - stat (nd array or num): statistic of data along specified axis
+    """
+
+    if stats in ["mean", "median"]:
+        stat = mean_med(data, stats=stats, axis=axis, nanpol=nanpol)
+
+    elif stats.lower() in ["std", "sem", "mad", "var"]:
+        me_stat = "median" if stats.lower() == "mad" else "mean"
+        stat = error_stat(
+            data, stats=me_stat, error=stats, axis=axis, nanpol=nanpol
+            )
+    
+    else:
+        gen_util.accepted_values_error(
+            "stats", stats, ["mean", "median", "std", "sem", "mad", "var"]
+            )
+    
+    return stat
 
 
 #############################################

@@ -145,12 +145,13 @@ def split_random_state(randst, n=10):
 
 #############################################
 def bootstrapped_std(data, n=None, n_samples=1000, proportion=False, 
-                     randst=None, choices=None, return_rand=False, 
-                     return_choices=False, nanpol=None):
+                     stats="mean", randst=None, choices=None, 
+                     return_rand=False, return_choices=False, nanpol=None):
     """
     bootstrapped_std(data)
     
-    Returns bootstrapped standard deviation of the mean or proportion.
+    Returns bootstrapped standard deviation of the statistic across the 
+    randomly generated values.
 
     Required args:
         - data (float or 1D array): proportion or full data for mean
@@ -163,6 +164,9 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False,
                                  default: 1000
         - proportion (bool)    : if True, data is a proportion (0-1)
                                  default: False
+        - stats (str)          : statistic parameter, i.e. "mean", "median", 
+                                 "std" to use for groups
+                                 default: "mean"
         - randst (int)         : seed or random state to use when generating 
                                  random values.
                                  default: None
@@ -182,7 +186,7 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False,
         if return_rand:
         - rand_data (1D array)    : randomly generated means
         if return_choices:
-        - choices 
+        - choices (2D array)      : randomly generated choices (n x n_samples)
     """
 
     if randst is None:
@@ -191,6 +195,12 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False,
         randst = np.random.RandomState(randst) 
 
     n_samples = int(n_samples)
+
+    if stats == "median":
+        raise NotImplementedError(
+            "'median' value for stats is not implemented, as it is a robust "
+            "statistic, but standard deviation is not."
+            )
 
     # random values
     if proportion:
@@ -205,9 +215,9 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False,
             raise ValueError("Must provide n if data is a proportion.")
         
         # random proportions
-        rand_data = math_util.mean_med(
+        rand_data = math_util.calc_stat(
             randst.rand(n * n_samples).reshape(n, n_samples) < data, 
-            stats="mean", axis=0
+            stats=stats, axis=0, nanpol=nanpol
             )
         
     else:
@@ -232,9 +242,9 @@ def bootstrapped_std(data, n=None, n_samples=1000, proportion=False,
             choices = np.arange(n)
             choices = randst.choice(choices, (n, n_samples), replace=True)
    
-        # random means
-        rand_data = math_util.mean_med(
-            data[choices], stats="mean", nanpol=nanpol, axis=0
+        # random statistics
+        rand_data = math_util.calc_stat(
+            data[choices], stats=stats, nanpol=nanpol, axis=0
             )
 
     bootstrapped_std = math_util.error_stat(
@@ -305,6 +315,40 @@ def adj_n_perms(n_comp, p_val=0.05, n_perms=10000, min_n=MIN_N):
 
     return new_p_val, new_n_perms
 
+
+#############################################
+def check_corr_pairing(corr_type="corr", paired=True):
+    """
+    check_corr_pairing()
+
+    Checks that correlation type and permutation pairing are appropriately 
+    matched.
+
+    Optional args:
+        - corr_type (str): type of correlation analysed
+                           default: "corr"
+        - paired (bool)  : type of permutation pairing
+                           default: True
+    """
+    
+    # a few checks for correlations
+    corr_types = ["corr", "diff_corr", "R_sqr", "diff_R_sqr"]
+    if corr_type not in corr_types:
+        gen_util.accepted_values_error("corr_type", corr_type, corr_types)
+    if paired == "within":
+        if "diff" in corr_type:
+            warnings.warn(
+                "Regular correlation is recommended if permutation is only "
+                "within groups being correlated.", 
+                category=UserWarning, stacklevel=1
+                )
+    else:
+        if "diff" not in corr_type:
+            raise ValueError(
+                "Difference correlation is required if permutation is "
+                "between groups being correlated."
+                )
+                    
 
 #############################################
 def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False, 
@@ -421,8 +465,8 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                               default: "half"
         - n_perms (int)     : nbr of permutations to run
                               default: 10000
-        - stats (str)       : statistic parameter, i.e. "mean" or "median" to 
-                              use for groups
+        - stats (str)       : statistic parameter, i.e. "mean", "median", "std" 
+                              to use for groups
                               default: "mean"
         - nanpol (str)      : policy for NaNs, "omit" or None when taking 
                               statistics
@@ -440,6 +484,9 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                               "diff_corr": pearson correlation between 
                                            grp1 and grp2 - grp1 
                                            (only possible if paired is True)
+                              "R_sqr": R squared or percent explained variance
+                              "diff_R_sqr": R squared or percent explained 
+                                            variance from diff_corr
                               "none"
                               default: "diff"
         - paired (bool)     : if True, all_data is paired
@@ -459,10 +506,9 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
         raise NotImplementedError("Significant difference/ratio analysis only "
             "implemented for 2D data.")
 
-    if op == "corr" and not paired:
-        raise ValueError(
-            "Correlation operation can only be done if data is paired."
-            )
+    corr_types = ["corr", "diff_corr", "R_sqr", "diff_R_sqr"]
+    if op in corr_types:
+        check_corr_pairing(corr_type=op, paired=paired)
 
     all_rand_res = []
     perm = True
@@ -470,7 +516,14 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
     perms_done = 0
 
     if div == "half":
-        div = int(all_data.shape[1]//2)
+        div = int(all_data.shape[1] // 2)
+    
+    if op in corr_types and not paired:
+        if div != all_data.shape[1] / 2:
+            raise ValueError(
+                "For correlation operations, even if permutation analysis is "
+                "not paired, the data must be split exactly in 2."
+                )
 
     while perm:
         try:
@@ -481,20 +534,21 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                 all_data, n_perms=int(n_perms), paired=paired, randst=randst
                 )
             
-            if op not in ["d-prime", "corr", "diff_corr"]:
+            if op not in ["d-prime"] + corr_types:
                 axis = None
                 if paired:
-                    rand = math_util.mean_med(
-                        permed_data, stats, axis=0, nanpol=nanpol
-                        ) 
+                    rand = math_util.calc_stat(
+                        permed_data, stats=stats, axis=0, nanpol=nanpol
+                        )
+                    
                 else:
                     rand = np.stack([
-                        math_util.mean_med(
+                        math_util.calc_stat(
                             permed_data[:, 0:div], stats, axis=1, nanpol=nanpol
-                            ), 
-                        math_util.mean_med(
+                        ), 
+                        math_util.calc_stat(
                             permed_data[:, div:], stats, axis=1, nanpol=nanpol
-                            )
+                        )
                         ])
             else:
                 axis = 1
@@ -503,7 +557,7 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                     # transpose to (2, 1, datapoints, perms)
                     rand = np.transpose(permed_data[np.newaxis], (2, 0, 1, 3))
                 else:
-                    rand = [permed_data[:, 0:div], permed_data[:, div:]]
+                    rand = [permed_data[:, :div], permed_data[:, div:]]
 
             if op.lower() == "none":
                 rand_res = rand
@@ -631,7 +685,7 @@ def get_op_p_val(act_data, n_perms=10000, stats="mean", op="diff",
         - stats (str)       : stats to use for each group
                               default: "mean"
         - op (str)          : operation to use to compare the group stats
-                              (see calc_op())
+                              (see math_util.calc_op())
                               default: "diff"
         - return_CIs (bool) : if True, confidence intervals (CI) are returned 
                               as well
@@ -672,26 +726,28 @@ def get_op_p_val(act_data, n_perms=10000, stats="mean", op="diff",
     if len(grp1.shape) != 1 or len(grp2.shape) != 1:
         raise ValueError("Expected act_data groups to be 1-dimensional.")
 
+    data = [grp1, grp2]
+    corr_types = ["corr", "diff_corr", "R_sqr", "diff_R_sqr"]
+    if op not in ["d-prime"] + corr_types:
+        data = [
+            math_util.calc_stat(grp, stats=stats, nanpol=nanpol)
+            for grp in data
+            ]
+    real_val = math_util.calc_op(data, op=op, nanpol=nanpol)
+
     if paired:
         if len(grp1) != len(grp2):
             raise ValueError(
                 "If data is paired, groups must have the same length."
                 )
-        real_vals = math_util.calc_op([grp1, grp2], op=op, nanpol=nanpol)
-        real_val = math_util.mean_med(real_vals, stats=stats, nanpol=nanpol)
         concat = np.vstack([grp1, grp2]).T # groups x datapoints (2)
         div = None
-
     else:
-        data = [grp1, grp2]
-        if op not in ["d-prime", "corr", "diff_corr"]:
-            data = [
-                math_util.mean_med(grp, stats=stats, nanpol=nanpol) 
-                for grp in data
-                ]
-        
-        real_val = math_util.calc_op(data, op=op, nanpol=nanpol)
-
+        if op in corr_types and (len(grp1) != len(grp2)):
+            raise ValueError(
+                "If operation involves correlation, groups must have the "
+                "same length."
+                )
         concat = np.concatenate([grp1, grp2], axis=0).reshape(1, -1) # add items dim
         div = len(grp1)
 

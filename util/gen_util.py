@@ -654,6 +654,52 @@ def conv_types(items, dtype=int):
 
 
 #############################################
+def get_closest_idx(targ_vals, src_vals, allow_out=False):
+    """
+    get_closest_idx(targ_vals, src_vals)
+
+    Returns index of closest value in targ_vals for each value in src_vals. 
+
+    Required args:
+        - targ_vals (1D array): target array of values
+        - src_vals (1D array): values for which to find closest value in 
+                               targ_vals
+
+    Returns:
+        - idxs (1D): array with same length as src_vals, identifying closest 
+                     values in targ_vals
+    """
+
+    targ_vals = np.asarray(targ_vals)
+    src_vals = np.asarray(src_vals)
+
+    if (np.argsort(targ_vals) != np.arange(len(targ_vals))).any():
+        raise RuntimeError("Expected all targ_vals to be sorted.")
+
+    if (np.argsort(src_vals) != np.arange(len(src_vals))).any():
+        raise RuntimeError("Expected all src_vals to be sorted.")
+
+    idxs = np.searchsorted(targ_vals, src_vals)
+    idxs_incr = idxs - 1
+
+    min_val = np.where(idxs_incr == -1)[0]
+    if len(min_val):
+        idxs_incr[min_val] = 0
+
+    max_val = np.where(idxs == len(targ_vals))[0]
+    if len(max_val):
+        idxs[max_val] = len(targ_vals) - 1
+
+    all_vals = np.stack([targ_vals[idxs], targ_vals[idxs_incr]])
+    val_diff = np.absolute(all_vals - src_vals.reshape(1, -1))
+
+    all_idxs = np.stack([idxs, idxs_incr]).T
+    idxs = all_idxs[np.arange(len(all_idxs)), np.argmin(val_diff, axis=0)]
+
+    return idxs
+
+
+#############################################
 def get_df_label_vals(df, label, vals=None):
     """
     get_df_label_vals(df, label)
