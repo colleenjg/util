@@ -18,6 +18,7 @@ import os
 import numpy as np
 import scipy.ndimage as scn
 import scipy.stats as scist
+import scipy.signal as scisig
 
 from util import gen_util, logger_util
 
@@ -332,7 +333,7 @@ def get_stats(data, stats="mean", error="sem", axes=None, nanpol=None,
 
 
 #############################################
-def log_stats(stats, stat_str=None, ret_str_only=False):
+def log_stats(stats, stat_str=None, ret_str_only=False, log_spacing=""):
     """
     log_stats(stats)
 
@@ -346,7 +347,9 @@ def log_stats(stats, stat_str=None, ret_str_only=False):
                                default: None
         - ret_str_only (bool): if True, string is returned instead of being logged
                                default: False
-    
+        - log_spacing (str)  : leading string for logging
+                               default: ""
+
     Returns:
         if ret_str_only:
             full_stat_str: full string associated with statistics
@@ -368,7 +371,7 @@ def log_stats(stats, stat_str=None, ret_str_only=False):
     if ret_str_only:
         return full_stat_str
     else:
-        logger.info(full_stat_str)
+        logger.info(full_stat_str, extra={"spacing": log_spacing})
         
 
 #############################################
@@ -1188,15 +1191,16 @@ def autocorr(data, lag):
     Calculates autocorrelation on data series.
 
     Required args:
-        - data (1D array): 1D dataseries
+        - data (1D array): 1D data series
         - lag (int)      : lag in steps
     
     Returns:
         - autoc_snip (1D array): 1D array of autocorrelations at specified lag
     """
 
-    autoc = np.correlate(data, data, "full")
-    mid = int((autoc.shape[0] - 1)//2)
+    # scipy is faster than numpy for long data series
+    autoc = scisig.correlate(data, data, mode="full", method="auto")
+    mid = int((autoc.shape[0] - 1) // 2)
     autoc_snip = autoc[mid - lag:mid + lag + 1]
     autoc_snip /= np.max(autoc_snip)
     return autoc_snip
@@ -1258,8 +1262,7 @@ def autocorr_stats(data, lag, spu=None, byitem=True, stats="mean", error="std",
 
     for s, series in enumerate(data):
         sc_vals = series - np.mean(series, axis=1)[:, np.newaxis]
-        for i, item in enumerate(sc_vals):
-            autocorr_snips[s, i] = autocorr(item, lag_fr)
+        for i, item in enumerate(sc_vals): autocorr_snips[0, i] = autocorr(item, lag_fr)
 
     xran = np.linspace(-lag, lag, snip_len)
 
@@ -1336,7 +1339,10 @@ def get_order_of_mag(val):
         - order (int): order of magnitude for rounding value
     """
 
-    order = int(np.floor(np.log10(val)))
+    if val == 0:
+        return 0
+
+    order = int(np.floor(np.log10(np.absolute(val))))
 
     return order
 

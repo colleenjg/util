@@ -81,9 +81,9 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
               "axes.prop_cycle"      : col_cyc,    # line color cycle
               "axes.spines.right"    : False,      # no axis spine on right
               "axes.spines.top"      : False,      # no axis spine at top
-              "axes.titlesize"       : "x-large",  # x-large axis title
+              "axes.titlesize"       : "xx-large", # xx-large axis title
               "errorbar.capsize"     : 4,          # errorbar cap length
-              "figure.titlesize"     : "x-large",  # x-large figure title
+              "figure.titlesize"     : "xx-large", # xx-large figure title
               "figure.autolayout"    : True,       # adjusts layout
               "font.size"            : 12,         # basic font size value
               "legend.fontsize"      : "x-large",  # x-large legend text
@@ -125,7 +125,7 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         ax.legend(legend_labels)
         ax.set_xlabel("X axis")
         ax.set_ylabel("Y axis")
-        ax.set_title("Example plot")
+        ax.set_title("Example plot", y=1.02)
         ax.axvline(x=1, ls="dashed", c="k")
     
         dirname = Path(dirname)
@@ -1467,7 +1467,7 @@ def plot_traces(sub_ax, x, y, err=None, title=None, lw=None, color=None,
         sub_ax.legend()
 
     if title is not None:
-        sub_ax.set_title(title)
+        sub_ax.set_title(title, y=1.02)
 
 
 #############################################
@@ -1606,7 +1606,7 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8,
         sub_ax.legend()
 
     if title is not None:
-        sub_ax.set_title(title)
+        sub_ax.set_title(title, y=1.02)
 
 
 #############################################
@@ -2003,11 +2003,12 @@ def plot_bars(sub_ax, x, y, err=None, title=None, width=0.75, lw=None,
         sub_ax.set_yticks(yticks)
     
     if title is not None:
-        sub_ax.set_title(title)
+        sub_ax.set_title(title, y=1.02)
 
 
 #############################################
-def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
+def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, space_fact=2, 
+                 **cbar_kw):
     """
     add_colorbar(fig, im, n_cols)
 
@@ -2019,11 +2020,14 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
         - im (plt Colormesh): colormesh
 
     Optional args:
-        - label (str)    : colormap label
-                           default: None
-        - cm_prop (float): colormap width wrt figure size, to be scaled by 
-                           number of columns
-                           default: 0.03
+        - label (str)     : colormap label
+                            default: None
+        - cm_prop (float) : colormap width wrt figure size, to be scaled by 
+                            number of columns
+                            default: 0.03
+        - space_fact (num): factor by which to extend figure spacing, 
+                            proportionally to cm_prop
+                            default: 2
     
     Kewyord args:
         - cbar_kw (dict): keyword arguments for plt.colorbar()
@@ -2033,12 +2037,12 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, **cbar_kw):
     """
 
     cm_w = cm_prop / n_cols
-    fig.subplots_adjust(right=1 - cm_w*2)
+    fig.subplots_adjust(right=1 - cm_w * space_fact)
     cbar_ax = fig.add_axes([1, 0.15, cm_w, 0.7])
     cbar = fig.colorbar(im, cax=cbar_ax, **cbar_kw)
 
     if label is not None:
-        fig.set_label(label)
+        cbar.set_label(label)
 
     return cbar
 
@@ -2117,7 +2121,7 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title=None, cmap=None,
         sub_ax.set_ylim(ylims)
 
     if title is not None:
-        sub_ax.set_title(title)
+        sub_ax.set_title(title, y=1.02)
     
     # check whether y axis needs to be flipped, based on origin
     if origin is not None:
@@ -2611,7 +2615,7 @@ def set_minimal_ticks(sub_ax, axis="x", **font_kw):
 
 
 #############################################
-def rounded_lims(lims):
+def rounded_lims(lims, out=False):
     """
     rounded_lims(lims)
 
@@ -2619,6 +2623,10 @@ def rounded_lims(lims):
 
     Required args:
         - lims (iterable): axis limits (lower, upper)
+
+    Optional args:
+        - out (bool): if True, limits are only ever rounded out.
+                      default: False
 
     Returns:
         - new_lims (list): rounded axis limits [lower, upper]
@@ -2632,11 +2640,17 @@ def rounded_lims(lims):
         o = -int(order) 
 
         new_lims = []
-        for lim in lims:
+        for l, lim in enumerate(lims):
+            round_fct = np.around
+    
             if lim < 0:
-                new_lim = -np.around(-lim * 10 ** o)
+                if out:
+                    round_fct = np.ceil if l == 0 else np.floor
+                new_lim = -round_fct(-lim * 10 ** o)
             else:
-                new_lim = np.around(lim * 10 ** o)
+                if out:
+                    round_fct = np.floor if l == 0 else np.ceil
+                new_lim = round_fct(lim * 10 ** o)
 
             new_lim = new_lim / 10 ** o
             

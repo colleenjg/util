@@ -13,10 +13,10 @@ Note: this code uses python 3.7.
 
 import copy
 import datetime
+import inspect
 import logging
 import multiprocessing
 import os
-import random
 import re
 import sys
 import time
@@ -215,8 +215,8 @@ def create_time_str():
     called.
 
     Return:
-        dirname (str): string containing date and time formatted as 
-                       YYMMDD_HHMMSS
+        - dirname (str): string containing date and time formatted as 
+                         YYMMDD_HHMMSS
     """
 
     now = datetime.datetime.now()
@@ -225,6 +225,136 @@ def create_time_str():
     return dirname
     
     
+#############################################
+def get_attributes_dict(obj):
+    """
+    get_attributes_dict(obj)
+
+    Returns a dictionary with the attribute names of the object split into 
+    properties and methods, private and public. Built-in methods are omitted.
+
+    Required args:
+        - obj (object): object
+
+    Return:
+        - attributes_dict (dict): dictionary with attribute names under the 
+                                  following keys
+            ["methods"] (list)           : list of the object's public methods
+            ["private_methods"] (list)   : list of the object's private methods
+            ["private_properties"] (list): list of the object's private properties
+            ["properties"] (list)        : list of the object's public properties
+    """
+    
+    attributes_dict = {
+        "properties": [],
+        "methods": [],
+        "private_properties": [],
+        "private_methods": [],
+    }
+
+    for attr_name in dir(obj):
+        if str(attr_name).startswith("__"):
+            continue
+            
+        if inspect.ismethod(getattr(obj, str(attr_name))):
+            key = "methods"
+        else:
+            key = "properties"
+        
+        if str(attr_name).startswith("_"):
+            key = f"private_{key}"
+
+        attributes_dict[key].append(attr_name)
+        
+    return attributes_dict
+
+
+#############################################
+def create_attribute_str(obj, private=False, lead="  "):
+    """
+    create_attribute_str(obj)
+
+    Returns a string with the object's attribute names on separate lines.
+
+    Required args:
+        - obj (object): object
+
+    Optional args:
+        - private (bool): if True, private attributes are included in the 
+                          attribute string
+                          default: False
+        - lead (str)    : lead string for each line
+                          default: "  "
+
+    Return:
+        - attribute_str (str): string with attribute names
+    """
+
+    attributes_dict = get_attributes_dict(obj)
+    
+    prefixes = [""]
+    prefix_names = ["Public"]
+    if private:
+        prefixes = ["private_"] + prefixes
+        prefix_names = ["Private"] + prefix_names
+    
+    attribute_str = ""
+    for attr_type in ["properties", "methods"]:
+        attr_str = "" if attr_type == "properties" else "()"
+        for prefix, prefix_name in zip(prefixes, prefix_names):
+            attribute_str = \
+                f"{attribute_str}\n\n{lead}{prefix_name} {attr_type}:"
+            for attr_name in attributes_dict[f"{prefix}{attr_type}"]:
+                attribute_str = \
+                    f"{attribute_str}\n{lead}  self.{str(attr_name)}{attr_str}"
+    
+    return attribute_str
+
+
+#############################################
+def create_property_str(obj, private=False, lead="  ", max_length=40):
+    """
+    create_property_str(obj)
+
+    Returns a string with object's property values on separate lines.
+
+    Required args:
+        - obj (object): object
+
+    Optional args:
+        - private (bool)  : if True, private attributes are included in the 
+                            attribute string
+                            default: False
+        - lead (str)      : lead string for each line
+                            default: "  "
+        - max_length (int): maximum length for including attribute values
+                            default: 40
+
+    Return:
+        - property_str (str): string with property values
+    """
+
+    attributes_dict = get_attributes_dict(obj)
+    
+    prefixes = [""]
+    prefix_names = ["Public"]
+    if private:
+        prefixes = ["private_"] + prefixes
+        prefix_names = ["Private"] + prefix_names
+    
+    property_str = ""
+    for prefix, prefix_name in zip(prefixes, prefix_names):
+        property_str = f"{property_str}\n\n{lead}{prefix_name} property values:"
+        for attr_name in attributes_dict[f"{prefix}properties"]:
+            attr = getattr(obj, str(attr_name))
+            if len(str(attr)) > max_length:
+                continue
+                    
+            property_str = f"{property_str}\n{lead}  self.{attr_name}: {attr}"
+    
+    return property_str    
+
+
 #############################################
 def remove_if(vals, rem):
     """
