@@ -1386,7 +1386,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
             ns = gen_util.list_if_not(ns)
             if self._sample:
                 if len(ns) == 1:
-                    samp_idx = [1]
+                    samp_idx = [1] # if one value, sample only for class 1
                 elif len(ns) != n_classes:
                     raise ValueError("If several sample values are provided, "
                         "should be as many as classes.")
@@ -1397,14 +1397,16 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                 n = min(class_counts + ns)
                 ns = [n for _ in range(n_classes)]
                 samp_idx = range(n_classes)
-            if min(ns) < n_classes:
-                raise RuntimeError(f"The smallest set sizes = {min(ns)} should "
-                    f"be greater or equal to the number of classes = {n_classes}")
             sub_idx = []
             for i in range(n_classes):
-                if i in samp_idx:
+                if i in samp_idx: # if this class needs to be sampled
                     class_indices[i] = class_indices[i][ :ns[samp_idx.index(i)]]
                 sub_idx.extend(class_indices[i])
+            min_n = min([len(idxs) for idxs in class_indices])
+            if min_n < 1:
+                raise ValueError(
+                    "The least populated class in y has 0 members in this set."
+                    )
             sub_idx = np.sort(sub_idx)
             sets[s] = subset[sub_idx]
         train, test = sets
@@ -1433,7 +1435,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         if min(class_counts)//2 < n_classes:
             raise RuntimeError("Cannot split test set into 2 as smallest set "
                 f"size = {min(class_counts)//2} should be greater or equal "
-                f"to the number of classes = {n_classes}")
+                f"to the number of classes = {n_classes}") ############# REDO THIS  ###### RETEST THE GAB_ORI, AND LOOK FOR FAILS
         test, test_out = [], []
         for counts, idx in zip(class_counts, y_indices):
             test.extend(idx[:counts//2])
@@ -1471,6 +1473,7 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
                 self._set_idx.append([train, test, test_out])
             else:
                 self._set_idx.append([train, test])
+
             yield train, test
 
 

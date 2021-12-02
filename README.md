@@ -17,4 +17,4 @@ All requirements will be automatically installed, except:
 The code is written in Python 3.
 
 ## 3. Author
-This code was written by: Colleen Gillon (colleen.gillon@mail.utoronto.ca)
+This code was written by: Colleen Gillon (colleen _dot_ gillon _at_ mail _dot_ utoronto _dot_ ca)

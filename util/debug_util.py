@@ -115,9 +115,9 @@ def calculate_data_diffs(data1, data2):
 
 #############################################
 @set_debug_mode
-def match_log(match, names=None):
+def log_match(match, names=None):
     """
-    match_log(match)
+    log_match(match)
 
     Logs whether 2 named data arrays based on boolean input.
 

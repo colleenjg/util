@@ -1262,7 +1262,8 @@ def autocorr_stats(data, lag, spu=None, byitem=True, stats="mean", error="std",
 
     for s, series in enumerate(data):
         sc_vals = series - np.mean(series, axis=1)[:, np.newaxis]
-        for i, item in enumerate(sc_vals): autocorr_snips[0, i] = autocorr(item, lag_fr)
+        for i, item in enumerate(sc_vals): 
+            autocorr_snips[s, i] = autocorr(item, lag_fr)
 
     xran = np.linspace(-lag, lag, snip_len)
 

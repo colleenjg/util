@@ -255,12 +255,15 @@ def get_attributes_dict(obj):
     for attr_name in dir(obj):
         if str(attr_name).startswith("__"):
             continue
-            
-        if inspect.ismethod(getattr(obj, str(attr_name))):
-            key = "methods"
-        else:
-            key = "properties"
         
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore") # temporarily ignore all warnings
+
+            if inspect.ismethod(getattr(obj, str(attr_name))):
+                key = "methods"
+            else:
+                key = "properties"
+
         if str(attr_name).startswith("_"):
             key = f"private_{key}"
 
