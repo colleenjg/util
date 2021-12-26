@@ -76,12 +76,12 @@ class TimeIt():
         return
 
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
 
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
 
-        end = time.time()
+        end = time.perf_counter()
         duration = end - self.start # in seconds
 
         rem_duration = duration
