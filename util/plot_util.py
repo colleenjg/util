@@ -2782,3 +2782,127 @@ def set_shared_axes(axis_set, axes="x", adjust_tick_labels=False):
     if adjust_tick_labels:
         adjust_tick_labels_for_sharing(axis_set, axes)
 
+
+#############################################
+def plot_with_break(x, y, n_right=1, x_ticklabels=None, figsize=(4, 2), 
+                    title=None, xlabel=None, ylabel=None):
+    """
+    plot_with_break(x, y)
+
+    Plots data with an axis break along the x axis.
+
+    Required args:
+        - x (arr-like): x axis data (must be sorted)
+        - y (arr-like): y axis data of the same length as x
+    
+    Optional args:
+        - n_right (int)          : number of values to place right of the axis 
+                                   break
+                                   default: 1
+        - x_ticklabels (arr-like): labels for each x value
+                                   default: None
+        - figsize (tuple)        : figure size
+                                   default: (4, 2)
+        - title (str)            : plot title
+                                   default: None
+        - xlabel (str)           : x axis label
+                                   default: None
+        - ylabel (str)           : y axis label
+                                   default: None
+
+    Returns:
+        - fig (plt Figure): resulting figure
+    """
+
+
+    n_left = len(x) - n_right # before the break
+    if n_right < 1 or n_left < 1:
+        raise ValueError(
+            "There must be at least 1 value on either side of the break."
+            )
+    if len(x) != len(y):
+        raise ValueError("x and y must have the same length.")
+    if (np.sort(x) != np.asarray(x)).all():
+        raise ValueError("x must be in sorted order.")
+
+    # initialize plots
+    gsk = {
+        "width_ratios": [n_left, n_right], # subplot width ratios
+        "wspace": 0.05, # space between subplots
+        }
+
+    fig, (ax_left, ax_right) = plt.subplots(
+        1, 2, sharey=True, facecolor="w", gridspec_kw=gsk, figsize=figsize
+        )
+
+    # plot data
+    slice_left = slice(None, n_left)
+    slice_right = slice(n_left, None)
+    slice_break = slice(n_left -1, n_left + 1)
+
+    cols = None
+    for ax, use_slice in zip([ax_left, ax_right], [slice_left, slice_right]):
+        # plot whole lines
+        ax.plot(x[use_slice], y[use_slice], marker="o")
+
+        # get colors, first time around
+        if cols is None:
+            cols = [line.get_color() for line in ax.get_lines()]
+        
+        # plot dashed lines between plots, then update their colors
+        n_lines = len(ax.get_lines())
+        ax.plot(
+            x[slice_break], y[slice_break], marker="", ls="dashed"
+            )
+        for l, line in enumerate(list(ax.get_lines())[n_lines:]):
+            line.set_color(cols[l])
+
+    # adjust limits
+    max_left = max(x[slice_left])
+    min_right = min(x[slice_right])
+    if max_left >= min_right:
+        raise RuntimeError(
+            "The min value on the right must not strictly greater than the "
+            "max value on the left."
+            )
+    mid_point = (max_left + min_right) / 2
+    
+    # center datapoints on either side, if they are alone
+    min_x_lim, max_x_lim = None, None
+    if n_left == 1:
+        min_x_lim = max_left - (mid_point - max_left)
+    if n_right == 1:
+        max_x_lim = min_right + (min_right - mid_point)
+    
+    ax_left.set_xlim(min_x_lim, mid_point)
+    ax_right.set_xlim(mid_point, max_x_lim)
+
+    # set tick for right subplot, if label is string
+    if x_ticklabels is not None:
+        if len(x_ticklabels) != len(x):
+            raise ValueError(
+                "If provided, x_ticklabels must have the same length as x."
+                )
+        ax_left.set_xticks(x[slice_left])
+        ax_right.set_xticks(x[slice_right])
+        ax_left.set_xticklabels(x_ticklabels[slice_left])
+        ax_right.set_xticklabels(x_ticklabels[slice_right])
+
+    # hide the spines between ax_sub and ax_top and remove ax_top ticks
+    ax_left.spines["right"].set_visible(False)
+    ax_right.spines["left"].set_visible(False)
+    ax_right.tick_params(axis="y", which="both", left=False) 
+
+    # add labels
+    if ylabel is not None:
+        ax_left.set_ylabel(ylabel)
+
+    if title is not None or xlabel is not None:
+        ax = ax_right if len(x[slice_left]) < len(x[slice_right]) else ax_left
+        if title is not None:
+            ax.set_title(title, y=1.02)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel)
+
+    return fig
+
