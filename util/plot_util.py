@@ -531,6 +531,35 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
 
 
 #############################################
+def cond_close_figs(close="all", nb_inline_bkend=False):
+    """
+    cond_close_figs()
+
+    Checks the pyplot backend and closes all figures, unless 
+    close_nb_inline_bkend is False, and the backend is a notebook or inline 
+    backend.
+
+    Optional args:
+        - close (str or obj)    : what to close, e.g., "all" or a figure
+                                  default: "all" 
+        - nb_inline_bkend (bool): if True, figures are closed even if the 
+                                  matplotlib backend is a notebook or an 
+                                  inline backend
+                                  default: False
+    """
+
+    close_figs = True 
+    bkend = plt.get_backend()
+    if not nb_inline_bkend and ("inline" in bkend or "nb" in bkend):
+        close_figs = False
+
+    if close_figs:
+        plt.close(close)
+
+    return
+
+
+#############################################
 def remove_axis_marks(sub_ax):
     """
     remove_axis_marks(sub_ax)
