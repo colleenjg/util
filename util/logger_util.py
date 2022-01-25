@@ -184,8 +184,7 @@ def level_at_least(level="info", logger=None):
 
 #############################################
 def get_logger(logtype="stream", name=None, filename="logs.log", 
-               fulldir=".", level="info", fmt=None, set_root=True, 
-               skip_exists=True):
+               fulldir=".", level="info", fmt=None, skip_exists=True):
     """
     get_logger()
 
