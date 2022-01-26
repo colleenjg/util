@@ -76,32 +76,35 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
     col_cyc = plt.cycler(color=colors, **cyc_args)
 
     # set pyplot params
-    params = {"axes.labelsize"       : "xx-large", # xx-large axis labels
-              "axes.linewidth"       : 1.5,        # thicker axis lines
-              "axes.prop_cycle"      : col_cyc,    # line color cycle
-              "axes.spines.right"    : False,      # no axis spine on right
-              "axes.spines.top"      : False,      # no axis spine at top
-              "axes.titlesize"       : "xx-large", # xx-large axis title
-              "errorbar.capsize"     : 4,          # errorbar cap length
-              "figure.titlesize"     : "xx-large", # xx-large figure title
-              "figure.autolayout"    : True,       # adjusts layout
-              "font.size"            : 12,         # basic font size value
-              "legend.fontsize"      : "x-large",  # x-large legend text
-              "lines.dashed_pattern" : [8.0, 4.0], # longer dashes
-              "lines.linewidth"      : 2.5,        # thicker lines
-              "lines.markeredgewidth": 2.5,        # thick marker edge widths 
-                                                   # (e.g., cap thickness) 
-              "lines.markersize"     : 10,         # bigger markers
-              "patch.linewidth"      : 2.5,        # thicker lines for patches
-              "savefig.format"       : "svg",      # figure save format
-              "savefig.bbox"         : "tight",    # tight cropping of figure
-              "xtick.labelsize"      : "x-large",  # x-large x-tick labels
-              "xtick.major.size"     : 8.0,        # longer x-ticks
-              "xtick.major.width"    : 2.0,        # thicker x-ticks
-              "ytick.labelsize"      : "x-large",  # x-large y-tick labels
-              "ytick.major.size"     : 8.0,        # longer y-ticks
-              "ytick.major.width"    : 2.0,        # thicker y-ticks
-              }
+    params = {
+        "axes.labelsize"       : "xx-large", # xx-large axis labels
+        "axes.linewidth"       : 1.5,        # thicker axis lines
+        "axes.prop_cycle"      : col_cyc,    # line color cycle
+        "axes.spines.right"    : False,      # no axis spine on right
+        "axes.spines.top"      : False,      # no axis spine at top
+        "axes.titlesize"       : "xx-large", # xx-large axis title
+        "errorbar.capsize"     : 4,          # errorbar cap length
+        "figure.titlesize"     : "xx-large", # xx-large figure title
+        "figure.autolayout"    : True,       # adjusts layout
+        "figure.facecolor"     : "w",        # figure facecolor
+        "font.size"            : 12,         # basic font size value
+        "legend.fontsize"      : "x-large",  # x-large legend text
+        "lines.dashed_pattern" : [8.0, 4.0], # longer dashes
+        "lines.linewidth"      : 2.5,        # thicker lines
+        "lines.markeredgewidth": 2.5,        # thick marker edge widths 
+                                             # (e.g., cap thickness) 
+        "lines.markersize"     : 10,         # bigger markers
+        "patch.linewidth"      : 2.5,        # thicker lines for patches
+        "savefig.format"       : "svg",      # figure save format
+        "savefig.bbox"         : "tight",    # tight cropping of figure
+        "savefig.transparent"  : False,      # background transparency
+        "xtick.labelsize"      : "x-large",  # x-large x-tick labels
+        "xtick.major.size"     : 8.0,        # longer x-ticks
+        "xtick.major.width"    : 2.0,        # thicker x-ticks
+        "ytick.labelsize"      : "x-large",  # x-large y-tick labels
+        "ytick.major.size"     : 8.0,        # longer y-ticks
+        "ytick.major.width"    : 2.0,        # thicker y-ticks
+        }
 
 
     set_font(font, fontdir, log_fonts)
@@ -114,14 +117,14 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         fig, ax = plt.subplots(figsize=[8, 8])
         
         n_col = len(colors)
-        x = np.asarray(list(range(10)))[:, np.newaxis]
-        y = np.repeat(x/2., n_col, axis=1) - \
-            np.asarray(list(range(-n_col, 0)))[np.newaxis, :]
+        x = np.arange(10)[:, np.newaxis]
+        y = np.repeat(x / 2., n_col, axis=1) - np.arange(-n_col, 0)
         ax.plot(x, y)
 
         # label plot
-        legend_labels = [f"{name}: {code}" 
-            for name, code in zip(col_order, colors)]
+        legend_labels = [
+            f"{name}: {code}" for name, code in zip(col_order, colors)
+            ]
         ax.legend(legend_labels)
         ax.set_xlabel("X axis")
         ax.set_ylabel("Y axis")
