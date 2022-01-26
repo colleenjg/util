@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 TAB = "    "
 
 # Set default max array size for permutation tests 
-LIM_E6_SIZE = 350
+LIM_E6_SIZE = 200
 if "LIM_E6_SIZE" in os.environ.keys():
     LIM_E6_SIZE = int(os.environ["LIM_E6_SIZE"])
 
@@ -357,7 +357,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
     run_permute(all_data)
 
     Returns array containing data permuted the number of times requested. Will
-    throw an AssertionError if permuted data array is projected to exceed 
+    throw an RuntimeError if permuted data array is projected to exceed 
     limit. 
 
     NOTE: if data is not paired, to save memory, datapoints are permuted 
@@ -406,7 +406,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
     # it is bigger than accepted limit.
     perm_size = np.product(all_data.shape) * n_perms
     if lim_e6 != "none":
-        lim = int(lim_e6*1e6)
+        lim = int(lim_e6 * 1e6)
         fold = int(np.ceil(float(perm_size)/lim))
         permute_cri = (f"Permutation array is up to {fold}x allowed size "
             f"({lim_e6} * 10^6).")
@@ -514,6 +514,8 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
     perm = True
     n_perms_tot = n_perms
     perms_done = 0
+
+    randst = get_np_rand_state(randst)
 
     if div == "half":
         div = int(all_data.shape[1] // 2)
