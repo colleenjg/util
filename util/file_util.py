@@ -191,7 +191,7 @@ def loadfile(filename, fulldir=".", filetype="pickle", dtype=None):
         else:
             raise ValueError("'ext' must be in '.pkl', '.json', '.csv'.")
     else:
-        raise OSError(f"{fullname} is not an existing file.")
+        raise OSError(f"{fullname} does not exist.")
 
     return datafile
 
