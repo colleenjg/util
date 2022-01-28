@@ -226,25 +226,40 @@ def create_time_str():
     
     
 #############################################
-def get_attributes_dict(obj):
+def get_attributes_dict(obj, skip_errors=True):
     """
     get_attributes_dict(obj)
 
     Returns a dictionary with the attribute names of the object split into 
     properties and methods, private and public. Built-in methods are omitted.
 
+    If loading a method or property throws an error, it is caught, and that 
+    method or property is skipped. 
+
     Required args:
         - obj (object): object
+
+    Optional args:
+        - skip_errors (bool): if True, and a method or property throws an 
+                              error, the error is caught and that method or 
+                              property is skipped, instead of being thrown.
+                              default: True
 
     Return:
         - attributes_dict (dict): dictionary with attribute names under the 
                                   following keys
             ["methods"] (list)           : list of the object's public methods
             ["private_methods"] (list)   : list of the object's private methods
-            ["private_properties"] (list): list of the object's private properties
-            ["properties"] (list)        : list of the object's public properties
+            ["private_properties"] (list): list of the object's private 
+                                           properties
+            ["properties"] (list)        : list of the object's public 
+                                           properties
     """
     
+    # ensure the original objects aren't changed by calling the methods and 
+    # properties
+    obj = copy.deepcopy(obj)
+
     attributes_dict = {
         "properties": [],
         "methods": [],
@@ -256,19 +271,27 @@ def get_attributes_dict(obj):
         if str(attr_name).startswith("__"):
             continue
         
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore") # temporarily ignore all warnings
+        try:
+            with warnings.catch_warnings():
+                # temporarily ignore all warnings
+                warnings.simplefilter("ignore") 
 
-            if inspect.ismethod(getattr(obj, str(attr_name))):
-                key = "methods"
+                if inspect.ismethod(getattr(obj, str(attr_name))):
+                    key = "methods"
+                else:
+                    key = "properties"
+
+            if str(attr_name).startswith("_"):
+                key = f"private_{key}"
+
+            attributes_dict[key].append(attr_name)
+
+        except Exception as err:
+            if skip_errors:
+                continue
             else:
-                key = "properties"
+                raise err
 
-        if str(attr_name).startswith("_"):
-            key = f"private_{key}"
-
-        attributes_dict[key].append(attr_name)
-        
     return attributes_dict
 
 
