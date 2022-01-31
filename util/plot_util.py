@@ -235,11 +235,38 @@ def viridis_with_black_cmap(nbins=100, gamma=1.0):
 
 
 #############################################
+def update_font_manager(fontdir):
+    """
+    update_font_manager(fontdir)
+
+    Adds fonts from a font directory to the font manager.
+    
+    Required args:
+        - fontdir (Path): directory to where extra fonts (.ttf) are stored
+    """
+
+    fontdir = Path(fontdir)
+    if not fontdir.exists():
+        raise OSError(f"{fontdir} font directory does not exist.")
+
+    # add new fonts to list of available fonts if a font directory is provided
+    fontdirs = [fontdir, ]
+    # prevent a long stream of debug messages
+    logging.getLogger("matplotlib.font_manager").disabled = True
+    font_files = fm.findSystemFonts(fontpaths=fontdirs)
+    for font_file in font_files:
+        fm.fontManager.addfont(font_file)
+
+    return
+
+
+#############################################
 def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
     """
     set_font()
 
-    Sets pyplot font to preferred values.
+    Sets pyplot font to preferred values. Also adds fonts from a font 
+    directory, if provided, to the font manager.
     
     NOTE: This function is particular convoluted to enable to clearest warnings 
     when preferred fonts/font families are not found.
@@ -260,17 +287,7 @@ def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
         "sans-serif", "serif"]
 
     if fontdir is not None:
-        fontdir = Path(fontdir)
-        if not fontdir.exists():
-            raise OSError(f"{fontdir} font directory does not exist.")
-
-        # add new fonts to list of available fonts if a font directory is provided
-        fontdirs = [fontdir, ]
-        # prevent a long stream of debug messages
-        logging.getLogger("matplotlib.font_manager").disabled = True
-        font_files = fm.findSystemFonts(fontpaths=fontdirs)
-        for font_file in font_files:
-            fm.fontManager.addfont(font_file)
+        update_font_manager(fontdir)
     
     # compile list of available fonts/font families 
     # (includes checking each font family to see if any of its fonts are available)
