@@ -16,12 +16,13 @@ import datetime
 import inspect
 import logging
 import multiprocessing
+from pathlib import Path
 import os
 import re
 import sys
 import time
+import types
 import warnings
-from pathlib import Path
 
 from joblib import Parallel, delayed
 import numexpr
@@ -176,7 +177,7 @@ def extend_sys_path(file_path, parents=1):
 
     If __file__ is passed as the file_path, this ensures that the parent 
     directory paths are correctly added, relative to the current working 
-    directory.
+    directory, if they are not already in the path.
 
     Required args:
         - file_path (Path): local file path relative to which to add parents
@@ -202,7 +203,9 @@ def extend_sys_path(file_path, parents=1):
 
     add_paths = [str(add_path) for add_path in add_paths]
 
-    sys.path.extend(add_paths)
+    for add_path in add_paths:
+        if add_path not in sys.path:
+            sys.path.append(add_path)
 
 
 #############################################
@@ -231,10 +234,14 @@ def get_attributes_dict(obj, skip_errors=True):
     get_attributes_dict(obj)
 
     Returns a dictionary with the attribute names of the object split into 
-    properties and methods, private and public. Built-in methods are omitted.
+    properties and methods, private and public. 
+    
+    Ignores built-in methods starting with '__'.
 
     If loading a method or property throws an error, it is caught, and that 
     method or property is skipped. 
+
+    NOTE: May misidentify properties that are functions as methods.
 
     Required args:
         - obj (object): object
@@ -276,7 +283,10 @@ def get_attributes_dict(obj, skip_errors=True):
                 # temporarily ignore all warnings
                 warnings.simplefilter("ignore") 
 
-                if inspect.ismethod(getattr(obj, str(attr_name))):
+                attr = getattr(obj, str(attr_name))
+                if inspect.ismethod(attr): # user-defined methods
+                    key = "methods"
+                elif isinstance(attr, types.BuiltinMethodType):
                     key = "methods"
                 else:
                     key = "properties"
@@ -763,14 +773,16 @@ def conv_type(item, dtype=int):
         - item (item): value to convert
 
     Optional args:
-        - dtype (dtype): target datatype (int, float or str)
+        - dtype (dtype): target datatype (bool, int, float or str)
                          default: int
 
     Returns:
         - item (item): converted value
     """
 
-    if dtype in [int, "int"]:
+    if dtype in [bool, "bool"]:
+        item = bool(item)
+    elif dtype in [int, "int"]:
         item = int(item)
     elif dtype in [float, "float"]:
         item = float(item)
