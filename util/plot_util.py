@@ -590,11 +590,8 @@ def remove_axis_marks(sub_ax):
         - sub_ax (plt Axis subplot): subplot    
     """
 
-    sub_ax.tick_params(axis="x", which="both", bottom=False, top=False) 
-    sub_ax.tick_params(axis="y", which="both", left=False, right=False) 
-
-    sub_ax.set_xticks([])
-    sub_ax.set_yticks([])
+    sub_ax.get_xaxis().set_visible(False)
+    sub_ax.get_yaxis().set_visible(False)
 
     for spine in ["right", "left", "top", "bottom"]:
         sub_ax.spines[spine].set_visible(False)
