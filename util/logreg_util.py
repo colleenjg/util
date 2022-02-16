@@ -14,14 +14,16 @@ Note: this code uses python 3.7.
 import copy
 import glob
 import logging
+from pathlib import Path
 import pickle as pkl
 import re
 import warnings
-from pathlib import Path
 
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+
+from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import get_scorer
@@ -32,7 +34,7 @@ from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.svm import SVC
 
 # Allows this module to be loadded without torch. Potential problems are dealt 
-# with later
+# with during runtime.
 try:
     import torch
     TORCH_ERR = None
@@ -49,9 +51,10 @@ except ModuleNotFoundError as err:
 from util import file_util, gen_util, logger_util, math_util, plot_util, \
     rand_util
 
-logger = logging.getLogger(__name__)
-
 TAB = "    "
+
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################
@@ -80,9 +83,9 @@ def catch_set_problem(function):
         try:
             return function(*args, **kwargs)
         except Exception as err:
-            catch_phr = ["threshold", "true labels", "size", "populated class"]
             caught = sum(phr in str(err) for phr in catch_phr)
             if catch_set_prob and caught:
+            
                 logger.warning(str(err))
                 return None
             else:
@@ -220,6 +223,7 @@ def get_sklearn_verbosity():
     """
 
     # get level 
+
     level = logger.level
     if level == logging.NOTSET:
         level = logging.getLogger().level
@@ -638,7 +642,8 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname=".", ep_freq=50,
                                default: 50
         - test_dl2_name (str): name of extra DataLoader
                                default: None
-        - logger (logger)    : logger object
+        - logger (logger)    : logger object. If no logger is provided, a 
+                               default one is used.
                                default: None
 
     Returns:
@@ -648,7 +653,8 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname=".", ep_freq=50,
     """
 
     if logger is None:
-        logger = gen_util.get_logger("stream", "loss_logs", level="info")
+        filepath = Path(dirname, "loss_logs")
+        logger = gen_util.get_logger("stream", filepath, level="info")
 
     test = False
     ext_test = False
@@ -672,6 +678,7 @@ def fit_model_pt(info, n_epochs, mod, dls, device, dirname=".", ep_freq=50,
     
     rectype = None
     min_val = np.inf # value to beat to start recording models
+
     for ep in range(n_epochs):
         ep_loc = (scores["epoch_n"] == ep)
         ep_sc  = dict()
@@ -739,6 +746,7 @@ def get_epoch_n_pt(dirname, model="best"):
         ep_ns = [int(re.findall(r"\d+", Path(mod).name)[0]) 
             for mod in models]
     else:
+    
         logger.warning("No models were recorded.")
         ep = None
         return ep
@@ -843,6 +851,7 @@ def load_checkpoint_pt(mod, filename):
     # updates their states.
     checkpt_name = filename.name
     if filename.is_file():
+    
         logger.info(f"Loading checkpoint found at '{checkpt_name}'.", 
             extra={"spacing": "\n"})
         checkpoint = torch.load(filename)
@@ -1431,11 +1440,6 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
         """
         classes, y_indices = np.unique(y[test], return_inverse=True)
         class_counts = np.bincount(y_indices)
-        n_classes = len(classes)
-        if min(class_counts)//2 < n_classes:
-            raise RuntimeError("Cannot split test set into 2 as smallest set "
-                f"size = {min(class_counts)//2} should be greater or equal "
-                f"to the number of classes = {n_classes}") ############# REDO THIS  ###### RETEST THE GAB_ORI, AND LOOK FOR FAILS
         test, test_out = [], []
         for counts, idx in zip(class_counts, y_indices):
             test.extend(idx[:counts//2])
@@ -1478,10 +1482,15 @@ class StratifiedShuffleSplitMod(StratifiedShuffleSplit):
 
 
 #############################################
-class ModData:
+class ModData(TransformerMixin):
     def __init__(self, scale=True, extrem=False, shuffle=False, randst=None, 
-                 **kwargs):
+                 noise_corr=False, **kwargs):
         """
+        NOTE: Eventually, this class should be edited to subclass BaseEstimator. 
+        However, input variables must then be stored as attributes, which will 
+        break backwards compatibility for saved pipelines.
+
+
         Initializes a data modification tool to flatten, optionally scales
         using RobustScaler/MinMaxScaler and optionally shuffle input data.
 
@@ -1499,15 +1508,19 @@ class ModData:
             - _shuffle (bool)          : shuffle boolean
 
         Optional args:
-            - scale (bool)  : if True, data is scaled by channel using 
-                              robust scaling (using 5-95th percentiles)
-                              default: True
-            - extrem (bool) : if True, 5/95th percentiles are used for scaling
-                              default: False
-            - shuffle (bool): if True, X is shuffled
-                              default: False
-            - randst (int)  : if not None, random seed or random state
-                              default: None
+            - scale (bool)     : if True, data is scaled by channel using 
+                                 robust scaling (using 5-95th percentiles)
+                                 default: True
+            - extrem (bool)    : if True, 5/95th percentiles are used for 
+                                 scaling
+                                 default: False
+            - shuffle (bool)   : if True, X is shuffled
+                                 default: False
+            - randst (int)     : if not None, random seed or random state
+                                 default: None
+            - noise_corr (bool): if True, and shuffle is True, noise 
+                                 correlation destroying shuffling is used
+                                 default: False
         """
         if scale:
             self._extrem = extrem
@@ -1527,7 +1540,10 @@ class ModData:
 
         self._input_randst = randst
         if self._input_randst is not None: 
-            _ = self.randst
+            _ = self.randst # to initialize the property
+        
+        self._noise_corr = noise_corr
+    
     
     @property
     def randst(self):
@@ -1547,6 +1563,8 @@ class ModData:
 
     def fit(self, X, y=None, **kwargs):
         """
+        self.fit(X)
+
         Fits original shape and scaler. Runs only on train set.
 
         Sets attribute:
@@ -1581,6 +1599,8 @@ class ModData:
 
     def fit_transform(self, X, y=None, **kwargs):
         """
+        self.fit_transform(X)
+
         Fits original shape and scaler, and returns optionally scaled, shuffled 
         input data, flattened across channels.
         Runs only on train set.
@@ -1597,7 +1617,8 @@ class ModData:
             - X (3D array): data array, structured as trials x frames x channels
         
         Optional args:
-            - y (1D array): target array (ignored)
+            - y (1D array): target array (needed if self._noise_corr is True)
+                            default: None
         """
         
         X = np.array(X)
@@ -1608,12 +1629,14 @@ class ModData:
             X = self._get_scaled(X, **kwargs)
         X = self._flatten(X, across="ch")
         if self._shuffle:
-            X = self._get_shuffled(X)
+            X = self._get_shuffled(X, y)
         return X
 
 
     def transform(self, X, flatten=True, training=False, **kwargs):
         """
+        self.transform(X)
+
         Returns data, optionally scaled, and flattened across channels. Runs 
         only on non train set.
 
@@ -1651,6 +1674,8 @@ class ModData:
 
     def _flatten(self, X, across="ch"):
         """
+        self._flatten(X)
+
         Returns data flattened across channels and frames or trials and frames.
 
         Required args:
@@ -1685,6 +1710,8 @@ class ModData:
 
     def _reshape(self, X):
         """
+        self._reshape(X)
+
         Returns X in its original shape.
 
         Required args:
@@ -1701,6 +1728,8 @@ class ModData:
 
     def _get_scaled(self, X, **kwargs):
         """
+        self._get_scaled(X)
+
         Returns X scaled by each channel.
 
         Required args:
@@ -1716,37 +1745,107 @@ class ModData:
         return X
 
 
-    def _get_shuffled(self, X):
+    def _get_noise_corr_shuffled(self, X, y=None):
         """
+        self._get_noise_corr_shuffled(X)
+
+        Returns X shuffled to abolish noise correlations, i.e., with channels 
+        shuffled within classes.
+
+        Sets attributes:
+            - _shuff_reidx (2D array): shuffling index for channels and trials,
+                                       structured as channels x trials 
+
+        Required args:
+            - X (nd array): data array, structured as trials x rest
+
+        Optional args:
+            - y (1D array): target array (needed for the first call, 
+                            if self._noise_corr is True)
+                            default: None
+        
+        Returns:
+            - X (nd array): data array, structured as trials x rest
+        """
+
+        # reshape to trials x frames x channels
+        X = self._reshape(X)
+        if len(X.shape) != 3:
+            raise ValueError(
+                "X, in its original shape, should have 3 dimensions, if "
+                "shuffling to abolish noise correlations."
+                )
+
+        X = np.transpose(X, (2, 0, 1)) # channel x trials x frames
+        n_ch, n_tr, _ = X.shape
+        
+        if not hasattr(self, "_shuff_reidx"):
+            if y is None:
+                raise ValueError("If first call, must pass `y`.")
+            # shuffle each class
+            self._shuff_reidx = np.tile(np.arange(n_tr), n_ch).reshape(n_ch, -1)
+            for cl in np.unique(y):
+                cl_tr = np.where(y == cl)[0]
+                cl_idx = np.tile(cl_tr, n_ch).reshape(n_ch, -1)
+                cl_shuff = np.argsort(
+                    self.randst.rand(cl_idx.size).reshape(cl_idx.shape), 
+                    axis=1)
+                dim_data = np.arange(len(cl_idx))[:, np.newaxis]
+                cl_idx_shuff = cl_idx[dim_data, cl_shuff]
+                self._shuff_reidx[:, cl_tr] = cl_idx_shuff
+
+        dim_data = np.arange(len(X))[:, np.newaxis]
+        X = X[dim_data, self._shuff_reidx]
+
+        X = np.transpose(X, (1, 2, 0)) # trials x frames x channels
+        X = self._flatten(X, across="ch")
+
+        return X
+
+
+    def _get_shuffled(self, X, y=None):
+        """
+        self._get_shuffled(X)
+
         Returns X shuffled across trials. Creates a new shuffling index if none
-        exists and uses a previously created one otherwise. Uses self._randst as 
-        random state.
+        exists and uses a previously created one otherwise. Uses self._randst 
+        as random state.
 
         Note: For parallel runs with the same seed, the shuffled idx will 
         always be the same. Additional shuffling must be dealt with externally, 
         e.g. by Split Object.
 
         Sets attributes:
-            - _shuff_reidx (1D array): corresponding shuffling index for targets 
+            - _shuff_reidx (1 or 2D array): 1D shuffling index for targets or, 
+                                            if self._noise_corr, shuffling 
+                                            index for channels and trials,
 
         Required args:
             - X (nd array): data array, structured as trials x rest
+
+        Optional args:
+            - y (1D array): target array (needed for the first call, 
+                            if self._noise_corr is True)
+                            default: None
 
         Returns:
             - X (nd array): data array, shuffled across trials, structured as 
                                 trials x rest
         """
-
-        if not hasattr(self, "_shuff_reidx"):
-            idx = np.arange(len(X)) # get trial indices
-            self.randst.shuffle(idx)
-            # to get sort index corresponding to targets, not input
-            self._shuff_reidx = np.argsort(idx)
+        
+        if self._noise_corr:
+            X = self._get_noise_corr_shuffled(X, y)
         else:
-            # reconstitute train sort idx from target sort idx
-            idx = np.argsort(self._shuff_reidx)
+            if not hasattr(self, "_shuff_reidx"):
+                idx = np.arange(len(X)) # get trial indices
+                self.randst.shuffle(idx)
+                # to get sort index corresponding to targets, not input
+                self._shuff_reidx = np.argsort(idx)
+            else:
+                # reconstitute train sort idx from target sort idx
+                idx = np.argsort(self._shuff_reidx)
 
-        X = X[idx]
+            X = X[idx]
 
         return X
 
@@ -1817,7 +1916,7 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
     n_jobs = gen_util.get_n_jobs(extrapar["n_runs"], parallel=parallel)
 
     # modify n_jobs if input_data size is too big
-    rat = np.prod(input_data.shape)/max_size
+    rat = np.prod(input_data.shape) / max_size
     if rat > 1:
         if n_jobs is not None:
             n_jobs = int(n_jobs/rat)
@@ -1834,12 +1933,15 @@ def run_logreg_cv_sk(input_data, targ_data, logregpar, extrapar,
 
     mod = LogisticRegression(C=1, fit_intercept=True, class_weight="balanced", 
         penalty="l2", solver="lbfgs", max_iter=logregpar["n_epochs"], 
-        random_state=randst, multi_class="auto") # seed only used if n_jobs is not None
+        random_state=randst, multi_class="auto") # seed is only used if n_jobs is not None
     scaler = ModData(scale=scale, extrem=True, shuffle=extrapar["shuffle"], 
         randst=randst)
+
+    # note that shuffling here is what ensures that ModData shuffling will 
+    # effectively be different across splits
     cv = StratifiedShuffleSplitMod(n_splits=extrapar["n_runs"], 
         train_p=logregpar["train_p"], sample=sample, bal=logregpar["bal"], 
-        split_test=split_test, random_state=randst)
+        split_test=split_test, random_state=randst) 
 
     mod_pip = make_pipeline(scaler, mod)
 
@@ -2135,7 +2237,8 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
             sign = -1
         else:
             sc_name = sc_name.replace(
-                "accuracy", "acc").replace("balanced", "bal")
+                "accuracy", "acc"
+                ).replace("balanced", "bal")
             if "acc" in sc_name:
                 sign = 100
             if sc_name == "bal_acc":
@@ -2150,6 +2253,7 @@ def create_score_df_sk(mod_cvs, saved_idx, set_names, scoring):
     scores["run_n"] = range(len(mod_cvs["estimator"]))
     scores["saved"] = 0
     scores.loc[saved_idx, "saved"] = 1
+
     for set_name in set_names:
         for score, sc_mod, sign in zip(scoring, sc_modif, sc_sign):
             key = f"{set_name}_{score}"
@@ -2270,6 +2374,8 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
     
     if cv < 3:
         raise ValueError("'cv' must be at least 3.")
+
+    # note that indices are resorted within each fold
     cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=randst)
 
     scoring = None

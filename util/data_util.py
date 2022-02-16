@@ -11,15 +11,11 @@ Note: this code uses python 3.7.
 
 """
 
-import logging
-
 import numpy as np
 import torch
 import torch.utils.data
 
-from util import gen_util, logger_util, math_util, rand_util
-
-logger = logging.getLogger(__name__)
+from util import gen_util, math_util, rand_util
 
 
 #############################################

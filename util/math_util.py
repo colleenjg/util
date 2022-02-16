@@ -12,8 +12,6 @@ Note: this code uses python 3.7.
 """
 
 import copy
-import logging
-import os
 
 import numpy as np
 import scipy.ndimage as scn
@@ -22,9 +20,10 @@ import scipy.signal as scisig
 
 from util import gen_util, logger_util
 
-logger = logging.getLogger(__name__)
-
 TAB = "    "
+
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################

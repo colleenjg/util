@@ -12,8 +12,8 @@ Note: this code uses python 3.7.
 """
 
 import colorsys
-from pathlib import Path
 import logging
+from pathlib import Path
 import warnings
 
 import matplotlib as mpl
@@ -21,12 +21,9 @@ import matplotlib.cm as mpl_cm
 from matplotlib import font_manager as fm
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 from util import file_util, gen_util, logger_util, math_util, rand_util
-
-logger = logging.getLogger(__name__)
 
 TAB = "    "
 
@@ -40,6 +37,9 @@ LINCLAB_COLS = {"blue"  : "#50a2d5", # Linclab blue
                 "yellow": "#e0b424",
                 "brown" : "#b04900",
                 }
+
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################
@@ -313,6 +313,7 @@ def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
             sorted_fonts_str = f"\n{TAB}".join(sorted(font_list))
             font_log = (f"{font_log}{sep}{font_type}:"
                 f"\n{TAB}{sorted_fonts_str}")
+        
         logger.info(font_log)
     
     # compile ordered list of available fonts/font families, in the preferred 
@@ -935,6 +936,9 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
         nrows = int(np.ceil(n_subplots/float(ncols)))
         # find minimum number of columns given number of rows
         ncols = int(np.ceil(n_subplots/float(nrows)))
+
+    if isinstance(proj, str) and proj.lower() == "3d":
+        from mpl_toolkits.mplot3d import Axes3D
 
     fig, ax = plt.subplots(
         ncols=ncols, nrows=nrows, 

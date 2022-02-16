@@ -11,12 +11,15 @@ Note: this code uses python 3.7.
 
 """
 
+import copy
 import logging
+import os
 import sys
 from pathlib import Path
 import warnings
 
-from util import gen_util
+
+ORIGINAL_WARNINGS_FORMAT = copy.deepcopy(warnings.formatwarning)
 
 
 #############################################
@@ -51,6 +54,106 @@ class TempChangeLogLevel():
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if self.level is not None:
             set_level(level=self.prev_level, logger=self.logger)
+
+
+#############################################
+class StoreRootLoggingInfo():
+    """
+    Context manager for temporarily storing root logging information in global 
+    variables, along with warnings format information. 
+    
+    This is useful if joblib's Parallel() is called with the loky backend, as 
+    logger handlers and level are reset within the parallel processes.
+
+    Optional init args:
+        - warn_config (bool): if True, a warning is sent if the root logger 
+                              configuration or the warnings format is not 
+                              recognized.
+                              default: True
+    """
+
+    def __init__(self, warn_config=True, extra_warn_msg=""):
+
+        self.warn_config = warn_config
+        self.extra_warn_msg = extra_warn_msg
+    
+
+    def __enter__(self):
+
+        # get the root logger
+        logger = logging.getLogger()
+
+        # store a general variable
+        self.remove_gen_var = True
+        if "SET_ROOT_LOGGING" in os.environ.keys():
+            self.remove_gen_var = False
+            self.prev_root_gen = os.environ.get("SET_ROOT_LOGGING")
+        os.environ["SET_ROOT_LOGGING"] = "1"
+
+        # store config
+        self.remove_root_config_var = True
+        if "SET_ROOT_LOGGING_CONFIG" in os.environ.keys():
+            self.remove_root_config_var = False
+            self.prev_root_config = os.environ.get("SET_ROOT_LOGGING_CONFIG")
+
+        if (len(logger.handlers) == 1 and 
+            isinstance(logger.handlers[0], logging.StreamHandler) and 
+            isinstance(logger.handlers[0].formatter, BasicLogFormatter)):
+            os.environ["SET_ROOT_LOGGING_CONFIG"] = "basic"
+        elif self.warn_config:
+            warnings.warn(
+                f"Logging configuration not identified.{self.warn_msg}"
+                )
+
+        # store logging level
+        log_level = logger.level
+
+        self.remove_root_level_var = True
+        if "SET_ROOT_LOGGING_LEVEL" in os.environ.keys():
+            self.remove_root_level_var = False
+            self.prev_root_level = os.environ.get("SET_ROOT_LOGGING_LEVEL")
+        os.environ["SET_ROOT_LOGGING_LEVEL"] = str(log_level)
+
+        # store warnings format
+        self.remove_warnings_fmt = True
+        if "SET_WARNINGS_FORMAT" in os.environ.keys():
+            self.remove_warnings_fmt = False
+            self.prev_warnings_fmt = os.environ.get("SET_WARNINGS_FORMAT")
+
+        # not the best way to compare things, but should do the trick typically
+        if warnings.formatwarning == warnings_simple:
+            os.environ["SET_WARNINGS_FORMAT"] = "simple"
+        elif (warnings.formatwarning != ORIGINAL_WARNINGS_FORMAT and 
+            self.warn_config):
+            warnings.warn(
+                f"Warning formatting not identified.{self.warn_msg}"
+                )
+        
+        
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if "SET_ROOT_LOGGING" in os.environ.keys():
+            if self.remove_gen_var:
+                del os.environ["SET_ROOT_LOGGING"]
+            else:
+                os.environ["SET_ROOT_LOGGING"] = self.prev_root_gen
+
+        if "SET_ROOT_LOGGING_CONFIG" in os.environ.keys():
+            if self.remove_root_config_var:
+                del os.environ["SET_ROOT_LOGGING_CONFIG"]
+            else:
+                os.environ["SET_ROOT_LOGGING_CONFIG"] = self.prev_root_config
+
+        if "SET_WARNINGS_FORMAT" in os.environ.keys():
+            if self.remove_warnings_fmt:
+                del os.environ["SET_WARNINGS_FORMAT"]
+            else:
+                os.environ["SET_WARNINGS_FORMAT"] = self.prev_warnings_fmt
+
+        if "SET_ROOT_LOGGING_LEVEL" in os.environ.keys():
+            if self.remove_root_level_var:
+                del os.environ["SET_ROOT_LOGGING_LEVEL"]
+            else:
+                os.environ["SET_ROOT_LOGGING_LEVEL"] = self.prev_root_level
 
 
 #############################################
@@ -110,7 +213,7 @@ def set_level(level="info", logger=None, return_only=False):
     """
     set_level()
 
-    Sets level of the named logger.
+    Sets level of the named logger, or of the root logger, otherwise.
 
     Optional args:
         - level (int or str): level of the logger ("info", "error", "warning", 
@@ -126,10 +229,13 @@ def set_level(level="info", logger=None, return_only=False):
     """
     
     if logger is None:
+        # get the root logger
         logger = logging.getLogger()
 
     if isinstance(level, int):
         level = level
+    elif isinstance(level, str) and level.isdigit():
+        level = int(level)
     elif level.lower() == "debug":
         level = logging.DEBUG
     elif level.lower() == "info":
@@ -141,9 +247,11 @@ def set_level(level="info", logger=None, return_only=False):
     elif level.lower() == "critical":
         level = logging.CRITICAL
     else:
-        gen_util.accepted_values_error(
-            "level", level, 
-            ["debug", "info", "warning", "error", "critical"])
+        accepted_values = ["debug", "info", "warning", "error", "critical"]
+        val_str = ", ".join([f"'{x}'" for x in accepted_values])        
+        raise ValueError(
+            f"'level' value '{level}' unsupported. Must be in {val_str}."
+        )
 
     if not return_only:
         logger.setLevel(level)
@@ -171,6 +279,7 @@ def level_at_least(level="info", logger=None):
     
 
     if logger is None:
+        # get the root logger
         logger = logging.getLogger()
 
     curr_level = logger.level
@@ -188,7 +297,8 @@ def get_logger(logtype="stream", name=None, filename="logs.log",
     """
     get_logger()
 
-    Returns logger. 
+    Returns logger with specified formatting. If no logger is passed, sets the 
+    root logger.
 
     Optional args:
         - logtype (str)     : type or types of handlers to add to logger 
@@ -207,8 +317,10 @@ def get_logger(logtype="stream", name=None, filename="logs.log",
                               default: "info"
         - fmt (Formatter)   : logging Formatter to use for the handlers
                               default: None
-        - skip_exists (bool): if a logger with the name already has handlers, 
-                              does nothing and returns existing logger
+        - skip_exists (bool): if a logger with the name already has the 
+                              specified handlers, formats them, and returns 
+                              existing logger. 
+                              Otherwise, resets them.
                               default: True
 
     Returns:
@@ -216,32 +328,48 @@ def get_logger(logtype="stream", name=None, filename="logs.log",
     """
 
     # create one instance
-    logger = logging.getLogger(name)
-
-    # skip if logger already has handlers
-    if skip_exists and len(logger.handlers) != 0:
-        return logger
-
-    logger.handlers = []
+    if isinstance(name, logging.Logger):
+        logger = name
+    else:
+        logger = logging.getLogger(name)
     
+    if not skip_exists:
+        logger.handlers = []
+
     # create handlers
-    sh, fh = None, None
     if logtype in ["stream", "both"]:
-        sh = logging.StreamHandler(sys.stdout)
-        if fmt is not None:
+        add_handler = True
+        for hd in logger.handlers:
+            if isinstance(hd, logging.StreamHandler):
+                add_handler = False
+                if fmt is not None:
+                    hd.setFormatter(fmt)
+        if add_handler:
+            sh = logging.StreamHandler(sys.stdout)
             sh.setFormatter(fmt)
-        logger.addHandler(sh)
+            logger.addHandler(sh)
+
     if logtype in ["file", "both"]:
-        fh = logging.FileHandler(Path(fulldir, filename))
-        if fmt is not None:
+        add_handler = True
+        for hd in logger.handlers:
+            if isinstance(hd, logging.FileHandler):
+                add_handler = False
+                if fmt is not None:
+                    hd.setFormatter(fmt)
+        if add_handler:
+            fh = logging.FileHandler(Path(fulldir, filename))
             fh.setFormatter(fmt)
-        logger.addHandler(fh)
+            logger.addHandler(fh)
+        
     all_types = ["file", "stream", "both", "none"]
     if logtype not in all_types:
-        gen_util.accepted_values_error("logtype", logtype, all_types)
-    
-    set_level(level, name)
+        val_str = ", ".join([f"'{x}'" for x in all_types])        
+        raise ValueError(
+            f"'logtype' value '{logtype}' unsupported. Must be in {val_str}."
+        )
 
+    set_level(level, logger)
+    
     return logger
 
 
@@ -250,7 +378,8 @@ def get_logger_with_basic_format(**logger_kw):
     """
     get_logger_with_basic_format()
 
-    Returns logger with basic formatting, defined by BasicLogFormatter class.
+    Returns logger with basic formatting, defined by BasicLogFormatter class. 
+    If no logger is passed, sets the root logger.
 
     Keyword args:
         - logger_kw (dict): keyword arguments for get_logger()
@@ -284,8 +413,66 @@ def warnings_simple(message, category, filename, lineno, file=None, line=None):
     return '%s:%s: %s:\n%s\n' % (filename, lineno, category.__name__, message)
 
 
+#############################################
+def format_all(**logger_kw):
+    """
+    format_all()
 
-# set logger and warnings format
-logger = get_logger_with_basic_format()
-warnings.formatwarning = warnings_simple
+    Initializes a logger with the basic format, and updates the warnings 
+    format.
+    """
+    
+    _ = get_logger_with_basic_format(**logger_kw)
+    warnings.formatwarning = warnings_simple
+
+
+#############################################
+def get_module_logger(name=None):
+    """
+    get_module_logger()
+
+    Initializes a module logger. Also, checks whether the root logger needs to 
+    be reconfigurated, and have its level updated, based on global variables 
+    that can be set with the context manager StoreRootLoggingInfo().
+
+    Optional args:
+        - name (str): module logger name
+                      default: None
+    """
+
+    logger = logging.getLogger(name)
+
+    if os.environ.get("SET_ROOT_LOGGING", "0") == "1":
+
+        if "SET_ROOT_LOGGING_CONFIG" in os.environ.keys():
+            config = os.environ["SET_ROOT_LOGGING_CONFIG"]
+            if config == "basic":
+                get_logger_with_basic_format()
+            else:
+                raise NotImplementedError(
+                    f"{config} logging config not recognized."
+                    )
+
+        if "SET_ROOT_LOGGING_LEVEL" in os.environ.keys():
+            level = os.environ["SET_ROOT_LOGGING_LEVEL"]
+            set_level(level)
+
+        if "SET_WARNINGS_FORMAT" in os.environ.keys():
+            warn_format = os.environ["SET_WARNINGS_FORMAT"]
+            if warn_format == "simple":
+                warnings.formatwarning = warnings_simple
+            else:
+                raise NotImplementedError(
+                    f"{warn_format} warnings format not recognized."
+                    )
+
+        os.environ["SET_ROOT_LOGGING"] = "0"
+
+    return logger
+
+
+#############################################
+if __name__ == '__main__':
+
+    format_all()
 

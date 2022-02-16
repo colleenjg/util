@@ -13,7 +13,6 @@ Note: this code uses python 3.7.
 
 import glob
 import json
-import logging
 import pickle
 import warnings
 from pathlib import Path
@@ -22,7 +21,8 @@ import pandas as pd
 
 from util import gen_util, logger_util
 
-logger = logging.getLogger(__name__)
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################

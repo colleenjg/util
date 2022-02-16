@@ -12,7 +12,6 @@ Note: this code uses python 3.7.
 """
 
 import copy
-import logging
 import os
 import re
 import warnings
@@ -21,8 +20,6 @@ import numpy as np
 import scipy.stats as scist
 
 from util import gen_util, logger_util, math_util
-
-logger = logging.getLogger(__name__)
 
 TAB = "    "
 
@@ -33,6 +30,9 @@ if "LIM_E6_SIZE" in os.environ.keys():
 
 # Minimum number of examples outside for confidence interval edge calculation
 MIN_N = 2
+
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################
@@ -94,7 +94,7 @@ def seed_all(seed=None, device="cpu", log_seed=True, seed_now=True,
     Returns:
         - seed (int): seed value
     """
-
+ 
     if seed in [None, -1]:
         MAX_INT32 = 2**32
         seed = np.random.randint(1, MAX_INT32)
@@ -436,7 +436,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
 
     dim_data = np.arange(all_data.shape[0])[:, np.newaxis, np.newaxis]
 
-    # generate permutation array
+    # generate permutated array
     permed_data = np.stack(all_data[dim_data, perm_idxs])
 
     if paired == "within": # transpose back

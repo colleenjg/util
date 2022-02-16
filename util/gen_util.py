@@ -14,7 +14,6 @@ Note: this code uses python 3.7.
 import copy
 import datetime
 import inspect
-import logging
 import multiprocessing
 from pathlib import Path
 import os
@@ -30,7 +29,8 @@ import numpy as np
 
 from util import logger_util
 
-logger = logging.getLogger(__name__)
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################
@@ -472,7 +472,7 @@ def list_if_not(items, any_iterable=False, excl_strings=False):
     
     make_list = False
 
-    if any_iterable and not is_iterable(item, excl_strings=excl_strings):
+    if any_iterable and not is_iterable(items, excl_strings=excl_strings):
         make_list = True    
     
     elif not isinstance(items, list):
@@ -1413,6 +1413,24 @@ def n_cores_numba(n_tasks, parallel=True, max_cores="all", allow="around",
 
 
 #############################################
+class ParallelLogging(logger_util.StoreRootLoggingInfo):
+    """
+    Context manager for temporarily storing root logging information in global 
+    variables. Allows root logger handlers and level to be preserved within 
+    parallel processes, e.g., if using the loky backend.
+
+    see logger_util.StoreRootLoggingInfo
+    """
+
+    def __init__(self, **kwargs):
+
+        extra_warn_msg = " May not be preserved in parallel processes."
+
+        super().__init__(extra_warn_msg=extra_warn_msg, **kwargs)
+
+
+
+#############################################
 class ProgressParallel(Parallel):
     """
     Class allowing joblib Parallel to work with tqdm.
@@ -1523,19 +1541,23 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                 use_tqdm=True, total=len(loop_arg), n_jobs=n_jobs
                 )
         else:
+            # multiprocessing backend to enable proper logging
             ParallelUse = Parallel(n_jobs=n_jobs)
 
         if pass_parallel: 
             # prevent subfunctions from also sprouting parallel processes
             args_dict["parallel"] = False 
         if args_dict is None:
-            outputs = ParallelUse(
-                delayed(fct)(*arg, *args_list) for arg in loop_arg
-                )
+            with ParallelLogging():
+                outputs = ParallelUse(
+                    delayed(fct)(*arg, *args_list) for arg in loop_arg
+                    )
         else:
-            outputs = ParallelUse(
-                delayed(fct)(*arg, *args_list, **args_dict) for arg in loop_arg
-                )
+            with ParallelLogging():
+                outputs = ParallelUse(
+                    delayed(fct)(*arg, *args_list, **args_dict) 
+                    for arg in loop_arg
+                    )
     else:
         if pass_parallel: # pass parallel on
             args_dict["parallel"] = parallel

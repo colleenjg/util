@@ -11,12 +11,6 @@ Note: this code uses python 3.7.
 
 """
 
-import logging
-
-from util import logger_util
-
-logger = logging.getLogger(__name__)
-
 
 #############################################
 def calculate_conv_output(d_in, ks, ss=1, ps=0, ds=1):

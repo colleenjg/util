@@ -18,7 +18,8 @@ import numpy as np
 
 from util import logger_util
 
-logger = logging.getLogger(__name__)
+
+logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################
@@ -29,6 +30,7 @@ def set_debug_mode(function):
     """
 
     def wrapper(*args, **kwargs):
+
         prev_level = logger.level
         logger.setLevel(logging.DEBUG)
 
@@ -72,6 +74,7 @@ def check_match(data1, data2, ret_diff=False):
 
     match = ((data1 == data2) | (np.isnan(data1) & np.isnan(data2)))
     if ~(np.isnan(data1) == np.isnan(data2)).all():
+
         logger.debug("Different NaN patterns.")
     match_all = match.all()
     if ret_diff:
@@ -134,6 +137,7 @@ def log_match(match, names=None):
     elif len(names) != 2:
         raise ValueError("If passing 'names', must pass 2 names.")
 
+
     if match:
         logger.debug(f"{names[1].capitalize()} matches {names[0].lower()}.")
     else:
@@ -166,6 +170,7 @@ def log_max_diff(data1, data2, axis=0, axis_label="IDs"):
     _, diff_idx = check_match(data1, data2, ret_diff=True)
     diff_items = [str(roi_n) for roi_n in sorted(set(diff_idx[axis]))]
     diff_items_str = ", ".join(diff_items)
+
     logger.debug(f"Diff {axis_label}: {diff_items_str}")
     act_diff = (data2[diff_idx] - data1[diff_idx])
     logger.debug(f"Max absolute diff: {np.nanmax(np.absolute(act_diff))}")
@@ -224,6 +229,7 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
         ~np.isnan(items_max_diffs)))[0])
     
     if n_not_zero == 0:
+
         n_nan = np.isnan(items_max_diffs).sum()
         if n_nan:
             logger.debug(f"Differences in all {n_nan} {datatype} due to NaNs.")
@@ -240,8 +246,9 @@ def plot_diff_data(data1, data2, max=10, title=None, labels=None,
         len(item_max_diff_idx), figsize=figsize, squeeze=False, sharex=True)
 
     if not one_dim:
-        logger.debug(f"{n_plot}/{n_not_zero} {datatype} with greatest cumulative "
-            "absolute differences shown.")
+
+        logger.debug(f"{n_plot}/{n_not_zero} {datatype} with greatest "
+            "cumulative absolute differences shown.")
 
     subtitle = ""
     if title is not None:
@@ -300,6 +307,7 @@ def plot_diff_distrib(data1, data2, bins=100, title=None, labels=None,
     non_zero_diffs, perc_diff, nan_mask = calculate_data_diffs(data1, data2)
 
     if len(non_zero_diffs) == 0:
+
         n_nan = np.isnan(non_zero_diffs).sum()
         if n_nan:
             logger.debug(f"Differences in all {n_nan} {datatype} due to NaNs.")
