@@ -22,6 +22,7 @@ from matplotlib import font_manager as fm
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import numpy as np
+import scipy.ndimage
 
 from util import file_util, gen_util, logger_util, math_util, rand_util
 
@@ -2431,6 +2432,83 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
         sub_ax.legend()
 
     return cloud
+
+
+#############################################
+def plot_data_contour(sub_ax, x, y, n_bins=40, bin_edges=None, levels=6, 
+                      contour_lw=4, contour_zorder=None, plot_scatter=True, 
+                      scatter_color="k", base_alpha=0.3, cmap="Greys", 
+                      contour_edge=False, **scatter_kwargs):
+    """
+    plot_data_contour(sub_ax, x, y)
+
+    Plots contour maps for data, and optionally the scatterplot itself. The 
+    contours are generated via a smoothed histogram.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+        - x (array-like)           : data in x
+        - y (array-like)           : data in y
+
+    Optional args:
+        - n_bins (int)        : number of bins for contour generation
+                                default: 40
+        - bin_edges (list)    : bin edges for contour evaluation 
+                                [[x1, x2], [y1, y2]]
+                                default: None
+        - levels (float)      : number of contour levels
+                                default: 6
+        - contour_lw (float)  : contour linewidth
+                                default: 4
+        - contour_zorder (int): contour z-order
+                                default: None
+        - plot_scatter (bool) : if True, the data is plotted as a scatterplot
+                                default: True
+        - scatter_color (str) : color for scatterplot data
+                                default: "k"
+        - base_alpha (float)  : base alpha for calculating scatterplot data 
+                                transparency
+                                default: 0.3
+        - cmap (plt cmap)     : colormap for contours
+                                default: "Greys"
+        - contour_edge (bool) : if True, a white edge is added to the contours
+                                default: False
+
+    Kewyord args:
+        - scatter_kwargs (dict): keyword arguments for plt.scatter()
+    """
+
+    # bin data
+
+    hist, x_edges, y_edges = np.histogram2d(
+        x.reshape(-1), y.reshape(-1), bins=n_bins, range=bin_edges, 
+        density=False
+        )
+    x_mids = np.diff(x_edges) / 2 + x_edges[:-1]
+    y_mids = np.diff(y_edges) / 2 + y_edges[:-1]
+
+    hist_smoothed = scipy.ndimage.gaussian_filter(
+        hist, n_bins / 20, mode="constant"
+        )
+
+    density_data = [x_mids, y_mids, hist_smoothed.T]
+    
+    if contour_edge:
+        sub_ax.contour(
+            *density_data, levels=levels, colors="white", 
+            zorder=contour_zorder-1, linewidths=contour_lw * 1.8
+            )
+
+    sub_ax.contour(
+        *density_data, levels=levels, cmap=cmap, zorder=contour_zorder, 
+        linewidths=contour_lw
+        )
+
+    if plot_scatter:
+        alpha = np.min([base_alpha / (len(x) / 100), 0.8])
+        sub_ax.scatter(
+            x, y, c=scatter_color, alpha=alpha, **scatter_kwargs
+            )
 
     
 #############################################

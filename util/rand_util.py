@@ -17,7 +17,7 @@ import re
 import warnings
 
 import numpy as np
-import scipy.stats as scist
+import scipy.stats
 
 from util import gen_util, logger_util, math_util
 
@@ -134,6 +134,8 @@ def split_random_state(randst, n=10):
     """
 
     MAX_INT32 = 2**32
+
+    randst = get_np_rand_state(randst, set_none=True)
 
     randsts = []
     for _ in range(n):
@@ -645,7 +647,9 @@ def get_p_val_from_rand(act_data, rand_data, return_CIs=False, p_thresh=0.05,
                 "If 'nanpol' is None, sorted_rand_data should not include "
                 "NaN values, unless act_data is NaN.")
 
-    perc = scist.percentileofscore(sorted_rand_data, act_data, kind='mean')
+    perc = scipy.stats.percentileofscore(
+        sorted_rand_data, act_data, kind="mean"
+        )
     if str(tails) in ["hi", "2"] and perc > 50:
         perc = 100 - perc
     p_val = perc / 100
@@ -828,11 +832,11 @@ def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean",
                         [g_data, g_data_2], n_perms, stats=stats, op="diff", 
                         paired=paired, nanpol=nanpol, randst=randst)
                 elif normal:
-                    fct = scist.ttest_rel if paired else scist.ttest_ind
+                    fct = scipy.stats.ttest_rel if paired else scipy.stats.ttest_ind
                     # reverse 2-tail adjustment
                     p_vals[i] = fct(g_data, g_data_2, axis=None)[1] / 2
                 else:
-                    fct = scist.wilcoxon if paired else scist.mannwhitneyu 
+                    fct = scipy.stats.wilcoxon if paired else scipy.stats.mannwhitneyu 
                     # reverse 2-tail adjustment
                     p_vals[i] = fct(g_data, g_data_2)[1] / 2
             i += 1
@@ -976,7 +980,7 @@ def id_elem(rand_vals, act_vals, tails=2, p_val=0.05, min_n=MIN_N,
         gen_util.accepted_values_error("tails", tails, ["hi", "lo", "2"])
     
     if ret_pval:
-        act_percs = [scist.percentileofscore(sub_rand_vals, val) 
+        act_percs = [scipy.stats.percentileofscore(sub_rand_vals, val) 
             for (sub_rand_vals, val) in zip(rand_vals, act_vals)]
         act_pvals = []
         for perc in act_percs:

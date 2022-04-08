@@ -112,7 +112,7 @@ class TimeIt():
 #############################################
 def accepted_values_error(varname, wrong_val, accept_vals):
     """
-    accepted_values_error(varname, wrong_value, accept_values)
+    accepted_values_error(varname, wrong_val, accept_vals)
 
     Raises a value error with a message indicating the variable name,
     accepted values for that variable and wrong value stored in the variable.
@@ -1284,14 +1284,11 @@ def keep_dict_keys(in_dict, keep_if):
 
 
 #############################################
-def get_n_cores(n_tasks, parallel=True, max_cores="all"):
+def get_n_cores(parallel=True, max_cores="all"):
     """
-    get_n_cores(n_tasks)
+    get_n_cores()
 
-    Returns number of cores available.
-
-    Required args:
-        - n_tasks (int): number of tasks to run
+    Returns number of cores available for parallel processes.
     
     Optional args:
         - parallel (bool)       : if False, n_jobs of None is returned
@@ -1315,8 +1312,15 @@ def get_n_cores(n_tasks, parallel=True, max_cores="all"):
             if max_cores >= 0.0 and max_cores <= 1.0:
                 n_cores = int(n_cores * max_cores)
             else:
-                n_cores = np.min(n_cores, max_cores)
-        n_cores = int(n_cores)
+                n_cores = min(n_cores, max_cores)
+
+        # check for an environment variable setting the number of threads to
+        # use for parallel processes
+        max_cores_env = os.getenv("OMP_NUM_THREADS")
+        if os.getenv("OMP_NUM_THREADS") is not None:
+            n_cores = min(n_cores, int(max_cores_env))
+
+        n_cores = int(max(1, n_cores)) # at least 1
 
     return n_cores
 
@@ -1347,7 +1351,7 @@ def get_n_jobs(n_tasks, parallel=True, max_cores="all"):
         n_jobs = None
 
     else:
-        n_cores = get_n_cores(n_tasks, parallel, max_cores)
+        n_cores = get_n_cores(parallel, max_cores)
         n_jobs = min(int(n_tasks), n_cores)
         if n_jobs < 2:
             n_jobs = None
@@ -1386,7 +1390,7 @@ def n_cores_numba(n_tasks, parallel=True, max_cores="all", allow="around",
                              if not parallel)
     """
 
-    n_cores = get_n_cores(n_tasks, parallel, max_cores)
+    n_cores = get_n_cores(parallel, max_cores)
     
     if n_cores is None:
         return

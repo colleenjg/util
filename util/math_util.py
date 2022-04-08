@@ -14,9 +14,9 @@ Note: this code uses python 3.7.
 import copy
 
 import numpy as np
-import scipy.ndimage as scn
-import scipy.stats as scist
-import scipy.signal as scisig
+import scipy.ndimage
+import scipy.stats
+import scipy.signal
 
 from util import gen_util, logger_util
 
@@ -143,9 +143,9 @@ def error_stat(data, stats="mean", error="sem", axis=None, nanpol=None,
             error = np.nanstd(data, axis=axis)
     elif stats == "mean" and error == "sem":
         if nanpol is None:
-            error = scist.sem(data, axis=axis)
+            error = scipy.stats.sem(data, axis=axis)
         elif nanpol == "omit":
-            error = scist.sem(data, axis=axis, nan_policy="omit")
+            error = scipy.stats.sem(data, axis=axis, nan_policy="omit")
     elif stats == "mean" and error == "var":
         if nanpol is None:
             error = np.var(data, axis=axis)
@@ -492,7 +492,7 @@ def rolling_mean(vals, win=3):
 
     targ_dims = tuple([1] * (len(vals.shape) - 1) + [win])
     weights = (np.repeat(1.0, win)/win).reshape(targ_dims)
-    vals_out = scn.convolve(vals, weights, mode="mirror")
+    vals_out = scipy.ndimage.convolve(vals, weights, mode="mirror")
 
     return vals_out
 
@@ -1101,7 +1101,7 @@ def binom_CI(p_thresh, perc, n_items, null_perc, tails=2, multcomp=None):
     NOTE: p_values and CIs may not correspond exactly, due to rounding effects,
     given that the binomial distribution is a discrete probability distribution.
 
-    Specifically, scist.binom.ppf always returns an integer number of items, 
+    Specifically, scipy.stats.binom.ppf always returns an integer number of items, 
     regardless of the thresholds (p_thresh) requested. Thus, lower values of 
     n_items yield lower resolution CIs, with a larger range of p-value 
     thresholds outputting the same CI values.
@@ -1137,19 +1137,21 @@ def binom_CI(p_thresh, perc, n_items, null_perc, tails=2, multcomp=None):
     # Calculate the confidence interval for "frac_pos/sig".
     threshs = [p_thresh / (multcomp * 2), 0.5, 1 - p_thresh / (multcomp * 2)]
     CI_low, CI_med, CI_high = [
-        scist.binom.ppf(thresh, n_items, perc / 100) / n_items 
+        scipy.stats.binom.ppf(thresh, n_items, perc / 100) / n_items 
         for thresh in threshs
         ]
     
     # Calculate the p-val of the true value for the null distro
-    p_val = scist.binom.cdf(perc / 100 * n_items, n_items, null_perc / 100)
+    p_val = scipy.stats.binom.cdf(
+        perc / 100 * n_items, n_items, null_perc / 100
+        )
 
     if str(tails) in ["hi", "2"] and p_val > 0.50:
         p_val = 1 - p_val
 
     # Calculate the confidence interval for the null distro
     null_CI_low, null_CI_med, null_CI_high = [
-        scist.binom.ppf(thresh, n_items, null_perc / 100) / n_items 
+        scipy.stats.binom.ppf(thresh, n_items, null_perc / 100) / n_items 
         for thresh in threshs
         ]
     
@@ -1198,7 +1200,7 @@ def autocorr(data, lag):
     """
 
     # scipy is faster than numpy for long data series
-    autoc = scisig.correlate(data, data, mode="full", method="auto")
+    autoc = scipy.signal.correlate(data, data, mode="full", method="auto")
     mid = int((autoc.shape[0] - 1) // 2)
     autoc_snip = autoc[mid - lag:mid + lag + 1]
     autoc_snip /= np.max(autoc_snip)
@@ -1313,7 +1315,7 @@ def calculate_snr(data, return_stats=False):
 
     noise_mean = np.mean(noise_data)
     noise_std = np.std(noise_data)
-    noise_thr = scist.norm.ppf(0.95, noise_mean, noise_std)
+    noise_thr = scipy.stats.norm.ppf(0.95, noise_mean, noise_std)
     signal_mean = np.mean(data[np.where(data > noise_thr)])
 
     snr = signal_mean / noise_std
