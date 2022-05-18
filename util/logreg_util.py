@@ -27,7 +27,7 @@ from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import get_scorer
-from sklearn.model_selection import cross_val_score, cross_validate, \
+from sklearn.model_selection import cross_val_predict, cross_validate, \
     StratifiedShuffleSplit, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
@@ -2309,9 +2309,119 @@ def get_clf(model="logreg", class_weight="balanced", randst=None,
 
 
 #############################################
+def fit_and_score(clf, inp, target, cv, stats="mean", error="std", 
+                  scoring=["accuracy"], extra_targ=None, n_jobs=None):
+    """
+    fit_and_score(clf, inp, target, cv)
+
+    Returns scores from fitting a cross-validation model on input and target 
+    data.
+
+    Required args:
+        - inp (array-like)   : input array whose first dimension matches the 
+                               target first dimension 
+        - target (array-like): 1D target array
+        - cv (sklearn CV)    : cross-validation object
+
+    Optional args:
+        - stats (str)            : statistic to return across fold scores 
+                                   ("mean" or "median")  If None, all scores 
+                                   are returned
+                                   default: "mean"
+        - error (str)            : error statistic to return across fold scores. 
+                                   If None or if 'stats' is None, no error 
+                                   statistic is returned. 
+                                   ("std" for std or q1-3 and "sem" for SEM or 
+                                   MAD, depending on the value or 'stats')
+                                   default: "std"
+        - scoring (list)         : score types to use
+                                   default: ["accuracy"]
+        - extra_targ (array-like): additional target data to score
+                                   default: None
+        - n_jobs (int)           : number of CPUs to use (see sklearn)
+                                   default: None
+
+    Returns:
+        - scores (nd array): scores for datasets (may include NaNs is 
+                             calculating balanced accuracy on the extra targets
+                             and certain test splits are missing classes)
+
+                             if stats is None:
+                                 scores for each fold, organized as 
+                                    (target dataset) x scoring x split
+                             elif error is None:
+                                 score statistics, organized as 
+                                 (target dataset) x scoring
+                             else:
+                                 score statistics, organized as 
+                                 (target dataset) x scoring x stats (me, err)
+    """
+
+    scoring = gen_util.list_if_not(scoring)
+    score_names = []
+    for score_name in scoring:
+        if isinstance(score_name, str):
+            score_names.append(score_name)
+        else:
+            score_names.append(score_name.__name__)
+
+    if extra_targ is None:
+        scores = np.full((len(scoring), cv.n_splits), np.nan)
+        score_dict = cross_validate(
+            clf, inp, target, cv=cv, scoring=scoring, n_jobs=n_jobs
+            )
+        for s, score_name in enumerate(score_names):
+            scores[s] = score_dict[f"test_{score_name}"]
+    else:
+        if len(target) != len(extra_targ):
+            raise ValueError("target and extra_targ must have the same length.")
+        target_classes = set(target)
+        if not set(extra_targ).issubset(target_classes):
+            raise ValueError(
+                "extra_targ must only contain values found in target."
+                )
+
+        if not isinstance(cv.random_state, (int, np.random.RandomState)):
+            raise NotImplementedError(
+                "cv must be seeded for split to be correctly re-retrieved "
+                "after prediction."
+                )
+
+        cv_copy = copy.deepcopy(cv)
+        predictions = cross_val_predict(clf, inp, target, cv=cv, n_jobs=n_jobs)
+
+        scores = np.full((2, len(scoring), cv_copy.n_splits), np.nan)
+        for i, (_, test_idx) in enumerate(cv_copy.split(inp, target)):
+            for s, score_name in enumerate(scoring):
+                score_func = get_scorer(score_name)._score_func
+                for t, targs in enumerate([target, extra_targ]):
+                    # check if split is missing classes - if so, cannot 
+                    # correctly compute balanced accuracy
+                    if t == 1 and score_name == "balanced_accuracy":
+                        if set(targs[test_idx]) != target_classes:
+                            continue
+
+                    scores[t, s, i] = score_func(
+                        targs[test_idx], predictions[test_idx]
+                        )
+    
+    if stats is not None:
+        if error is None:
+            scores = math_util.mean_med(scores, stats=stats, axis=-1)            
+        else:
+            scores = np.moveaxis(
+                math_util.get_stats(scores, stats=stats, error=error, axes=-1),
+                0, -1
+                )
+
+    return scores
+
+
+#############################################
 def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std", 
-               class_weight="balanced", n_jobs=None, model="logreg", 
-               scaler=None, randst=None, max_iter_lr=100):
+               class_weight="balanced", scoring=["balanced_accuracy"], 
+               n_jobs=None, model="logreg", scaler=None, randst=None, 
+               max_iter_lr=100, extra_targ=None):
                
     """
     run_cv_clf(inp, target)
@@ -2325,43 +2435,50 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
         - target (array-like): 1D target array
 
     Optional args:
-        - cv (int)          : number of cross-validation folds (at least 3)
-                              (stratified KFold)
-                              default: 5
-        - shuffle (bool)    : if True, target is shuffled
-                              default: False
-        - stats (str)       : statistic to return across fold scores 
-                              ("mean" or "median")  If None, all scores are 
-                              returned
-                              default: "mean"
-        - error (str)       : error statistic to return across fold scores. If 
-                              None or if 'stats' is None, no error statistic is 
-                              returned.("std" for std or q1-3 and "sem" for 
-                              SEM or MAD, depending on the value or 'stats')
-                              default: "std"
-        - class_weight (str): sklearn class_weight attribute
-                              default: "balanced"
-        - n_jobs (int)      : number of CPUs to use (see sklearn)
-                              default: None
-        - model (str)       : model to use ("logreg" or "svm")
-                              default: "logreg"
-        - randst (int)      : seed or random state to pass to models
-                              default: None 
-        - max_iter_lr (int) : max number of iterations for logistic regression
-                              default: 100
+        - cv (int)               : number of cross-validation folds 
+                                   (at least 3) (stratified KFold)
+                                   default: 5
+        - shuffle (bool)         : if True, target is shuffled
+                                   default: False
+        - stats (str)            : statistic to return across fold scores 
+                                   ("mean" or "median")  If None, all scores 
+                                   are returned
+                                   default: "mean"
+        - error (str)            : error statistic to return across fold scores. 
+                                   If None or if 'stats' is None, no error 
+                                   statistic is returned. 
+                                   ("std" for std or q1-3 and "sem" for SEM or 
+                                   MAD, depending on the value or 'stats')
+                                   default: "std"
+        - class_weight (str)     : sklearn class_weight attribute
+                                   default: "balanced"
+        - scoring (list)         : score types to use
+                                   default: ["balanced_accuracy"]
+        - n_jobs (int)           : number of CPUs to use (see sklearn)
+                                   default: None
+        - model (str)            : model to use ("logreg" or "svm")
+                                   default: "logreg"
+        - randst (int)           : seed or random state to pass to models
+                                   default: None 
+        - max_iter_lr (int)      : max number of iterations for logistic 
+                                   regression
+                                   default: 100
+        - extra_targ (array-like): additional target data to score
+                                   default: None
 
     Returns:
-        if stats is None and error is None:
-        - sc (1D array): scores for each fold (accuracy or balanced accuracy if 
-                         class_weight is "balanced")
-        elif only error is None:
-        - me (float)   : mean/median statistic across fold scores
-        else:
-        - me (float)   : mean/median statistic across fold scores
-        - err (float)  : std/SEM/q1-3/MAD across fold scores
+        - scores (nd array): if stats is None:
+                                 scores for each fold, organized as 
+                                    (target dataset) x scoring x split
+                             elif error is None:
+                                 score statistics, organized as 
+                                 (target dataset) x scoring
+                             else:
+                                 score statistics, organized as 
+                                 (target dataset) x scoring x stats (me, err)
     """
 
-    randst = rand_util.get_np_rand_state(randst)
+    randst = rand_util.get_np_rand_state(randst, set_none=True)
 
     clf = get_clf(model, class_weight, randst=randst, max_iter_lr=max_iter_lr)
 
@@ -2378,10 +2495,6 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
     # note that indices are resorted within each fold
     cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=randst)
 
-    scoring = None
-    if class_weight == "balanced":
-        scoring = "balanced_accuracy"
-
     msgs, categs = [], []
     if shuffle:
         # may not work if n_jobs > 1
@@ -2390,16 +2503,11 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
 
     # run cross_val_score while filtering specific warnings
     with gen_util.TempWarningFilter(msgs, categs):
-        sc = cross_val_score(clf, inp, target, cv=cv, scoring=scoring, 
-            n_jobs=n_jobs)
+        scores = fit_and_score(
+            clf, inp, target, cv, scoring=scoring, 
+            extra_targ=extra_targ, stats=stats, error=error, 
+            n_jobs=n_jobs
+            )
 
-    if stats is None:
-        return sc
-    else:
-        me = math_util.mean_med(sc, stats=stats)
-        if error is None:
-            return me
-        else:
-            err = math_util.error_stat(sc, stats=stats, error=error)
-            return me, err
+    return scores
 

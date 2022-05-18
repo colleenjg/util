@@ -1453,7 +1453,6 @@ class ProgressParallel(Parallel):
                                default: None
         """
 
-        from tqdm.auto import tqdm
         self._use_tqdm = use_tqdm
         self._total = total
         super().__init__(*args, **kwargs)

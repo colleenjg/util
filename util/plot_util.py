@@ -1651,7 +1651,8 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8,
                     **errorbar_kw)
 
     if line_dash is not None:
-        sub_ax.get_lines()[-3].set_linestyle(line_dash)
+        line_n = -1 if err is None else -3
+        sub_ax.get_lines()[line_n].set_linestyle(line_dash)
 
     if label is not None:
         sub_ax.legend()
@@ -2385,7 +2386,7 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
 
 #############################################
 def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None, 
-                    color="k", alpha=0.5, randst=None, **plot_kw):
+                    color="k", alpha=0.5, randst=None, marker=".", **plot_kw):
     """
     plot_data_cloud(sub_ax, x_val, y_vals)
 
@@ -2398,15 +2399,19 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
                                      default: None
 
     Optional args:
-        - disp_std (float)   : dispersion standard deviation 
-                               (will clip at 2.5 * disp_std)
-                               default: 0.4
-        - label (str)        : label for the bars
-                               default: None
-        - color (str)        : marker color
-                               default: "k"
-        - alpha (float)      : transparency
-                               default: 0.5
+        - disp_wid (float): dispersion standard deviation 
+                            (will clip at 2.5 * disp_wid)
+                            default: 0.4
+        - label (str)     : label for the bars
+                            default: None
+        - color (str)     : marker color
+                            default: "k"
+        - alpha (float)   : transparency
+                            default: 0.5
+        - randst (int)    : random state
+                            default: None
+        - marker (str)    : marker
+                            default: "."
 
     Kewyord args:
         - plot_kw (dict): keyword arguments for plt.plot()
@@ -2425,7 +2430,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
     x_vals[np.where(x_vals > max_val)] = max_val
 
     cloud = sub_ax.plot(
-        x_vals, y_vals, marker=".", lw=0, color=color, alpha=alpha, 
+        x_vals, y_vals, marker=marker, lw=0, color=color, alpha=alpha, 
         label=label, **plot_kw)[0]
 
     if label is not None:
