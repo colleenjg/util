@@ -2440,6 +2440,57 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
 
 
 #############################################
+def get_bin_edges(data, bin_edges=None, dft_bin_edges=(-1, 1)):
+    """
+    get_bin_edges(data)
+
+    Returns bin edges extracted on data, or checks bin_edges provided to make 
+    sure they include the full data.
+
+    Required args:
+        - data (array-like): data from which to extract bin_edges or against 
+                             which to check bin_edges
+
+    Optional args:
+        - bin_edges (list)    : bin edges to use, if not None 
+                                default: None
+        - dft_bin_edges (list): bin edges to use, if bin_edges is None and 
+                                no data is provided 
+                                default: None
+    
+    Returns:
+        - bin_edges (list): bin edges
+    """
+
+    if bin_edges is not None and len(bin_edges) != 2:
+        raise ValueError("If provided, bin_edges must have length 2.")
+
+    if data is None or len(data) == 0:
+        if bin_edges is None:
+            bin_edges = dft_bin_edges
+    
+    else:
+        data_edges = [np.min(data), np.max(data)]
+        data_edges[1] = data_edges[1] + np.diff(data_edges)[0] * 0.001
+
+        if bin_edges is None:
+            bin_edges = data_edges
+        else:
+            if data_edges[0] < bin_edges[0]:
+                raise ValueError(
+                    f"bin_edges[0] ({bin_edges[0]}) is greater than the "
+                    f"minimum data value ({data_edges[0]})."
+                    )
+            if data_edges[1] > bin_edges[1]:
+                raise ValueError(
+                    f"bin_edges[1] ({bin_edges[1]}) is lower than the "
+                    f"maximum data value ({data_edges[1]})."
+                    )
+
+    return bin_edges        
+
+
+#############################################
 def plot_data_contour(sub_ax, x, y, n_bins=40, bin_edges=None, levels=6, 
                       contour_lw=4, contour_zorder=None, plot_scatter=True, 
                       scatter_color="k", base_alpha=0.3, cmap="Greys", 
