@@ -2487,6 +2487,7 @@ def run_cv_clf(inp, target, cv=5, shuffle=False, stats="mean", error="std",
 
     # first dim must be trials
     if shuffle:
+        target = copy.deepcopy(target)
         randst.shuffle(target)
     
     if cv < 3:
