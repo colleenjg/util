@@ -506,7 +506,7 @@ def np_pearson_r(x, y, axis=0, nanpol=None):
 
     Required args:
         - x (nd array): first array to correlate
-        - y (nd array): second array to correlate (smae shape as x)
+        - y (nd array): second array to correlate (same shape as x)
     
     Optional args:
         - axis (int)   : axis along which to correlate values

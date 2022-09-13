@@ -159,6 +159,9 @@ def CC_config_cache():
         if "MPLCONFIGDIR" not in existing_keys:
             os.environ["MPLCONFIGDIR"] = str(Path(gen_config_dir, "matplotlib"))
 
+        if "NUMBA_CACHE_DIR" not in existing_keys:
+            os.environ["NUMBA_CACHE_DIR"] = str(Path(gen_cache_dir, "numba"))
+
         # for astropy... create writable cache and config directory
         for key, gen_dir in zip(
             ["CONFIG", "CACHE"], [gen_config_dir, gen_cache_dir]):

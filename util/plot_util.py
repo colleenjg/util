@@ -2925,7 +2925,7 @@ def get_shared_axes(ax, axis="x"):
 #############################################
 def set_shared_axes(axis_set, axes="x", adjust_tick_labels=False):
     """
-    set_shared_axes(ax)
+    set_shared_axes(axis_set)
 
     Sets axis set passed to be shared. 
     
