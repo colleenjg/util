@@ -1542,6 +1542,9 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
         args_dict = dict()
 
     if n_jobs is not None and n_jobs > 1:
+        from matplotlib import pyplot as plt
+        plt.close("all") # prevent garbage collection problems
+        
         if use_tqdm:
             ParallelUse = ProgressParallel(
                 use_tqdm=True, total=len(loop_arg), n_jobs=n_jobs
