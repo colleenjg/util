@@ -510,6 +510,34 @@ def get_hex_color_range(n=3, col="#0000FF", interval=0.3):
 
 
 #############################################
+def get_cmap_colors(cmap_name="Blues", n_vals=5, min_n=5):
+    """
+    get_cmap_colors()
+
+    Returns colors sampled evenly, with a dark bias, from the specified 
+    colormap.
+
+    Optional args:
+        - cmap_name (str): colormap name
+                           default: "Blues"
+        - n_vals (int)   : number of values to sample from the colormap
+                           default: 5
+        - min_n (int)    : minimum number to initially sample (prevents colours 
+                           from being too spread apart)
+                           default: 5
+
+    Returns:
+        - colors (list): list of colors sampled from the colormap.
+    """
+
+    cmap = mpl_cm.get_cmap(cmap_name)
+    samples = np.linspace(1.0, 0.3, max(min_n, n_vals))[: n_vals]
+    colors = [cmap(s) for s in samples]
+
+    return colors
+
+
+#############################################
 def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False, 
                nbins=100):
     """

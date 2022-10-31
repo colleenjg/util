@@ -1362,7 +1362,7 @@ def round_by_order_of_mag(val, n_sig=1, direc="any", decimal_only=False):
     Optional args:
         - n_sig (int)        : number of significant digits
                                default: 1
-        - direc (str)        : direction in which to round value
+        - direc (str)        : direction in which to round value ("up", "down")
                                default: "any"
         - decimal_only (bool): if True, only decimals are rounded
                                default: False

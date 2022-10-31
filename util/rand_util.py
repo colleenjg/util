@@ -56,7 +56,7 @@ def get_np_rand_state(seed, set_none=False):
         - randst (np.random.RandomState or np.random): random state or module
     """
 
-    if seed in [None, -1]:
+    if seed in [None, -1, np.random]:
         if set_none:
             randst = np.random.RandomState(None)
         else:
