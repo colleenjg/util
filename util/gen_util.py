@@ -1589,7 +1589,7 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
 
 
 #############################################
-def get_df_unique_vals(df, axis="index", info="length"):
+def get_df_unique_vals(df, axis="index"):
     """
     get_df_unique_vals(df)
 
