@@ -67,7 +67,7 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
                               True 
                               default: "."
 
-    Kewyord args:
+    Keyword args:
         - cyc_args (dict): keyword arguments for plt.cycler()
     """
 
@@ -535,6 +535,106 @@ def get_cmap_colors(cmap_name="Blues", n_vals=5, min_n=5):
     colors = [cmap(s) for s in samples]
 
     return colors
+        
+
+#############################################
+def grid_check(sub_ax, attr="is_last_row"):
+    """
+    grid_check(sub_ax)
+
+    Returns a grid attribute for a subplot. 
+    Should enable compatibility with several matplotlib versions.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Returns:
+        - (obj): value of the grid attribute
+    """
+
+    if hasattr(sub_ax, attr):
+        return getattr(sub_ax, attr)
+
+    elif hasattr(sub_ax.get_subplotspec(), attr):
+        return getattr(sub_ax.get_subplotspec(), attr)
+    
+    else:
+        raise KeyError(
+            f"{attr} is not an attribute of 'sub_ax' or "
+            "'sub_ax.get_subplotspec()'."
+            )
+
+
+#############################################
+def is_first_row(sub_ax):
+    """
+    is_first_row(sub_ax)
+
+    Returns whether the subplot is in the first row of the axis grid. 
+    Should enable compatibility with several matplotlib versions.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Returns:
+        - (bool): whether the subplot is in the first row
+    """
+
+    return grid_check(sub_ax, attr="is_first_row")
+        
+
+#############################################
+def is_last_row(sub_ax):
+    """
+    is_last_row(sub_ax)
+
+    Returns whether the subplot is in the last row of the axis grid. 
+    Should enable compatibility with several matplotlib versions.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Returns:
+        - (bool): whether the subplot is in the last row
+    """
+
+    return grid_check(sub_ax, attr="is_last_row")
+
+
+#############################################
+def is_first_col(sub_ax):
+    """
+    is_first_col(sub_ax)
+
+    Returns whether the subplot is in the first column of the axis grid. 
+    Should enable compatibility with several matplotlib versions.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Returns:
+        - (bool): whether the subplot is in the first column
+    """
+
+    return grid_check(sub_ax, attr="is_first_col")
+        
+
+#############################################
+def is_last_col(sub_ax):
+    """
+    is_last_col(sub_ax)
+
+    Returns whether the subplot is in the last column of the axis grid. 
+    Should enable compatibility with several matplotlib versions.
+
+    Required args:
+        - sub_ax (plt Axis subplot): subplot
+
+    Returns:
+        - (bool): whether the subplot is in the last column
+    """
+
+    return grid_check(sub_ax, attr="is_last_col")
 
 
 #############################################
@@ -710,7 +810,7 @@ def set_ticks(sub_ax, axis="x", min_tick=0, max_tick=1.5, n=6, pad_p=0.05,
 
 
 #############################################
-def set_ticks_from_vals(sub_ax, vals, axis="x", n=6, pad_p=0.05):
+def set_ticks_from_vals(sub_ax, vals, axis="x", n=6):
     """
     set_ticks_from_vals(sub_ax, vals)
 
@@ -726,8 +826,6 @@ def set_ticks_from_vals(sub_ax, vals, axis="x", n=6, pad_p=0.05):
                             default: "x"
         - n (int)         : number of ticks
                             default: 6
-        - pad_p (num)     : percentage to pad axis length
-                            default: 0.05
         - ret_ticks (bool): if True, tick values are
     """
 
@@ -948,7 +1046,7 @@ def init_fig(n_subplots, ncols=3, sharex=False, sharey=True, subplot_hei=7,
         - proj (str)       : plt projection argument (e.g. "3d")
                              default: None
  
-    Kewyord args:
+    Keyword args:
         - fig_kw (dict): keyword arguments for plt.subplots()
 
     Returns:
@@ -1012,7 +1110,7 @@ def savefig(fig, savename, fulldir=".", datetime=True, use_dt=None,
         - log_dir (bool)  : if True, the save directory is logged 
                             default: True
 
-    Kewyord args:
+    Keyword args:
         - savefig_kw (dict): keyword arguments for plt.savefig()
 
     Returns:
@@ -1106,7 +1204,7 @@ def add_labels(sub_ax, labels, xpos, t_hei=0.9, color="k", fontsize=18,
         - ha (str)      : text horizontal alignment
                           default: "center"
 
-    Kewyord args:
+    Keyword args:
         - text_kw (dict): keyword arguments for plt.text()
     """
 
@@ -1152,7 +1250,7 @@ def add_bars(sub_ax, hbars=None, bars=None, color="k", alpha=0.5, ls="dashed",
                                (if None, default values are used)
                                default: None
 
-    Kewyord args:
+    Keyword args:
         - axline_kw (dict): keyword arguments for plt.axvline() or plt.axhline()
     """
 
@@ -1419,7 +1517,7 @@ def add_vshade(sub_ax, start, end=None, width=None, alpha=0.4, color="k", lw=0,
         - lw (num)     : width of the shading edges
                          default: 0
 
-    Kewyord args:
+    Keyword args:
         - axspan_kw (dict): keyword arguments for plt.axvspan() or plt.axhspan()
     """
 
@@ -1489,7 +1587,7 @@ def plot_traces(sub_ax, x, y, err=None, title=None, lw=None, color=None,
         - errx (bool)        : if True, error is on the x data, not y data
                                default: False
 
-    Kewyord args:
+    Keyword args:
         - plot_kw (dict): keyword arguments for plt.plot()
     """
     
@@ -1571,7 +1669,7 @@ def plot_btw_traces(sub_ax, y1, y2, x=None, color="k", alpha=0.5, **fillbtw_kw):
                                transparency (from 0 to 1)
                                default: 0.5
 
-    Kewyord args:
+    Keyword args:
         - fillbtw_kw (dict): keyword arguments for plt.fill_between()
     """
 
@@ -1639,7 +1737,7 @@ def plot_errorbars(sub_ax, y, err=None, x=None, title=None, alpha=0.8,
                                (not the errorbar components)
                                default: None
 
-    Kewyord args:
+    Keyword args:
         - errorbar_kw (dict): keyword arguments for plt.errorbar(), 
                               e.g. linewidth, color, markersize, capsize
     """
@@ -1730,7 +1828,7 @@ def plot_two_color_errorbars(sub_ax, y, mask, colors, err=None, x=None,
         - fmt (str)           : data point/lines format.
                                 default: "-o"
 
-    Kewyord args:
+    Keyword args:
         - errorbar_kw (dict): keyword arguments for plt.errorbar(), 
                               e.g. linewidth, color, markersize, capsize
     """
@@ -1898,7 +1996,7 @@ def add_signif_mark(sub_ax, xpos, yval, yerr=None, rel_y=0.01, color="k",
         - mark (str)      : mark to use to mark significance
                             default: "*"
 
-    Kewyord args:
+    Keyword args:
         - text_kw (dict): keyword arguments for plt.text()
    """
 
@@ -1954,7 +2052,7 @@ def plot_barplot_signif(sub_ax, xpos, yval, yerr=None, rel_y=0.02, color="k",
         - mark (str)       : significance marker
                              default: "*"
 
-    Kewyord args:
+    Keyword args:
         - text_kw (dict): keyword arguments for plt.text()
     """
 
@@ -2036,7 +2134,7 @@ def plot_bars(sub_ax, x, y, err=None, title=None, width=0.75, lw=None,
         - capsize (num)      : length of errorbar caps
                                default: 8
 
-    Kewyord args:
+    Keyword args:
         - bar_kw (dict): keyword arguments for plt.bar()
     """
     
@@ -2109,7 +2207,7 @@ def add_colorbar(fig, im, n_cols, label=None, cm_prop=0.03, space_fact=2,
                             proportionally to cm_prop
                             default: 2
     
-    Kewyord args:
+    Keyword args:
         - cbar_kw (dict): keyword arguments for plt.colorbar()
 
     Returns:
@@ -2166,7 +2264,7 @@ def plot_colormap(sub_ax, data, xran=None, yran=None, title=None, cmap=None,
                            ("upper" or "lower")
                            default: "upper"
     
-    Kewyord args:
+    Keyword args:
         - cmesh_kw (dict): keyword arguments for plt.pcolormesh()
 
     Returns:
@@ -2279,7 +2377,7 @@ def plot_lines(sub_ax, y, x=None, y_rat=0.0075, color="black", width=0.4,
                           transparency (from 0 to 1)
                           default: 0.5
 
-    Kewyord args:
+    Keyword args:
         - bar_kw (dict): keyword arguments for plt.bar()
     """
 
@@ -2441,7 +2539,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
         - marker (str)    : marker
                             default: "."
 
-    Kewyord args:
+    Keyword args:
         - plot_kw (dict): keyword arguments for plt.plot()
     
     Returns:
@@ -2558,7 +2656,7 @@ def plot_data_contour(sub_ax, x, y, n_bins=40, bin_edges=None, levels=6,
         - contour_edge (bool) : if True, a white edge is added to the contours
                                 default: False
 
-    Kewyord args:
+    Keyword args:
         - scatter_kwargs (dict): keyword arguments for plt.scatter()
     """
 
@@ -2683,7 +2781,7 @@ def set_interm_ticks(ax, n_ticks, axis="x", share=True, skip=True,
         - update_ticks (bool): if True, ticks are updated to axis limits first
                                default: False
 
-    Kewyord args:
+    Keyword args:
         - font_kw (dict): keyword arguments for plt.yticklabels() or 
                           plt.xticklabels() fontdict, e.g. weight
     """
@@ -2793,7 +2891,7 @@ def set_minimal_ticks(sub_ax, axis="x", **font_kw):
         - axis (str): axes for which to set ticks ("x" or "y")
                       default: "x"
 
-    Kewyord args:
+    Keyword args:
         - font_kw (dict): keyword arguments for plt.yticklabels() or 
                           plt.xticklabels() fontdict, e.g. weight
     """

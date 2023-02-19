@@ -2155,7 +2155,7 @@ def test_logreg_cv_sk(mod_cvs, cv, scoring, main_data=None, extra_data=None,
     for score in scoring:
         for test in all_tests:
             mod_cvs[f"{test}_{score}"] = \
-                np.empty(len(mod_cvs["estimator"])) * np.nan
+                np.full(len(mod_cvs["estimator"]), np.nan)
 
     for m, mod in enumerate(mod_cvs["estimator"]):
         all_data = []
