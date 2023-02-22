@@ -40,10 +40,10 @@ try:
     TORCH_ERR = None
     TORCH_NN_MODULE = torch.nn.Module
 except ModuleNotFoundError as err:
-    warnings.warn(
-        "Module named 'torch' was not found, and thus not loaded. If a "
-        f"If a torch-dependent {__name__} function is called, an error will "
-        "be triggered.", category=ImportWarning, stacklevel=1)
+    # warnings.warn(
+    #     "Module named 'torch' was not found, and thus not loaded. If a "
+    #     f"If a torch-dependent {__name__} function is called, an error will "
+    #     "be triggered.", category=ImportWarning, stacklevel=1)
     TORCH_ERR = str(err)
     TORCH_NN_MODULE = object
     pass

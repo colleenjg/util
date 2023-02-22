@@ -11,7 +11,8 @@ https://github.com/colleenjg/util.git
 and installed by navigating to the main directory and running `pip install .`
 
 All requirements will be automatically installed, except:
-* `torch`: needed only for the `data_util` and `logreg_util` modules.
+* `numexpr`: needed only for `gen_util.n_cores_numba()`.
+* `torch`: needed only for the `torch_data_util` module, and certain `logreg_util` functions.
 * `joblib`: needed for parallelization functions in the `gen_util` module.
 
 The code is written in Python 3.

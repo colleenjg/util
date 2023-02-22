@@ -24,7 +24,6 @@ import types
 import warnings
 
 from joblib import Parallel, delayed
-import numexpr
 import numpy as np
 
 from util import logger_util
@@ -1414,6 +1413,7 @@ def n_cores_numba(n_tasks, parallel=True, max_cores="all", allow="around",
             "split_cores", split_cores, ["around", "ceil", "floor"])
 
     if set_now:
+        import numexpr
         numexpr.set_num_threads(split_cores)
 
     return split_cores
