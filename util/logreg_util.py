@@ -33,7 +33,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.svm import SVC
 
-# Allows this module to be loadded without torch. Potential problems are dealt 
+# Allows this module to be loaded without torch. Potential problems are dealt 
 # with during runtime.
 try:
     import torch
