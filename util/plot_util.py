@@ -542,7 +542,7 @@ def grid_check(sub_ax, attr="is_last_row"):
     """
     grid_check(sub_ax)
 
-    Returns a grid attribute for a subplot. 
+    Returns a grid method for a subplot. 
     Should enable compatibility with several matplotlib versions.
 
     Required args:
@@ -553,14 +553,14 @@ def grid_check(sub_ax, attr="is_last_row"):
     """
 
     if hasattr(sub_ax, attr):
-        return getattr(sub_ax, attr)
+        return getattr(sub_ax, attr)()
 
     elif hasattr(sub_ax.get_subplotspec(), attr):
-        return getattr(sub_ax.get_subplotspec(), attr)
+        return getattr(sub_ax.get_subplotspec(), attr)()
     
     else:
         raise KeyError(
-            f"{attr} is not an attribute of 'sub_ax' or "
+            f"{attr} is not a method of 'sub_ax' or "
             "'sub_ax.get_subplotspec()'."
             )
 
