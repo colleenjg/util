@@ -37,6 +37,9 @@ class TempChangeLogLevel():
 
     def __init__(self, logger=None, level="info"):
 
+        if isinstance(logger, str):
+            logger = logging.getLogger(logger)
+
         if logger is None or logger.level == logging.NOTSET:
             logger = logging.getLogger()
         
