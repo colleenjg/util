@@ -13,6 +13,7 @@ Note: this code uses python 3.7.
 
 import glob
 import json
+import hashlib
 import pickle
 import warnings
 from pathlib import Path
@@ -482,3 +483,55 @@ def getfiles(dirname=".", filetype="all", criteria=None):
     return allfiles
 
     
+#############################################
+def checksum_h5(filepath, dataset="data", block_size=1e5, comp_val=None, 
+                use_tqdm=True):
+    """
+    checksum_h5(filepath)
+    
+    Calculates the checksum of an HDF5 file. If comp_val is specified, it
+    will be compared to the calculated checksum.
+    
+    Required args:
+        - filepath (Path): path to HDF5 file
+    
+    Optional args:
+        - dataset (str)   : name of dataset to calculate checksum for
+                            default: "data" 
+        - block_size (int): size of blocks to read in at a time
+                            default: 1e5    
+        - comp_val (bytes): value to compare checksum to
+                            default: None   
+
+    Returns:
+        - checksum (bytes): checksum of file
+    """
+
+    import h5py
+    
+    if not Path(filepath).exists():
+        raise OSError(f"File {filepath} does not exist.")
+    
+    md5 = hashlib.md5()
+    with h5py.File(filepath, "rb") as f:
+        data_leng = f[dataset].shape[0]
+
+        run_range = range(0, data_leng, block_size)
+        if use_tqdm:
+            from tqdm import tqdm
+            run_range = tqdm(run_range)
+
+        for i in run_range:
+            data = f[dataset][i : i + block_size]
+            md5.update(data)
+
+    if comp_val is not None:
+        if comp_val != md5.digest():
+            raise ValueError(
+                f"Checksum does not match. Found {md5.digest()}, "
+                f"but expected {comp_val}."
+                )
+
+    return md5.digest()
+
+
