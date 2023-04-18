@@ -9,7 +9,7 @@ with open("requirements.txt", "r") as fh:
 setuptools.setup(
     name="util-colleenjg",
     version="0.0.1",
-    author="Colleen Gillon",
+    author="Colleen J. Gillon",
     author_email="colleen.gillon@utoronto.ca",
     description="Package with basic coding utilities",
     long_description=long_description,
