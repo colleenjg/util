@@ -1475,7 +1475,7 @@ class ProgressParallel(Parallel):
 #############################################
 def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True, 
                   max_cores="all", zip_output=False, mult_loop=False, 
-                  pass_parallel=False, use_tqdm=False):
+                  pass_parallel=False, use_tqdm=False, loop_dicts=None):
     """
     parallel_wrap(fct, loop_arg)
 
@@ -1488,7 +1488,9 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                            arguments of fct)
                            if multiple arguments, they must already be zipped 
                            (where the length is the number of items to loop 
-                           over), and mult_loop must be set to True
+                           over), and mult_loop must be set to True. Otherwise, 
+                           they can be passed to loop_dicts in individual 
+                           dictionaries (one per loop item)
     
     Optional args:
         - args_list (list)      : function input argument list    
@@ -1516,6 +1518,9 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
                                   default: False
         - use_tqdm (bool)       : if True, tqdm is used for progress bars.
                                   default: False
+        - loop_dicts (list)     : dictionaries to pass as loop arguments 
+                                  (one per loop item)
+                                  default: None
 
     Returns:
         - outputs (list of tuples): outputs, structured as 
@@ -1529,17 +1534,23 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
     loop_arg = list(loop_arg)
     n_jobs = get_n_jobs(len(loop_arg), parallel, max_cores)
     
-    if args_list is None: args_list = []
+    if args_list is None: 
+        args_list = list()
     args_list = list_if_not(args_list)
+
+    if args_dict is None:
+        args_dict = dict()
+    
+    if loop_dicts is None:
+        loop_dicts = [dict() for _ in range(len(loop_arg))]
+    else:
+        if not isinstance(loop_dicts, list) or len(loop_dicts) != len(loop_arg):
+            raise ValueError("If 'loop_dicts' are provided, it must be a list "
+                "providing one dictionary per loop argument.")
 
     # to allow multiple arguments to be looped over (mimicks zipping)
     if not mult_loop:
         loop_arg = [(arg, ) for arg in loop_arg]
-
-    # enable information to be passed to the function as to whether it can 
-    # sprout parallel processes
-    if pass_parallel and args_dict is None:
-        args_dict = dict()
 
     if n_jobs is not None and n_jobs > 1:
         from matplotlib import pyplot as plt
@@ -1556,17 +1567,11 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
         if pass_parallel: 
             # prevent subfunctions from also sprouting parallel processes
             args_dict["parallel"] = False 
-        if args_dict is None:
-            with ParallelLogging():
-                outputs = ParallelUse(
-                    delayed(fct)(*arg, *args_list) for arg in loop_arg
-                    )
-        else:
-            with ParallelLogging():
-                outputs = ParallelUse(
-                    delayed(fct)(*arg, *args_list, **args_dict) 
-                    for arg in loop_arg
-                    )
+        with ParallelLogging():
+            outputs = ParallelUse(
+                delayed(fct)(*arg, *args_list, **args_dict, **loop_dicts[a]) 
+                for a, arg in enumerate(loop_arg)
+                )
     else:
         if pass_parallel: # pass parallel on
             args_dict["parallel"] = parallel
@@ -1575,12 +1580,8 @@ def parallel_wrap(fct, loop_arg, args_list=None, args_dict=None, parallel=True,
             loop_arg = tqdm(loop_arg)
 
         outputs = []
-        if args_dict is None:
-            for arg in loop_arg:
-                outputs.append(fct(*arg, *args_list))
-        else:
-            for arg in loop_arg:
-                outputs.append(fct(*arg, *args_list, **args_dict))
+        for a, arg in enumerate(loop_arg):
+            outputs.append(fct(*arg, *args_list, **args_dict, **loop_dicts[a]))
 
     if zip_output:
         outputs = [*zip(*outputs)]
