@@ -337,11 +337,11 @@ def check_corr_pairing(corr_type="corr", paired=True):
     corr_types = ["corr", "diff_corr", "R_sqr", "diff_R_sqr"]
     if corr_type not in corr_types:
         gen_util.accepted_values_error("corr_type", corr_type, corr_types)
-    if paired == "within":
+    if paired == "between":
         if "diff" in corr_type:
             warnings.warn(
                 "Regular correlation is recommended if permutation is only "
-                "within groups being correlated.", 
+                "across the groups being correlated.", 
                 category=UserWarning, stacklevel=1
                 )
     else:
@@ -380,8 +380,8 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
                           LIM_E6_SIZE as an environment variable.
                           default: LIM_E6_SIZE
         - paired (bool) : if True, all_data is paired
-                          if "within", pairs are shuffled, instead of 
-                          datapoints
+                          if "between", pair matchings are shuffled, instead of 
+                          datapoints within pairs
                           default: False
         - randst (int)  : seed or random state for random processes
                           default: None
@@ -418,8 +418,8 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
     # (sample with n_perms in first dimension, so results are consistent 
     # within permutations, for different values of n_perms)
     if paired:
-        if paired == "within":
-            all_data = all_data.T # shuffle pairings instead of datapoints
+        if paired == "between":
+            all_data = all_data.T # shuffle pair matchings instead of datapoints
         rand_shape = (n_perms, ) + all_data.shape    
         transpose = (1, 2, 0)
         sort_axis = 1
@@ -441,7 +441,7 @@ def run_permute(all_data, n_perms=10000, lim_e6=LIM_E6_SIZE, paired=False,
     # generate permutated array
     permed_data = np.stack(all_data[dim_data, perm_idxs])
 
-    if paired == "within": # transpose back
+    if paired == "between": # transpose back
         permed_data = np.transpose(permed_data, (1, 0, 2))
 
     return permed_data
@@ -492,8 +492,8 @@ def permute_diff_ratio(all_data, div="half", n_perms=10000, stats="mean",
                               "none"
                               default: "diff"
         - paired (bool)     : if True, all_data is paired
-                              if "within", pairs are shuffled, instead of 
-                              datapoints
+                              if "between", pair matchings are shuffled,  
+                              instead of datapoints within pairs
                               default: False
         - randst (int)      : seed or random state for random processes
                               default: None
@@ -703,8 +703,8 @@ def get_op_p_val(act_data, n_perms=10000, stats="mean", op="diff",
         - multcomp (int)    : number of comparisons to correct CI for
                               default: None
         - paired (bool)     : if True, paired comparisons are done.
-                              if "within", pairs are shuffled, instead of 
-                              datapoints
+                              if "between", pair matchings are shuffled, 
+                              instead of datapoints within pairs
                               default: False
         - return_rand (bool): if True, random data is returned
                               default: False
@@ -804,8 +804,8 @@ def comp_vals_acr_groups(act_data, n_perms=None, normal=True, stats="mean",
                          will be done. Ignored if n_perms is not None.)
                          default: True
         - paired (bool): if True, paired comparisons are done.  
-                         if "within", pairs are shuffled, instead of 
-                         datapoints
+                         if "between", pair matchings are shuffled, instead of 
+                         datapoints within pairs
                          default: False
         - nanpol (str) : policy for NaNs, "omit" or None when taking statistics
                          default: None
