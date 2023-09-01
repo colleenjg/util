@@ -2566,7 +2566,7 @@ def plot_data_cloud(sub_ax, x_val, y_vals, disp_wid=0.3, label=None,
 
 
 #############################################
-def get_bin_edges(data, bin_edges=None, dft_bin_edges=(-1, 1)):
+def get_bin_edges(data, bin_edges=None, dft_bin_edges=(-1, 1), overflow=0.0):
     """
     get_bin_edges(data)
 
@@ -2583,6 +2583,9 @@ def get_bin_edges(data, bin_edges=None, dft_bin_edges=(-1, 1)):
         - dft_bin_edges (list): bin edges to use, if bin_edges is None and 
                                 no data is provided 
                                 default: None
+        - overflow (float)    : allow this proportion of the data to be 
+                                outside the bin edges
+                                default: 0.0
     
     Returns:
         - bin_edges (list): bin edges
@@ -2596,12 +2599,14 @@ def get_bin_edges(data, bin_edges=None, dft_bin_edges=(-1, 1)):
             bin_edges = dft_bin_edges
     
     else:
+        data = np.asarray(data)
+
         data_edges = [np.min(data), np.max(data)]
         data_edges[1] = data_edges[1] + np.diff(data_edges)[0] * 0.001
 
         if bin_edges is None:
             bin_edges = data_edges
-        else:
+        elif overflow == 0.0:
             if data_edges[0] < bin_edges[0]:
                 raise ValueError(
                     f"bin_edges[0] ({bin_edges[0]}) is greater than the "
@@ -2612,8 +2617,17 @@ def get_bin_edges(data, bin_edges=None, dft_bin_edges=(-1, 1)):
                     f"bin_edges[1] ({bin_edges[1]}) is lower than the "
                     f"maximum data value ({data_edges[1]})."
                     )
+        else:
+            prop_outside = np.sum(
+                (data < bin_edges[0]) | (data > bin_edges[1])
+                ) / data.size
+            if prop_outside > overflow:
+                raise ValueError(
+                    f"With bin edges {bin_edges}, more than {overflow:.3f} of "
+                    f"the data is outside of the bin edges ({prop_outside})."
+                )
 
-    return bin_edges        
+    return bin_edges
 
 
 #############################################
