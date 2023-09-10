@@ -2477,7 +2477,6 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
     """
 
     x = np.asarray(x).reshape(-1)
-    med = np.asarray(med).reshape(-1)
 
     extr = np.asarray(extr)
     if len(extr.shape) == 1:
@@ -2500,10 +2499,13 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
 
     # plot median (with some thickness based on ylim)
     if med is not None:
-        med = np.asarray(med)
+        med = np.asarray(med).reshape(-1)
         if len(x) != len(med):
             raise ValueError("'x' and 'med' must have the same last "
                 "dimension length.")
+        for m, med_val in enumerate(med):
+            if med_val < extr[:, m].min() or med_val > extr[:, m].max():
+                raise ValueError("Median must be within the extrema.")
         
         plot_lines(
             sub_ax, med, x, med_rat, color=med_col, width=width, 
