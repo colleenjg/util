@@ -2445,7 +2445,8 @@ def plot_ufo(sub_ax, x, y, err=None, color="k", width=0.5, thickness=4.5,
 
 #############################################
 def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None, 
-            color="lightgray", med_col="gray", med_rat=0.015, zorder=None):
+            color="lightgray", med_col="gray", med_rat=0.015, zorder=None, 
+            alpha=1.0):
     """
     plot_CI(sub_ax, extr)
 
@@ -2474,6 +2475,8 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
         - zorder (int)    : plt zorder variable controlling fore-background 
                             position of line/shading
                             default: None
+        - alpha (flat)    : transparency (from 0 to 1)
+                            default: 1.0
     """
 
     x = np.asarray(x).reshape(-1)
@@ -2492,7 +2495,7 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
 
     # plot CI
     sub_ax.bar(x, height=extr[1]-extr[0], bottom=extr[0], color=color, 
-               width=width, label=label, zorder=zorder)
+               width=width, label=label, zorder=zorder, alpha=alpha)
     
     if label is not None:
         sub_ax.legend()
@@ -2509,7 +2512,7 @@ def plot_CI(sub_ax, extr, med=None, x=None, width=0.4, label=None,
         
         plot_lines(
             sub_ax, med, x, med_rat, color=med_col, width=width, 
-            zorder=zorder)
+            zorder=zorder, alpha=alpha)
 
 
 #############################################
