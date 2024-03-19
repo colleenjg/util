@@ -39,18 +39,27 @@ LINCLAB_COLS = {"blue"  : "#50a2d5", # Linclab blue
                 "brown" : "#b04900",
                 }
 
+LINCLAB_COL_ENDS = {"blue"  : ["#8DCCF6", "#07395B"],   
+                    "red"   : ["#EF6F5C", "#7D1606"],
+                    "gray"  : ["#969696", "#060707"],
+                    "green" : ["#B3F38E", "#2D7006"],
+                    "purple": ["#B391F6", "#372165"],
+                    "orange": ["#F6B156", "#CD7707"],
+                    "pink"  : ["#F285AD", "#790B33"],
+                    "yellow": ["#F6D25D", "#B38B08"],
+                    "brown" : ["#F7AD75", "#7F3904"],
+                    }
 
 logger = logger_util.get_module_logger(name=__name__)
 
 
 #############################################
-def linclab_plt_defaults(font="Liberation Sans", fontdir=None, 
-                         log_fonts=False, example=False, dirname=".", 
-                         **cyc_args):
+def set_plt_defaults(font="Liberation Sans", fontdir=None, log_fonts=False, 
+                     example=False, dirname=".", linclab=False, **cyc_args):
     """
-    linclab_plt_defaults()
+    set_plt_defaults()
 
-    Sets pyplot defaults to Linclab style.
+    Sets pyplot defaults.
 
     Optional args:
         - font (str or list): font (or font family) to use, or list in order of 
@@ -66,14 +75,20 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         - dirname (Path)    : directory in which to save example if example is 
                               True 
                               default: "."
+        - linclab (bool)    : if True, the Linclab default are set
+                              default: False
+
 
     Keyword args:
         - cyc_args (dict): keyword arguments for plt.cycler()
     """
 
-    col_order = ["blue", "red", "gray", "green", "purple", "orange", "pink", 
-                 "yellow", "brown"]
-    colors = [get_color(key) for key in col_order] 
+    if linclab:
+        col_order = list(LINCLAB_COLS.keys())
+    else:
+        col_order = get_modif_bmh_color_dict().keys()
+        
+    colors = [get_color(key, linclab=linclab) for key in col_order] 
     col_cyc = plt.cycler(color=colors, **cyc_args)
 
     # set pyplot params
@@ -107,26 +122,52 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         "ytick.major.width"    : 2.0,        # thicker y-ticks
         }
 
-
-    set_font(font, fontdir, log_fonts)
-
     # update pyplot parameters
     plt.rcParams.update(params)
 
+    if font == "Liberation Sans":
+        svg_fonttype = "none" # save as text
+    else:
+        svg_fonttype = "path" # save as path
+
+    set_font(font, fontdir=fontdir, svg_fonttype=svg_fonttype, log_fonts=log_fonts)
+
     # create and save an example plot, if requested
     if example:
+        create_example_plot(dirname=dirname, linclab=linclab, use_cycler=True)
+
+
+def create_example_plot(dirname=".", linclab=False, use_cycler=False, plot_ends=False):
+
+        if linclab:
+            color_dict = LINCLAB_COLS
+            color_end_dict = LINCLAB_COL_ENDS
+        else:
+            color_dict = get_modif_bmh_color_dict()
+            color_end_dict = get_modif_bmh_color_dict(ends=True)
+        
         fig, ax = plt.subplots(figsize=[8, 8])
         
-        n_col = len(colors)
+        n_col = len(color_dict.keys())
         x = np.arange(10)[:, np.newaxis]
-        y = np.repeat(x / 2., n_col, axis=1) - np.arange(-n_col, 0)
-        ax.plot(x, y)
+        ys = np.repeat(x / 2., n_col, axis=1) - np.arange(-n_col, 0)
+        
+        for i, (name, color) in enumerate(color_dict.items()):
+            y = ys[:, i]
+            label = f"{name}: {color}"
+            if use_cycler:
+                color = None
+
+            if plot_ends:
+                ax.plot(x, 2 * y, color=color, lw=4, label=label)
+                for j, end_color in enumerate(color_end_dict[name]):
+                    use_y = 2 * y + (j * 0.6) - 0.3
+                    ax.plot(x, use_y, color=end_color, lw=4)
+            else:
+                ax.plot(x, y, color=color, label=label)
 
         # label plot
-        legend_labels = [
-            f"{name}: {code}" for name, code in zip(col_order, colors)
-            ]
-        ax.legend(legend_labels)
+        ax.legend()
         ax.set_xlabel("X axis")
         ax.set_ylabel("Y axis")
         ax.set_title("Example plot", y=1.02)
@@ -140,6 +181,18 @@ def linclab_plt_defaults(font="Liberation Sans", fontdir=None,
         fig.savefig(savepath)
 
         logger.info(f"Example saved under {savepath}")
+
+
+#############################################
+def set_linclab_plt_defaults(**kwargs):
+    """
+    set_linclab_plt_defaults()
+
+    Sets pyplot defaults to Linclab defaults.
+
+    """
+
+    set_plt_defaults(**kwargs, linclab=True)
 
 
 #############################################
@@ -182,6 +235,48 @@ def linclab_colormap(nbins=100, gamma=1.0, no_white=False):
 
     return cmap
 
+
+#############################################
+def get_modif_bmh_color_dict(ends=False):
+    """
+    get_modif_bmh_color_dict()
+
+    Returns a modified bmh color dictionary.
+
+    Returns:
+        - color_dict (dict): bmh color dictionary
+    """
+    
+    bmh_colors = plt.style.library['bmh']["axes.prop_cycle"].by_key()["color"][:-1]
+
+    color_ends_dict = {
+        "blue"      : ["#76BFEA", "#0D6193"],
+        "red"       : ["#F35B7B", "#5C0316"],
+        "purple"    : ["#BFB0E6", "#553E8E"],
+        "green"     : ["#9EC87F", "#204207"],
+        "orange"    : ["#FFA761", "#934100"],
+        "pink"      : ["#F3C2DD", "#933B6C"],
+        "lightblue" : ["#A4DAF9", "#2091D1"],
+        "lightgreen": ["#33E8B7", "#01563F"],
+        "yellow"    : ["#FDEA75", "#B59E11"],
+    }
+
+    if len(bmh_colors) != len(color_ends_dict.keys()):
+        raise RuntimeError(
+            f"Expected to find {len(color_ends_dict.keys())} colors, "
+            f"but found {len(bmh_colors)}."
+            )
+
+    if ends:
+        return color_ends_dict
+
+    color_dict = {}
+    for i, color_name in enumerate(color_ends_dict.keys()):
+        color_dict[color_name] = bmh_colors[i]
+        if color_name == "yellow":
+            color_dict["yellow"] = "#E1CA3B" 
+
+    return color_dict
 
 #############################################
 def nipy_spectral_no_white_cmap(nbins=100, gamma=1.0):
@@ -262,7 +357,7 @@ def update_font_manager(fontdir):
 
 
 #############################################
-def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
+def set_font(font="Liberation Sans", fontdir=None, svg_fonttype="path", log_fonts=False):
     """
     set_font()
 
@@ -278,6 +373,9 @@ def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
                               default: "Liberation Sans"
         - fontdir (Path)    : directory to where extra fonts (.ttf) are stored
                               default: None
+        - svg_fonttype (str): way to save text in svg ("none" saves as text, 
+                              but "path" saves as path, ensuring specific font 
+                              always displays correctly in svg)
         - log_fonts (bool)  : if True, an alphabetical list of available fonts 
                               is logged
                               default: False
@@ -358,23 +456,26 @@ def set_font(font="Liberation Sans", fontdir=None, log_fonts=False):
         warnings.warn(f"Requested font(s) not found: {omitted_str}."
             f"{selected_str}", category=UserWarning, stacklevel=1)
     
+    params["svg.fonttype"] = svg_fonttype
     plt.rcParams.update(params)
 
     return
 
 
 #############################################
-def get_color(col="red", ret="single"):
+def get_color(col="red", ret="single", linclab=False):
     """
     get_color()
 
     Returns requested info for the specified color.
 
     Optional args:
-        - col (str): color for which to return info
-                     default: "red"
-        - ret (str): type of information to return for color
-                     default: "single"
+        - col (str)     : color for which to return info
+                          default: "red"
+        - ret (str)     : type of information to return for color
+                          default: "single"
+        - linclab (bool): if True, the Linclab colours are used
+                          default: False
 
     Returns:
         if ret == "single" or "both":
@@ -383,48 +484,32 @@ def get_color(col="red", ret="single"):
         - col_ends (list): hex codes for each end of a gradient corresponding to 
                            requested color
     """
-    
-    # list of defined colors
-    curr_cols = ["blue", "red", "gray", "green", "purple", "orange", "pink", 
-        "yellow", "brown"]
-    
-    if col == "blue":
-        # cols  = ["#7cc7f9", "#50a2d5", "#2e78a9", "#16547d"]
-        col_ends = ["#8DCCF6", "#07395B"]
-        single   = LINCLAB_COLS["blue"]
-    elif col == "red":
-        # cols = ["#f36d58", "#eb3920", "#c12a12", "#971a07"]
-        col_ends = ["#EF6F5C", "#7D1606"]
-        single   = LINCLAB_COLS["red"]
-    elif col in ["gray", "grey"]:
-        col_ends = ["#969696", "#060707"]
-        single   = LINCLAB_COLS["gray"]
-    elif col == "green":
-        col_ends = ["#B3F38E", "#2D7006"]
-        single   = LINCLAB_COLS["green"]
-    elif col == "purple":
-        col_ends = ["#B391F6", "#372165"]
-        single   = LINCLAB_COLS["purple"]
-    elif col == "orange":
-        col_ends = ["#F6B156", "#CD7707"]
-        single   = LINCLAB_COLS["orange"]
-    elif col == "pink":
-        col_ends = ["#F285AD", "#790B33"]
-        single   = LINCLAB_COLS["pink"]
-    elif col == "yellow":
-        col_ends = ["#F6D25D", "#B38B08"]
-        single   = LINCLAB_COLS["yellow"]
-    elif col == "brown":
-        col_ends = ["#F7AD75", "#7F3904"]
-        single   = LINCLAB_COLS["brown"]
-    else:
-        gen_util.accepted_values_error("col", col, curr_cols)
 
-    if ret == "single":
-        return single
-    elif ret == "col_ends":
-        return col_ends
-    elif ret == "both":
+    if ret in ["single", "both"]:
+        if linclab:
+            color_dict = LINCLAB_COLS
+        else:
+            color_dict = get_modif_bmh_color_dict()
+
+        if col not in color_dict.keys():
+            gen_util.accepted_values_error("col", col, color_dict.keys())
+        single = color_dict[col]
+        if ret == "single":
+            return single
+
+    if ret in ["col_ends", "both"]:
+        if linclab:
+            color_ends_dict = LINCLAB_COL_ENDS
+        else:
+            color_ends_dict = get_modif_bmh_color_dict(ends=True)
+
+        if col not in color_ends_dict.keys():
+            gen_util.accepted_values_error("col", col, color_ends_dict.keys())
+        col_ends = color_ends_dict[col]
+        if ret == "col_ends":
+            return col_ends
+
+    if ret == "both":
         return single, col_ends
     else:
         gen_util.accepted_values_error(
@@ -638,7 +723,7 @@ def is_last_col(sub_ax):
 
 
 #############################################
-def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False, 
+def manage_mpl(plt_bkend=None, linclab=False, fontdir=None, cmap=False, 
                nbins=100):
     """
     manage_mpl()
@@ -650,7 +735,7 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
         - plt_bkend (str): matplotlib backend to use
                            default: None
         - linclab (bool) : if True, the Linclab default are set
-                           default: True
+                           default: False
         - fontdir (Path) : directory to where extra fonts (.ttf) are stored
                            default: None
         - cmap (bool)    : if True, a colormap is returned. If linclab is True,
@@ -668,9 +753,7 @@ def manage_mpl(plt_bkend=None, linclab=True, fontdir=None, cmap=False,
     if plt_bkend is not None:
         plt.switch_backend(plt_bkend)
     
-    if linclab:
-        linclab_plt_defaults(
-            font=["Arial", "Liberation Sans"], fontdir=fontdir)
+    plt_defaults(font=["Arial", "Liberation Sans"], fontdir=fontdir, linclab=linclab)
 
     if cmap:
         if linclab:
